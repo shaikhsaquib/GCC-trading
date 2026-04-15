@@ -1,11 +1,11 @@
 import { Component, signal } from '@angular/core';
-import { NgClass } from '@angular/common';
+import { NgClass, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-trading-engine',
   standalone: true,
-  imports: [NgClass, FormsModule],
+  imports: [NgClass, FormsModule, DecimalPipe],
   template: `
     <div class="trading-page fade-in">
       <div class="page-header" style="margin-bottom:16px">
@@ -204,7 +204,7 @@ import { FormsModule } from '@angular/forms';
                 <span class="side-pill" [class.buy]="order.side==='BUY'" [class.sell]="order.side==='SELL'">{{ order.side }}</span>
                 <div class="order-info">
                   <strong>{{ order.bond }}</strong>
-                  <small>{{ order.type }} · {{ order.qty | number }} units @ {{ order.price }}</small>
+                  <small>{{ order.type }} &middot; {{ order.qty | number }} units &#64; {{ order.price }}</small>
                 </div>
                 <div>
                   <div class="progress-bar" style="width:80px;margin-bottom:3px">

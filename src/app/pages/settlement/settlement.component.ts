@@ -1,11 +1,11 @@
 import { Component, signal } from '@angular/core';
-import { NgClass } from '@angular/common';
+import { NgClass, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-settlement',
   standalone: true,
-  imports: [NgClass, FormsModule],
+  imports: [NgClass, FormsModule, DecimalPipe],
   template: `
     <div class="settlement-page fade-in">
       <div class="page-header">

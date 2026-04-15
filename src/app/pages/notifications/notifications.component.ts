@@ -130,7 +130,7 @@ import { FormsModule } from '@angular/forms';
                   </div>
                   <div class="pref-channels">
                     @for (ch of ['push','email','sms']; track ch) {
-                      <div class="pref-ch" [class.on]="pref[ch as 'push' | 'email' | 'sms']" (click)="pref[ch as 'push' | 'email' | 'sms'] = !pref[ch as 'push' | 'email' | 'sms']">
+                      <div class="pref-ch" [class.on]="getPref(pref, ch)" (click)="togglePref(pref, ch)">
                         <span class="material-icons-round" style="font-size:14px">{{ channelIcon(ch) }}</span>
                       </div>
                     }
@@ -259,6 +259,9 @@ export class NotificationsComponent {
   }
 
   markAllRead() { this.notifications.forEach(n => n.read = true); }
+
+  getPref(pref: Record<string, any>, ch: string): boolean { return !!pref[ch]; }
+  togglePref(pref: Record<string, any>, ch: string): void { pref[ch] = !pref[ch]; }
 
   channelIcon(ch: string) {
     return { push: 'notifications', email: 'email', sms: 'sms' }[ch] || 'notifications';

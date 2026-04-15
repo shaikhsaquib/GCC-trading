@@ -1,10 +1,10 @@
 import { Component, signal } from '@angular/core';
-import { NgClass } from '@angular/common';
+import { NgClass, DecimalPipe } from '@angular/common';
 
 @Component({
   selector: 'app-portfolio',
   standalone: true,
-  imports: [NgClass],
+  imports: [NgClass, DecimalPipe],
   template: `
     <div class="portfolio-page fade-in">
       <div class="page-header">
@@ -74,7 +74,7 @@ import { NgClass } from '@angular/common';
           <div class="card" style="margin-top:16px">
             <h4 style="margin-bottom:14px">Upcoming Coupons</h4>
             <div class="coupon-list">
-              @for (c of upcomingCoupons; track c.date) {
+              @for (c of upcomingCoupons; track c.bond) {
                 <div class="coupon-item">
                   <div class="coupon-date-box">
                     <span class="coupon-month">{{ c.month }}</span>
