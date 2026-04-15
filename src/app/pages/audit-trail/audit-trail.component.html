@@ -1,0 +1,152 @@
+    <div class="audit-page fade-in">
+      <div class="page-header">
+        <div class="page-title">
+          <h2>Audit Trail</h2>
+          <p>Immutable log of every action — tamper-proof and cryptographically signed</p>
+        </div>
+        <div class="page-actions">
+          <span class="badge badge-node">Node.js</span>
+          <div class="integrity-badge">
+            <span class="material-icons-round">verified</span>
+            Log Integrity: <strong>Verified</strong>
+          </div>
+          <button class="btn btn-secondary"><span class="material-icons-round">file_download</span> Export Logs</button>
+          <button class="btn btn-secondary"><span class="material-icons-round">refresh</span> Refresh</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:24px">
+        @for (s of auditStats; track s.label) {
+          <div class="stat-card" style="padding:14px">
+            <div class="stat-label">{{ s.label }}</div>
+            <div class="stat-value" style="font-size:20px" [style.color]="s.color">{{ s.value }}</div>
+          </div>
+        }
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-bar card" style="margin-bottom:16px;padding:14px 18px">
+        <div class="search-bar" style="flex:1">
+          <span class="material-icons-round search-icon">search</span>
+          <input class="form-control" style="width:100%;padding-left:36px" placeholder="Search by user, action, entity, IP address..." [(ngModel)]="searchTerm" name="as"/>
+        </div>
+        <select class="form-control form-select" style="width:160px" [(ngModel)]="categoryFilter" name="cat">
+          <option value="">All Categories</option>
+          <option>Auth</option>
+          <option>Trade</option>
+          <option>KYC</option>
+          <option>Admin</option>
+          <option>AML</option>
+          <option>Settlement</option>
+          <option>Wallet</option>
+          <option>Scheduler</option>
+        </select>
+        <select class="form-control form-select" style="width:140px" [(ngModel)]="severityFilter" name="sev">
+          <option value="">All Severity</option>
+          <option>Info</option>
+          <option>Warning</option>
+          <option>Critical</option>
+        </select>
+        <div class="date-range">
+          <input class="form-control" type="date" style="width:145px" name="fd"/>
+          <span style="color:var(--text-muted)">→</span>
+          <input class="form-control" type="date" style="width:145px" name="td"/>
+        </div>
+        <button class="btn btn-primary btn-sm">Apply</button>
+      </div>
+
+      <!-- Log Table -->
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="log-header-row">
+          <div class="log-header-info">
+            <span class="material-icons-round" style="color:var(--accent-cyan)">lock</span>
+            <span>All logs are cryptographically signed and stored immutably. Hash chain verified.</span>
+          </div>
+          <div class="hash-display">
+            Last Block Hash: <code>{{ blockHash }}</code>
+          </div>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Timestamp</th>
+              <th>Severity</th>
+              <th>Category</th>
+              <th>Action</th>
+              <th>User</th>
+              <th>Entity / Resource</th>
+              <th>IP Address</th>
+              <th>Result</th>
+              <th>Hash</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (log of filteredLogs(); track log.id) {
+              <tr (click)="selectedLog.set(log)" [class.selected-row]="selectedLog()?.id === log.id">
+                <td style="color:var(--text-muted);font-size:11px;font-variant-numeric:tabular-nums">{{ log.id }}</td>
+                <td>
+                  <div style="font-size:12px;color:var(--text-primary);font-variant-numeric:tabular-nums">{{ log.date }}</div>
+                  <div style="font-size:10px;color:var(--text-muted)">{{ log.time }}</div>
+                </td>
+                <td>
+                  <span class="severity-badge" [ngClass]="severityClass(log.severity)">
+                    <span class="material-icons-round" style="font-size:12px">{{ severityIcon(log.severity) }}</span>
+                    {{ log.severity }}
+                  </span>
+                </td>
+                <td>
+                  <span class="category-badge" [ngClass]="'cat-' + log.category.toLowerCase()">{{ log.category }}</span>
+                </td>
+                <td style="font-size:13px;font-weight:500">{{ log.action }}</td>
+                <td>
+                  <div style="font-size:12px;font-weight:600">{{ log.user }}</div>
+                  <div style="font-size:10px;color:var(--text-muted)">{{ log.userId }}</div>
+                </td>
+                <td style="font-size:12px;color:var(--text-secondary)">{{ log.entity }}</td>
+                <td style="font-size:11px;font-family:monospace;color:var(--text-secondary)">{{ log.ip }}</td>
+                <td>
+                  <span class="result-badge" [ngClass]="log.result === 'Success' ? 'badge-success' : 'badge-danger'">{{ log.result }}</span>
+                </td>
+                <td>
+                  <code style="font-size:9px;color:var(--text-muted)">{{ log.hash }}</code>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <span class="text-muted">Showing {{ filteredLogs().length }} of 128,472 total log entries</span>
+          <div class="pagination" style="display:flex;gap:6px">
+            @for (p of [1,2,3,'...',127]; track p) {
+              <button class="btn btn-secondary btn-sm" [class.active]="p === 1">{{ p }}</button>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Log Detail Panel -->
+      @if (selectedLog()) {
+        <div class="log-detail-panel card fade-in">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <h4>Log Entry Detail — #{{ selectedLog()!.id }}</h4>
+            <button class="btn btn-icon" (click)="selectedLog.set(null)"><span class="material-icons-round">close</span></button>
+          </div>
+          <div class="log-detail-grid">
+            <div class="ld-item"><span>Timestamp</span><strong>{{ selectedLog()!.date }} {{ selectedLog()!.time }}</strong></div>
+            <div class="ld-item"><span>Severity</span><span class="severity-badge" [ngClass]="severityClass(selectedLog()!.severity)">{{ selectedLog()!.severity }}</span></div>
+            <div class="ld-item"><span>Category</span><span class="category-badge" [ngClass]="'cat-' + selectedLog()!.category.toLowerCase()">{{ selectedLog()!.category }}</span></div>
+            <div class="ld-item"><span>Action</span><strong>{{ selectedLog()!.action }}</strong></div>
+            <div class="ld-item"><span>User</span><strong>{{ selectedLog()!.user }}</strong></div>
+            <div class="ld-item"><span>User ID</span><code>{{ selectedLog()!.userId }}</code></div>
+            <div class="ld-item"><span>Entity</span><strong>{{ selectedLog()!.entity }}</strong></div>
+            <div class="ld-item"><span>IP Address</span><code>{{ selectedLog()!.ip }}</code></div>
+            <div class="ld-item"><span>Result</span><span class="result-badge" [ngClass]="selectedLog()!.result === 'Success' ? 'badge-success' : 'badge-danger'">{{ selectedLog()!.result }}</span></div>
+            <div class="ld-item" style="grid-column:1/-1"><span>Entry Hash (SHA-256)</span><code style="font-size:11px;word-break:break-all;color:var(--accent-cyan)">{{ selectedLog()!.fullHash }}</code></div>
+            <div class="ld-item" style="grid-column:1/-1"><span>Previous Entry Hash</span><code style="font-size:11px;word-break:break-all">{{ selectedLog()!.prevHash }}</code></div>
+          </div>
+        </div>
+      }
+    </div>

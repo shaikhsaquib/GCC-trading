@@ -1,0 +1,125 @@
+    <div class="auth-page">
+      <div class="auth-bg">
+        <div class="bg-circle c1"></div>
+      </div>
+
+      <div class="twofa-container">
+        <div class="twofa-card">
+          <!-- Logo -->
+          <div class="twofa-brand">
+            <div class="shield-icon">
+              <span class="material-icons-round">shield</span>
+            </div>
+            <h2>Two-Factor Authentication</h2>
+            <p>Enter the 6-digit code from your authenticator app or SMS to continue.</p>
+          </div>
+
+          <!-- Tab: TOTP or SMS -->
+          <div class="method-tabs">
+            <button class="method-tab" [class.active]="method() === 'totp'" (click)="method.set('totp')">
+              <span class="material-icons-round">smartphone</span> Authenticator App
+            </button>
+            <button class="method-tab" [class.active]="method() === 'sms'" (click)="method.set('sms')">
+              <span class="material-icons-round">sms</span> SMS Code
+            </button>
+          </div>
+
+          @if (method() === 'totp') {
+            <div class="qr-section fade-in">
+              <div class="qr-placeholder">
+                <div class="qr-inner">
+                  <div class="qr-corners"></div>
+                  <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+                    <rect x="10" y="10" width="30" height="30" rx="3" fill="none" stroke="var(--accent-cyan)" stroke-width="2"/>
+                    <rect x="80" y="10" width="30" height="30" rx="3" fill="none" stroke="var(--accent-cyan)" stroke-width="2"/>
+                    <rect x="10" y="80" width="30" height="30" rx="3" fill="none" stroke="var(--accent-cyan)" stroke-width="2"/>
+                    @for (r of qrDots; track $index) {
+                      <rect [attr.x]="r.x" [attr.y]="r.y" width="6" height="6" fill="var(--accent-cyan)" opacity="0.6"/>
+                    }
+                  </svg>
+                  <p class="qr-label">Scan with Google Authenticator</p>
+                </div>
+              </div>
+              <p class="setup-key">
+                Manual key: <code>JBSW Y3DP EHPK 3PXP</code>
+                <button class="btn btn-secondary btn-sm" (click)="copied.set(true)">
+                  <span class="material-icons-round" style="font-size:14px">{{ copied() ? 'check' : 'content_copy' }}</span>
+                </button>
+              </p>
+            </div>
+          }
+
+          @if (method() === 'sms') {
+            <div class="sms-section fade-in">
+              <p class="sms-info">
+                <span class="material-icons-round">phone</span>
+                Code sent to <strong>+966 5X*** **78</strong>
+              </p>
+              <button class="resend-btn" [disabled]="resendTimer() > 0">
+                @if (resendTimer() > 0) { Resend in {{ resendTimer() }}s }
+                @else { Resend Code }
+              </button>
+            </div>
+          }
+
+          <!-- OTP Input -->
+          <div class="otp-section">
+            <label class="otp-label">Enter verification code</label>
+            <div class="otp-inputs">
+              @for (i of [0,1,2,3,4,5]; track i) {
+                <input
+                  class="otp-box"
+                  type="text"
+                  maxlength="1"
+                  inputmode="numeric"
+                  [value]="otpDigits()[i]"
+                  (input)="onOtpInput($event, i)"
+                  (keydown)="onOtpKeydown($event, i)"
+                  [class.filled]="otpDigits()[i] !== ''"
+                />
+              }
+            </div>
+          </div>
+
+          <!-- Verify button -->
+          <button
+            class="btn btn-primary btn-lg verify-btn"
+            [disabled]="!isComplete()"
+            (click)="verify()"
+            [class.loading]="verifying()"
+          >
+            @if (verifying()) {
+              <span class="spinner"></span> Verifying...
+            } @else {
+              <span class="material-icons-round">verified</span> Verify & Continue
+            }
+          </button>
+
+          @if (error()) {
+            <div class="error-banner">
+              <span class="material-icons-round">error</span>
+              {{ error() }}
+            </div>
+          }
+
+          <!-- Backup codes -->
+          <div class="backup-section">
+            <button class="backup-toggle" (click)="showBackup.set(!showBackup())">
+              <span class="material-icons-round">key</span>
+              Use backup code instead
+              <span class="material-icons-round">{{ showBackup() ? 'expand_less' : 'expand_more' }}</span>
+            </button>
+            @if (showBackup()) {
+              <div class="backup-input fade-in">
+                <input class="form-control" type="text" placeholder="XXXX-XXXX-XXXX"/>
+                <button class="btn btn-secondary">Apply</button>
+              </div>
+            }
+          </div>
+
+          <a routerLink="/auth/login" class="back-link">
+            <span class="material-icons-round">arrow_back</span> Back to Sign In
+          </a>
+        </div>
+      </div>
+    </div>

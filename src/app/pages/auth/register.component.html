@@ -1,0 +1,191 @@
+    <div class="auth-page register-page">
+      <div class="auth-bg">
+        <div class="bg-circle c1"></div>
+        <div class="bg-circle c2"></div>
+      </div>
+
+      <div class="register-container">
+        <!-- Header -->
+        <div class="reg-header">
+          <div class="brand-mini">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <rect width="32" height="32" rx="8" fill="url(#rg1)"/>
+              <path d="M8 20V12l8-4 8 4v8l-8 4-8-4z" fill="none" stroke="white" stroke-width="1.5"/>
+              <path d="M8 12l8 4 8-4M16 16v8" stroke="white" stroke-width="1.5"/>
+              <defs><linearGradient id="rg1" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#00d4ff"/><stop offset="1" stop-color="#17c3b2"/></linearGradient></defs>
+            </svg>
+            <span>GCC Bond Trading</span>
+          </div>
+          <a routerLink="/auth/login" class="btn btn-secondary btn-sm">
+            <span class="material-icons-round" style="font-size:16px">login</span> Sign In
+          </a>
+        </div>
+
+        <!-- Steps indicator -->
+        <div class="steps-bar">
+          @for (step of steps; track step.num; let i = $index) {
+            <div class="step-item" [class.active]="currentStep() === i" [class.done]="currentStep() > i">
+              <div class="step-num">
+                @if (currentStep() > i) {
+                  <span class="material-icons-round" style="font-size:14px">check</span>
+                } @else {
+                  {{ step.num }}
+                }
+              </div>
+              <span class="step-label">{{ step.label }}</span>
+            </div>
+            @if (i < steps.length - 1) {
+              <div class="step-connector" [class.done]="currentStep() > i"></div>
+            }
+          }
+        </div>
+
+        <div class="reg-card">
+          <!-- Step 1: Personal Info -->
+          @if (currentStep() === 0) {
+            <div class="step-content fade-in">
+              <h3>Personal Information</h3>
+              <p class="step-desc">Tell us about yourself</p>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>First Name</label>
+                  <input class="form-control" type="text" placeholder="Mohammed" [(ngModel)]="form.firstName" name="fn"/>
+                </div>
+                <div class="form-group">
+                  <label>Last Name</label>
+                  <input class="form-control" type="text" placeholder="Al-Rashid" [(ngModel)]="form.lastName" name="ln"/>
+                </div>
+                <div class="form-group" style="grid-column: 1/-1">
+                  <label>Email Address</label>
+                  <input class="form-control" type="email" placeholder="mohammed@example.com" [(ngModel)]="form.email" name="em"/>
+                </div>
+                <div class="form-group">
+                  <label>Phone Number</label>
+                  <input class="form-control" type="tel" placeholder="+966 5X XXX XXXX" [(ngModel)]="form.phone" name="ph"/>
+                </div>
+                <div class="form-group">
+                  <label>Nationality</label>
+                  <select class="form-control form-select" [(ngModel)]="form.nationality" name="nat">
+                    <option value="">Select nationality</option>
+                    <option>Saudi Arabian</option>
+                    <option>Emirati</option>
+                    <option>Kuwaiti</option>
+                    <option>Bahraini</option>
+                    <option>Qatari</option>
+                    <option>Omani</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div class="form-group" style="grid-column: 1/-1">
+                  <label>National ID / Iqama Number</label>
+                  <input class="form-control" type="text" placeholder="1XXXXXXXXX" [(ngModel)]="form.nationalId" name="nid"/>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Step 2: Account Setup -->
+          @if (currentStep() === 1) {
+            <div class="step-content fade-in">
+              <h3>Account Setup</h3>
+              <p class="step-desc">Configure your trading account</p>
+              <div class="form-grid">
+                <div class="form-group" style="grid-column: 1/-1">
+                  <label>Password</label>
+                  <input class="form-control" type="password" placeholder="Min. 8 chars, upper, lower, number" [(ngModel)]="form.password" name="pw"/>
+                </div>
+                <div class="form-group" style="grid-column: 1/-1">
+                  <label>Confirm Password</label>
+                  <input class="form-control" type="password" placeholder="Repeat password" [(ngModel)]="form.confirmPassword" name="cpw"/>
+                </div>
+                <div class="form-group" style="grid-column: 1/-1">
+                  <label>Account Type</label>
+                  <div class="acc-type-grid">
+                    @for (type of accountTypes; track type.value) {
+                      <div class="acc-type-card" [class.selected]="form.accountType === type.value" (click)="form.accountType = type.value">
+                        <span class="material-icons-round" style="font-size:24px; color: var(--accent-cyan)">{{ type.icon }}</span>
+                        <strong>{{ type.label }}</strong>
+                        <small>{{ type.desc }}</small>
+                      </div>
+                    }
+                  </div>
+                </div>
+                <div class="form-group" style="grid-column: 1/-1">
+                  <label>Investment Experience</label>
+                  <select class="form-control form-select" [(ngModel)]="form.experience" name="exp">
+                    <option value="">Select experience level</option>
+                    <option>Beginner (0-2 years)</option>
+                    <option>Intermediate (2-5 years)</option>
+                    <option>Advanced (5-10 years)</option>
+                    <option>Professional (10+ years)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Step 3: KYC Docs -->
+          @if (currentStep() === 2) {
+            <div class="step-content fade-in">
+              <h3>Identity Verification</h3>
+              <p class="step-desc">Upload your documents to complete KYC</p>
+              <div class="doc-upload-grid">
+                @for (doc of docUploads; track doc.type) {
+                  <div class="doc-upload-card" [class.uploaded]="doc.uploaded">
+                    <span class="material-icons-round doc-icon">{{ doc.uploaded ? 'check_circle' : doc.icon }}</span>
+                    <strong>{{ doc.label }}</strong>
+                    <small>{{ doc.desc }}</small>
+                    <button class="btn btn-secondary btn-sm" (click)="doc.uploaded = !doc.uploaded">
+                      {{ doc.uploaded ? 'Change File' : 'Upload' }}
+                    </button>
+                  </div>
+                }
+              </div>
+              <div class="kyc-note">
+                <span class="material-icons-round">info</span>
+                Documents are encrypted and securely stored. Verified within 24 hours.
+              </div>
+            </div>
+          }
+
+          <!-- Step 4: Agreement -->
+          @if (currentStep() === 3) {
+            <div class="step-content fade-in">
+              <h3>Terms & Agreements</h3>
+              <p class="step-desc">Review and accept to proceed</p>
+              <div class="agreement-list">
+                @for (agree of agreements; track agree.id) {
+                  <label class="agree-item">
+                    <input type="checkbox" [(ngModel)]="agree.checked" [name]="'agree' + agree.id" style="accent-color: var(--accent-cyan); width:16px; height:16px;"/>
+                    <div>
+                      <strong>{{ agree.title }}</strong>
+                      <p>{{ agree.desc }}</p>
+                    </div>
+                  </label>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Navigation -->
+          <div class="step-nav">
+            @if (currentStep() > 0) {
+              <button class="btn btn-secondary" (click)="prev()">
+                <span class="material-icons-round">chevron_left</span> Back
+              </button>
+            } @else {
+              <div></div>
+            }
+            @if (currentStep() < steps.length - 1) {
+              <button class="btn btn-primary" (click)="next()">
+                Next <span class="material-icons-round">chevron_right</span>
+              </button>
+            } @else {
+              <button class="btn btn-primary" (click)="submit()">
+                <span class="material-icons-round">check</span> Create Account
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    </div>

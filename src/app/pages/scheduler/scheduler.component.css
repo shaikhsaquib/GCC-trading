@@ -1,0 +1,49 @@
+    .scheduler-layout { display: grid; grid-template-columns: 1fr 380px; gap: 20px; }
+
+    .jobs-list { display: flex; flex-direction: column; }
+
+    .job-row {
+      display: flex; align-items: center; gap: 14px; padding: 16px 20px;
+      border-bottom: 1px solid rgba(30,58,95,0.4); cursor: pointer; transition: background 0.15s; position: relative;
+      &:hover { background: var(--bg-card-hover); }
+      &.selected { background: rgba(0,212,255,0.04); }
+      &:last-child { border-bottom: none; }
+    }
+
+    .job-status-indicator { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 0; }
+    .ind-running { background: var(--accent-cyan); }
+    .ind-idle    { background: var(--success); }
+    .ind-disabled{ background: var(--text-muted); }
+    .ind-error   { background: var(--danger); }
+
+    .job-icon { width: 40px; height: 40px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; .material-icons-round { font-size: 20px; } }
+
+    .job-info { flex: 1; }
+
+    .cron-expr { display: flex; align-items: center; gap: 4px; color: var(--text-muted); code { font-size: 11px; color: var(--accent-cyan); } }
+
+    .job-timing { display: flex; flex-direction: column; gap: 4px; min-width: 140px; }
+
+    .timing-item { display: flex; flex-direction: column; span { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; } strong { font-size: 11px; } }
+
+    .job-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+    .job-detail { padding: 20px; }
+
+    .detail-fields { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; }
+
+    .df-item { display: flex; flex-direction: column; gap: 4px; span { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; } strong { font-size: 13px; } }
+
+    .detail-col { display: flex; flex-direction: column; gap: 16px; }
+
+    .timeline-card { padding: 18px; }
+
+    .timeline-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .tl-item { display: flex; align-items: center; gap: 12px; }
+
+    .tl-time { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; width: 50px; }
+
+    .tl-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    .tl-info { display: flex; flex-direction: column; gap: 2px; strong { font-size: 12px; } small { font-size: 10px; } }
