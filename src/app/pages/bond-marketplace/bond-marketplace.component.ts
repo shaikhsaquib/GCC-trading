@@ -1,4 +1,4 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -290,13 +290,13 @@ export class BondMarketplaceComponent {
     { name: 'ADNOC Green Bond 2032', issuer: 'Abu Dhabi National Oil Co', isin: 'AE0080056789', type: 'Corporate', typeColor: '#7c4dff', rating: 'AA+', coupon: 4.10, maturity: 'May 2032', price: '97.80', ytm: 4.48, volume: '750M' },
   ];
 
-  filteredBonds = computed(() => {
+  filteredBonds() {
     return this.bonds.filter(b =>
       b.name.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
       b.isin.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
       b.issuer.toLowerCase().includes(this.searchTerm.toLowerCase())
     );
-  });
+  }
 
   toggleCompare(isin: string) {
     const list = [...this.compareList()];

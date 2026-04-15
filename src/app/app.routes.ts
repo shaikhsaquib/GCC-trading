@@ -36,6 +36,11 @@ export const routes: Routes = [
           import('./pages/dashboard/dashboard.component').then((m) => m.DashboardComponent),
       },
       {
+        path: 'identity',
+        loadComponent: () =>
+          import('./pages/identity/identity.component').then((m) => m.IdentityComponent),
+      },
+      {
         path: 'kyc',
         loadComponent: () =>
           import('./pages/kyc/kyc.component').then((m) => m.KycComponent),
