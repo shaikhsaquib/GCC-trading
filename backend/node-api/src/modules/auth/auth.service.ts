@@ -1,288 +1,285 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import speakeasy from 'speakeasy';
-import QRCode from 'qrcode';
+import qrcode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
-import { db } from '../../shared/db/postgres';
-import { redis } from '../../shared/db/redis';
-import { eventBus, Events } from '../../shared/events/event-bus';
-import { encrypt, decrypt, generateOTP } from '../../shared/utils/crypto';
-import { logger } from '../../shared/utils/logger';
-import { AppError } from '../../shared/middleware/error.middleware';
+import crypto from 'crypto';
+
+import { config } from '../../config';
+import { redis } from '../../core/database/redis.client';
+import { IEventBus } from '../../core/events/event-bus';
+import { EventRoutes } from '../../core/events/event.types';
+import { encrypt, hashForLookup } from '../../core/crypto';
 import {
-  User, UserStatus, UserRole, CountryCode, Currency,
-  LoginRequest, RegisterRequest,
-} from '../../shared/types';
+  ConflictError, NotFoundError, UnauthorizedError,
+  ForbiddenError, ValidationError,
+} from '../../core/errors';
 
-const BCRYPT_ROUNDS        = 12;
-const ACCESS_TOKEN_EXPIRES = process.env.JWT_ACCESS_EXPIRES  || '15m';
-const REFRESH_TOKEN_EXPIRES = process.env.JWT_REFRESH_EXPIRES || '7d';
-const MAX_FAILED_LOGINS    = 5;
-const LOCK_DURATION_MINS   = 30;
+import { AuthRepository } from './auth.repository';
+import {
+  RegisterDto, LoginDto, Verify2FADto, Enable2FADto,
+  TokenPair, LoginResponse, Require2FAResponse, SafeUser,
+  Setup2FAResponse, ResetPasswordDto, UserRow,
+} from './auth.types';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+const BCRYPT_ROUNDS = 12;
+const MAX_FAILED    = 5;
+const LOCK_MINUTES  = 30;
 
-function countryCurrency(code: CountryCode): Currency {
-  const map: Record<CountryCode, Currency> = {
-    AE: Currency.AED, SA: Currency.SAR,
-    BH: Currency.BHD, KW: Currency.KWD, QA: Currency.QAR,
-  };
-  return map[code] ?? Currency.AED;
-}
+export class AuthService {
+  constructor(
+    private readonly repo:     AuthRepository,
+    private readonly eventBus: IEventBus,
+  ) {}
 
-function signTokens(user: User): { access_token: string; refresh_token: string } {
-  const secret = process.env.JWT_SECRET || 'secret';
-  const payload = { sub: user.id, email: decrypt(user.email), role: user.role, status: user.status };
-
-  const access_token  = jwt.sign(payload, secret, { expiresIn: ACCESS_TOKEN_EXPIRES } as jwt.SignOptions);
-  const refresh_token = jwt.sign({ sub: user.id, type: 'refresh' }, secret, { expiresIn: REFRESH_TOKEN_EXPIRES } as jwt.SignOptions);
-  return { access_token, refresh_token };
-}
-
-// ── Auth Service ──────────────────────────────────────────────────────────────
-
-export const authService = {
   // ── Register ───────────────────────────────────────────────────────────────
-  register: async (body: RegisterRequest) => {
-    const encEmail = encrypt(body.email);
-    const encPhone = encrypt(body.phone);
 
-    // Duplicate check (FSD §AUTH-003)
-    const dup = await db.query<{ id: string }>(
-      'SELECT id FROM auth.users WHERE email = $1 OR phone = $2',
-      [encEmail, encPhone],
-    );
-    if (dup.rows.length > 0) {
-      // Determine which field conflicts
-      const emailRow = await db.query('SELECT id FROM auth.users WHERE email = $1', [encEmail]);
-      if (emailRow.rows.length > 0) throw new AppError(409, 'EMAIL_ALREADY_EXISTS', 'Email address is already registered');
-      throw new AppError(409, 'PHONE_ALREADY_EXISTS', 'Phone number is already registered');
-    }
+  async register(dto: RegisterDto): Promise<SafeUser> {
+    const emailHash = hashForLookup(dto.email);
 
-    // Validate password strength (FSD §AUTH-004)
-    const passRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*]).{8,128}$/;
-    if (!passRegex.test(body.password)) {
-      throw new AppError(400, 'VALIDATION_ERROR', 'Password must be 8+ chars with uppercase, number and special character');
-    }
+    const existing = await this.repo.findByEmailHash(emailHash);
+    if (existing) throw new ConflictError('An account with this email already exists');
 
-    const passwordHash = await bcrypt.hash(body.password, BCRYPT_ROUNDS);
-    const userId       = uuidv4();
+    const [passwordHash, encryptedEmail, encryptedPhone] = await Promise.all([
+      bcrypt.hash(dto.password, BCRYPT_ROUNDS),
+      Promise.resolve(encrypt(dto.email)),
+      Promise.resolve(encrypt(dto.phone)),
+    ]);
 
-    await db.query(
-      `INSERT INTO auth.users
-        (id, email, phone, password_hash, first_name, last_name, country_code,
-         preferred_currency, status, role, version)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,1)`,
-      [
-        userId, encEmail, encPhone, passwordHash,
-        body.first_name, body.last_name, body.country_code,
-        countryCurrency(body.country_code),
-        UserStatus.REGISTERED, UserRole.USER,
-      ],
-    );
-
-    // Publish domain event (FSD §AUTH-006)
-    await eventBus.publish(Events.USER_REGISTERED, {
-      user_id:    userId,
-      email:      body.email,
-      phone:      body.phone,
-      first_name: body.first_name,
-      country_code: body.country_code,
+    const user = await this.repo.create({
+      email:             encryptedEmail,
+      emailHash,
+      phone:             encryptedPhone,
+      passwordHash,
+      firstName:         dto.firstName,
+      lastName:          dto.lastName,
+      nationality:       dto.nationality,
+      dateOfBirth:       dto.dateOfBirth,
+      preferredCurrency: dto.currency ?? 'AED',
     });
 
-    logger.info('User registered', { user_id: userId, email: body.email });
-    return { user_id: userId, status: UserStatus.REGISTERED, next_step: 'VERIFY_EMAIL_OTP' };
-  },
+    await this.eventBus.publish(EventRoutes.USER_REGISTERED, {
+      user_id:    user.id,
+      email:      dto.email,
+      first_name: dto.firstName,
+    });
+
+    return this.toSafeUser(user);
+  }
 
   // ── Login ──────────────────────────────────────────────────────────────────
-  login: async (body: LoginRequest, ipAddress?: string) => {
-    const encEmail = encrypt(body.email);
-    const result   = await db.query<User>(
-      `SELECT * FROM auth.users WHERE email = $1 AND is_deleted = false`,
-      [encEmail],
-    );
 
-    if (result.rows.length === 0) {
-      throw new AppError(401, 'AUTH_INVALID_CREDENTIALS', 'Email or password incorrect');
-    }
+  async login(dto: LoginDto): Promise<LoginResponse | Require2FAResponse> {
+    const emailHash = hashForLookup(dto.email);
+    const user      = await this.repo.findByEmailHash(emailHash);
 
-    const user = result.rows[0];
+    if (!user) throw new UnauthorizedError('Invalid email or password');
 
-    // Account state checks (FSD §4.1)
-    if (user.status === UserStatus.DEACTIVATED) {
-      throw new AppError(403, 'AUTH_DEACTIVATED', 'Account has been deactivated');
-    }
-    if (user.status === UserStatus.SUSPENDED) {
-      throw new AppError(403, 'AUTH_SUSPENDED', 'Account is suspended. Contact support.');
-    }
-
-    // Check lockout (FSD §AUTH-012)
-    if (user.locked_until && new Date(user.locked_until) > new Date()) {
-      throw new AppError(403, 'AUTH_ACCOUNT_LOCKED', `Account locked. Try again after ${new Date(user.locked_until).toISOString()}`);
-    }
-
-    const passwordMatch = await bcrypt.compare(body.password, user.password_hash);
-    if (!passwordMatch) {
-      const newCount = user.failed_login_count + 1;
-      const lockUntil = newCount >= MAX_FAILED_LOGINS
-        ? new Date(Date.now() + LOCK_DURATION_MINS * 60_000)
-        : null;
-
-      await db.query(
-        `UPDATE auth.users SET failed_login_count = $1, locked_until = $2 WHERE id = $3`,
-        [newCount, lockUntil, user.id],
+    // Check account lock
+    if (user.locked_until && new Date() < new Date(user.locked_until)) {
+      throw new ForbiddenError(
+        `Account locked. Try again after ${new Date(user.locked_until).toISOString()}`,
       );
+    }
 
-      if (lockUntil) {
-        // Publish security alert event for notification
-        await eventBus.publish('auth.AccountLocked', { user_id: user.id, ip_address: ipAddress });
+    const passwordMatch = await bcrypt.compare(dto.password, user.password_hash);
+    if (!passwordMatch) {
+      await this.repo.incrementFailedLogins(user.id);
+      const fails = (user.failed_login_count ?? 0) + 1;
+      if (fails >= MAX_FAILED) {
+        await this.repo.lockUntil(
+          user.id,
+          new Date(Date.now() + LOCK_MINUTES * 60_000),
+        );
+        throw new ForbiddenError(`Account locked for ${LOCK_MINUTES} minutes after ${MAX_FAILED} failed attempts`);
       }
-
-      throw new AppError(401, 'AUTH_INVALID_CREDENTIALS', 'Email or password incorrect');
+      throw new UnauthorizedError('Invalid email or password');
     }
 
-    // Reset failed logins on success
-    await db.query(
-      'UPDATE auth.users SET failed_login_count = 0, locked_until = NULL WHERE id = $1',
-      [user.id],
-    );
+    if (user.status === 'SUSPENDED') throw new ForbiddenError('Account suspended');
+    if (user.status === 'DEACTIVATED') throw new ForbiddenError('Account deactivated');
 
-    // If 2FA is enabled, require OTP before issuing tokens (FSD §AUTH-011)
-    if (user.two_fa_enabled) {
-      const tempToken = uuidv4();
-      await redis.setJson(`2fa_pending:${tempToken}`, { user_id: user.id }, 300); // 5 min
-      return {
-        two_fa_required: true,
-        temp_token: tempToken,
-        user: { id: user.id, status: user.status, two_fa_required: true },
-      };
+    await this.repo.updateLastLogin(user.id);
+
+    // 2FA step-up
+    if (user.totp_enabled) {
+      const tempToken = jwt.sign(
+        { sub: user.id, type: 'temp_2fa' },
+        config.jwt.secret,
+        { expiresIn: '5m' },
+      );
+      return { requires2FA: true, tempToken };
     }
-
-    const tokens = signTokens(user);
-    await redis.setSession(user.id, { user_id: user.id, ip: ipAddress, logged_in_at: new Date() });
 
     return {
-      ...tokens,
-      expires_in: 900,
-      user: { id: user.id, status: user.status, role: user.role, two_fa_required: false },
+      ...this.issueTokenPair(user),
+      user: this.toSafeUser(user),
     };
-  },
+  }
 
-  // ── Verify 2FA ─────────────────────────────────────────────────────────────
-  verify2FA: async (tempToken: string, code: string) => {
-    const pending = await redis.getJson<{ user_id: string }>(`2fa_pending:${tempToken}`);
-    if (!pending) throw new AppError(401, 'AUTH_2FA_EXPIRED', '2FA session expired. Please login again.');
+  // ── 2FA Verification ───────────────────────────────────────────────────────
 
-    const result = await db.query<User>('SELECT * FROM auth.users WHERE id = $1', [pending.user_id]);
-    if (result.rows.length === 0) throw new AppError(404, 'USER_NOT_FOUND', 'User not found');
-
-    const user = result.rows[0];
-    const secret = user.two_fa_secret ? decrypt(user.two_fa_secret) : '';
-
-    const valid = speakeasy.totp.verify({ secret, encoding: 'base32', token: code, window: 1 });
-    if (!valid) throw new AppError(403, 'AUTH_2FA_INVALID', 'Invalid 2FA code');
-
-    await redis.del(`2fa_pending:${tempToken}`);
-    const tokens = signTokens(user);
-    await redis.setSession(user.id, { user_id: user.id, logged_in_at: new Date() });
-
-    return { ...tokens, expires_in: 900, user: { id: user.id, status: user.status, role: user.role } };
-  },
-
-  // ── Setup 2FA ──────────────────────────────────────────────────────────────
-  setup2FA: async (userId: string) => {
-    const result = await db.query<User>('SELECT * FROM auth.users WHERE id = $1', [userId]);
-    if (result.rows.length === 0) throw new AppError(404, 'USER_NOT_FOUND', 'User not found');
-
-    const user  = result.rows[0];
-    const email = decrypt(user.email);
-    const secret = speakeasy.generateSecret({ name: `GCC Bond (${email})`, length: 20 });
-
-    await db.query(
-      'UPDATE auth.users SET two_fa_secret = $1 WHERE id = $2',
-      [encrypt(secret.base32), userId],
-    );
-
-    const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url || '');
-    return { qr_code: qrCodeUrl, manual_key: secret.base32 };
-  },
-
-  // ── Enable 2FA after verification ─────────────────────────────────────────
-  enable2FA: async (userId: string, code: string) => {
-    const result = await db.query<User>('SELECT * FROM auth.users WHERE id = $1', [userId]);
-    if (result.rows.length === 0) throw new AppError(404, 'USER_NOT_FOUND', 'User not found');
-
-    const user   = result.rows[0];
-    if (!user.two_fa_secret) throw new AppError(400, 'TWO_FA_NOT_SETUP', '2FA not set up yet. Call /auth/2fa/setup first.');
-
-    const secret = decrypt(user.two_fa_secret);
-    const valid  = speakeasy.totp.verify({ secret, encoding: 'base32', token: code, window: 1 });
-    if (!valid) throw new AppError(403, 'AUTH_2FA_INVALID', 'Invalid 2FA code. Cannot enable 2FA.');
-
-    await db.query('UPDATE auth.users SET two_fa_enabled = true WHERE id = $1', [userId]);
-    return { two_fa_enabled: true };
-  },
-
-  // ── Refresh Token ──────────────────────────────────────────────────────────
-  refresh: async (refreshToken: string) => {
+  async verify2FA(dto: Verify2FADto): Promise<LoginResponse> {
     let payload: { sub: string; type: string };
     try {
-      payload = jwt.verify(refreshToken, process.env.JWT_SECRET || 'secret') as typeof payload;
+      payload = jwt.verify(dto.tempToken, config.jwt.secret) as typeof payload;
     } catch {
-      throw new AppError(401, 'AUTH_REFRESH_INVALID', 'Refresh token invalid or expired. Please login again.');
+      throw new UnauthorizedError('Invalid or expired temp token');
     }
 
-    if (payload.type !== 'refresh') throw new AppError(401, 'AUTH_REFRESH_INVALID', 'Invalid refresh token type');
+    if (payload.type !== 'temp_2fa') throw new UnauthorizedError('Invalid token type');
 
-    const result = await db.query<User>('SELECT * FROM auth.users WHERE id = $1', [payload.sub]);
-    if (result.rows.length === 0) throw new AppError(401, 'AUTH_REFRESH_INVALID', 'User not found');
+    const user = await this.repo.findById(payload.sub);
+    if (!user || !user.totp_secret) throw new NotFoundError('User');
 
-    const user   = result.rows[0];
-    const tokens = signTokens(user);
-    return { ...tokens, expires_in: 900 };
-  },
+    const valid = speakeasy.totp.verify({
+      secret:   user.totp_secret,
+      encoding: 'base32',
+      token:    dto.totpCode,
+      window:   1,
+    });
+    if (!valid) throw new UnauthorizedError('Invalid 2FA code');
+
+    return { ...this.issueTokenPair(user), user: this.toSafeUser(user) };
+  }
+
+  // ── 2FA Setup ──────────────────────────────────────────────────────────────
+
+  async setup2FA(userId: string): Promise<Setup2FAResponse> {
+    const user   = await this.repo.findById(userId);
+    if (!user) throw new NotFoundError('User');
+
+    const secret = speakeasy.generateSecret({ name: `GCC Bond (${user.first_name})`, length: 20 });
+
+    await this.repo.saveTotpSecret(userId, secret.base32);
+
+    const qrCodeUrl = await qrcode.toDataURL(secret.otpauth_url!);
+    return { secret: secret.base32, qrCodeUrl };
+  }
+
+  async enable2FA(userId: string, dto: Enable2FADto): Promise<void> {
+    const user = await this.repo.findById(userId);
+    if (!user || !user.totp_secret) throw new NotFoundError('User');
+
+    const valid = speakeasy.totp.verify({
+      secret:   user.totp_secret,
+      encoding: 'base32',
+      token:    dto.totpCode,
+      window:   1,
+    });
+    if (!valid) throw new ValidationError('Invalid TOTP code — cannot enable 2FA');
+
+    await this.repo.enableTotp(userId);
+  }
+
+  // ── Token Refresh ──────────────────────────────────────────────────────────
+
+  async refresh(refreshToken: string): Promise<TokenPair> {
+    let payload: { sub: string; jti: string; type: string };
+    try {
+      payload = jwt.verify(refreshToken, config.jwt.refreshSecret) as typeof payload;
+    } catch {
+      throw new UnauthorizedError('Invalid or expired refresh token');
+    }
+
+    if (payload.type !== 'refresh') throw new UnauthorizedError('Invalid token type');
+
+    const revoked = await redis.isTokenRevoked(payload.jti);
+    if (revoked) throw new UnauthorizedError('Refresh token revoked');
+
+    const user = await this.repo.findById(payload.sub);
+    if (!user) throw new NotFoundError('User');
+
+    return this.issueTokenPair(user);
+  }
 
   // ── Logout ─────────────────────────────────────────────────────────────────
-  logout: async (userId: string, accessToken: string) => {
-    // Add token to Redis revocation set (expires when token would naturally expire)
-    await redis.set(`revoked:${accessToken.slice(-16)}`, '1', 900);
-    await redis.deleteSession(userId);
-    return { message: 'Logged out successfully' };
-  },
+
+  async logout(accessToken: string): Promise<void> {
+    try {
+      const payload = jwt.decode(accessToken) as { jti?: string; exp?: number };
+      if (payload?.jti && payload?.exp) {
+        const ttl = payload.exp - Math.floor(Date.now() / 1000);
+        if (ttl > 0) await redis.revokeToken(payload.jti, ttl);
+      }
+    } catch {
+      // best-effort
+    }
+  }
 
   // ── Password Reset ─────────────────────────────────────────────────────────
-  requestPasswordReset: async (email: string) => {
-    const encEmail = encrypt(email);
-    const result   = await db.query<{ id: string }>('SELECT id FROM auth.users WHERE email = $1', [encEmail]);
 
-    // Always return success to prevent email enumeration
-    if (result.rows.length === 0) return { message: 'If this email is registered, you will receive a reset link.' };
+  async requestPasswordReset(email: string): Promise<void> {
+    const emailHash = hashForLookup(email);
+    const user      = await this.repo.findByEmailHash(emailHash);
+    // Silent success regardless — prevent user enumeration
+    if (!user) return;
 
-    const userId = result.rows[0].id;
-    const token  = uuidv4();
-    await redis.set(`password_reset:${token}`, userId, 30 * 60); // 30 min (FSD §AUTH-020)
+    const token     = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60_000); // 1 hour
 
-    await eventBus.publish('auth.PasswordResetRequested', { user_id: userId, reset_token: token, email });
-    return { message: 'If this email is registered, you will receive a reset link.' };
-  },
+    await this.repo.savePasswordResetToken(user.id, tokenHash, expiresAt);
 
-  resetPassword: async (token: string, newPassword: string) => {
-    const userId = await redis.get(`password_reset:${token}`);
-    if (!userId) throw new AppError(400, 'RESET_TOKEN_INVALID', 'Reset link is invalid or has expired');
+    // In production publish to event bus to send email via notifications service
+    await this.eventBus.publish('user.password-reset-requested', {
+      user_id: user.id,
+      token,
+      email,
+    });
+  }
 
-    const passRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*]).{8,128}$/;
-    if (!passRegex.test(newPassword)) {
-      throw new AppError(400, 'VALIDATION_ERROR', 'Password must be 8+ chars with uppercase, number and special character');
+  async resetPassword(dto: ResetPasswordDto): Promise<void> {
+    const tokenHash = crypto.createHash('sha256').update(dto.token).digest('hex');
+    const record    = await this.repo.findPasswordReset(tokenHash);
+
+    if (!record || record.used || new Date() > new Date(record.expires_at)) {
+      throw new ValidationError('Reset token is invalid or has expired');
     }
 
-    const hash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
-    await db.query('UPDATE auth.users SET password_hash = $1 WHERE id = $2', [hash, userId]);
-    await redis.del(`password_reset:${token}`);
+    const hash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
 
-    // Revoke all sessions on password change (FSD §AUTH-015)
-    await redis.deleteSession(userId);
-    await eventBus.publish(Events.PASSWORD_CHANGED, { user_id: userId });
+    await db.transaction(async (client) => {
+      await this.repo.savePasswordHash(record.user_id, hash, client);
+      await this.repo.markPasswordResetUsed(tokenHash);
+    });
 
-    return { message: 'Password updated successfully' };
-  },
-};
+    // Revoke all existing sessions for security
+    await redis.deleteSession(record.user_id);
+  }
+
+  // ── Private helpers ────────────────────────────────────────────────────────
+
+  private issueTokenPair(user: UserRow): TokenPair {
+    const jtiAccess  = uuidv4();
+    const jtiRefresh = uuidv4();
+
+    const accessToken = jwt.sign(
+      { sub: user.id, email: user.email, role: user.role, status: user.status, jti: jtiAccess },
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn },
+    );
+
+    const refreshToken = jwt.sign(
+      { sub: user.id, jti: jtiRefresh, type: 'refresh' },
+      config.jwt.refreshSecret,
+      { expiresIn: config.jwt.refreshExpires },
+    );
+
+    return { accessToken, refreshToken };
+  }
+
+  private toSafeUser(user: UserRow): SafeUser {
+    return {
+      id:        user.id,
+      email:     user.email,
+      firstName: user.first_name,
+      lastName:  user.last_name,
+      role:      user.role,
+      status:    user.status,
+    };
+  }
+}
+
+// db import needed for transaction in resetPassword
+import { db } from '../../core/database/postgres.client';

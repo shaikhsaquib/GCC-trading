@@ -2,18 +2,20 @@
   "name": "gcc-bond-node-api",
   "version": "1.0.0",
   "description": "GCC Bond Trading Platform — Node.js API Gateway",
-  "main": "dist/app.js",
+  "main": "dist/server.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
-    "build": "tsc",
-    "start": "node dist/app.js",
-    "test": "jest --coverage",
-    "lint": "eslint src/**/*.ts"
+    "dev":        "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build":      "tsc --project tsconfig.json",
+    "start":      "node dist/server.js",
+    "start:prod": "NODE_ENV=production node dist/server.js",
+    "test":       "jest --coverage --forceExit",
+    "test:watch": "jest --watch",
+    "lint":       "eslint 'src/**/*.ts' --max-warnings 0",
+    "typecheck":  "tsc --noEmit"
   },
   "dependencies": {
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
-    "express-validator": "^7.0.1",
     "cors": "^2.8.5",
     "helmet": "^7.1.0",
     "compression": "^1.7.4",

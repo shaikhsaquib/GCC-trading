@@ -1,172 +1,177 @@
 import sgMail from '@sendgrid/mail';
 import axios from 'axios';
-import { NotificationLog } from '../../shared/db/mongodb';
-import { logger } from '../../shared/utils/logger';
+import { config } from '../../config';
+import { logger } from '../../core/logger';
+import { NotificationsRepository } from './notifications.repository';
+import {
+  SendNotificationDto, NotificationTemplate, NotificationEvent,
+} from './notifications.types';
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
+// ---------------------------------------------------------------------------
+// Template registry (FSD §11)
+// ---------------------------------------------------------------------------
 
-// ── Notification Templates (FSD §11) ──────────────────────────────────────────
-
-const templates: Record<string, { subject: string; body: (vars: Record<string, string>) => string }> = {
+const TEMPLATES: Record<NotificationEvent, NotificationTemplate> = {
   WELCOME: {
-    subject: 'Welcome to GCC Bond Trading!',
-    body: ({ first_name }) =>
-      `Hi ${first_name}, your account has been created. Complete your identity verification to start trading.`,
+    subject:   'Welcome to GCC Bond Trading Platform',
+    body:      'Hello {{first_name}}, welcome! Your account has been created. Complete KYC to start trading.',
+    pushTitle: 'Welcome!',
+    pushBody:  'Your GCC Bond account is ready.',
   },
   KYC_APPROVED: {
-    subject: 'Identity Verified ✓',
-    body: ({ first_name }) =>
-      `Hi ${first_name}, your identity has been verified. You can now deposit funds and start trading bonds.`,
+    subject:   'Your identity has been verified ✓',
+    body:      'Hello {{first_name}}, your KYC has been approved. Risk level: {{risk_level}}. You can now trade.',
+    smsBody:   'GCC Bond: KYC approved. You can now trade bonds.',
+    pushTitle: 'KYC Approved',
+    pushBody:  'Your identity has been verified. Start trading now!',
   },
   KYC_REJECTED: {
-    subject: 'Verification Update',
-    body: ({ first_name, reason, remaining }) =>
-      `Hi ${first_name}, your identity verification was not approved. Reason: ${reason}. You can re-submit up to ${remaining} more times.`,
+    subject:   'KYC Verification Unsuccessful',
+    body:      'Hello {{first_name}}, your KYC was not approved. Reason: {{reason}}. You have {{remaining}} attempts remaining.',
+    pushTitle: 'KYC Rejected',
+    pushBody:  'Please resubmit your documents.',
   },
   DEPOSIT_SUCCESS: {
-    subject: 'Deposit Confirmed',
-    body: ({ amount, currency, balance }) =>
-      `Your deposit of ${amount} ${currency} has been credited to your wallet. New balance: ${balance}.`,
+    subject:   'Deposit Confirmed — {{amount}} {{currency}}',
+    body:      'Your deposit of {{amount}} {{currency}} was successful. New balance: {{balance}} {{currency}}. Transaction: {{tx_id}}.',
+    smsBody:   'GCC Bond: {{amount}} {{currency}} deposited. Balance: {{balance}} {{currency}}.',
+    pushTitle: 'Deposit Successful',
+    pushBody:  '{{amount}} {{currency}} added to your wallet.',
   },
   WITHDRAWAL_INITIATED: {
-    subject: 'Withdrawal Processing',
-    body: ({ amount, currency, last4 }) =>
-      `Your withdrawal of ${amount} ${currency} to bank account ending ${last4} is being processed. Expected: 1-3 business days.`,
+    subject:   'Withdrawal Request Received',
+    body:      'Your withdrawal of {{amount}} {{currency}} is being processed to {{bank_name}}.',
+    pushTitle: 'Withdrawal Initiated',
+    pushBody:  '{{amount}} {{currency}} withdrawal in progress.',
   },
   TRADE_EXECUTED: {
-    subject: 'Trade Confirmed ✓',
-    body: ({ side, quantity, bond_name, price, currency, fee, total }) =>
-      `Your ${side} order for ${quantity} units of ${bond_name} was executed at ${price} ${currency}. Fee: ${fee}. Total: ${total}.`,
+    subject:   'Trade Executed — {{side}} {{quantity}} units of {{bond_name}}',
+    body:      '{{side}} order executed: {{quantity}} units of {{bond_name}} at {{price}} {{currency}}. Fee: {{fee}}. Total: {{total}} {{currency}}.',
+    pushTitle: 'Trade Executed',
+    pushBody:  '{{side}} {{quantity}} {{bond_name}} @ {{price}}',
   },
   COUPON_RECEIVED: {
-    subject: 'Coupon Payment Received',
-    body: ({ amount, currency, bond_name }) =>
-      `You received a coupon payment of ${amount} ${currency} from ${bond_name}. Credited to your wallet.`,
+    subject:   'Coupon Payment Received — {{amount}} {{currency}}',
+    body:      'You received a coupon payment of {{amount}} {{currency}} from {{bond_name}}.',
+    pushTitle: 'Coupon Received',
+    pushBody:  '{{amount}} {{currency}} coupon from {{bond_name}}',
   },
   MATURITY_ALERT: {
-    subject: 'Bond Maturing Soon',
-    body: ({ bond_name, date, face_value, currency }) =>
-      `${bond_name} matures on ${date}. Face value ${face_value} ${currency} will be credited to your wallet.`,
+    subject:   '{{bond_name}} matures in {{days_remaining}} days',
+    body:      'Your bond {{bond_name}} (ISIN: {{isin}}) matures on {{maturity_date}}. Consider your options.',
+    pushTitle: 'Bond Maturity Alert',
+    pushBody:  '{{bond_name}} matures in {{days_remaining}} days.',
   },
   PASSWORD_CHANGED: {
-    subject: 'Password Updated — Security Alert',
-    body: ({ date, time }) =>
-      `Your password was changed on ${date} at ${time}. If this wasn't you, contact support immediately.`,
+    subject:   'Password Changed',
+    body:      'Hello {{first_name}}, your password was changed. If this was not you, contact support immediately.',
+    smsBody:   'GCC Bond: Your password was changed. Contact support if not you.',
+    pushTitle: 'Password Changed',
+    pushBody:  'Your account password was updated.',
   },
   ACCOUNT_SUSPENDED: {
-    subject: 'Account Suspended',
-    body: ({ first_name }) =>
-      `Hi ${first_name}, your account has been temporarily suspended. Contact support for more information.`,
+    subject:   'Account Suspended',
+    body:      'Your account has been suspended. Reason: {{reason}}. Contact support@gccbond.com.',
+    pushTitle: 'Account Suspended',
+    pushBody:  'Your account has been suspended.',
   },
 };
 
-// ── Send helpers ───────────────────────────────────────────────────────────────
-
-async function sendEmail(
-  toEmail: string,
-  eventType: string,
-  vars: Record<string, string>,
-): Promise<void> {
-  const tpl = templates[eventType];
-  if (!tpl) { logger.warn('No email template for event', { eventType }); return; }
-
-  try {
-    await sgMail.send({
-      to:      toEmail,
-      from:    { email: process.env.SENDGRID_FROM_EMAIL || 'noreply@gccbond.com', name: 'GCC Bond Trading' },
-      subject: tpl.subject,
-      text:    tpl.body(vars),
-    });
-    logger.info('Email sent', { to: toEmail, event: eventType });
-  } catch (err) {
-    logger.error('SendGrid error', { error: (err as Error).message, event: eventType });
-  }
+function interpolate(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? `{{${key}}}`);
 }
 
-async function sendSMS(phone: string, message: string): Promise<void> {
-  try {
-    await axios.post(
-      `${process.env.UNIFONIC_BASE_URL}/messages`,
-      { AppSid: process.env.UNIFONIC_APP_SID, Recipient: phone, Body: message },
-      { timeout: 10_000 },
-    );
-    logger.info('SMS sent', { phone: phone.slice(0, 6) + '****' });
-  } catch (err) {
-    logger.error('Unifonic SMS error', { error: (err as Error).message });
+export class NotificationsService {
+  constructor(private readonly repo: NotificationsRepository) {
+    if (config.sendgrid.apiKey) {
+      sgMail.setApiKey(config.sendgrid.apiKey);
+    }
   }
-}
 
-async function sendPush(fcmToken: string, title: string, body: string): Promise<void> {
-  if (!fcmToken) return;
-  try {
-    await axios.post(
-      'https://fcm.googleapis.com/fcm/send',
-      { to: fcmToken, notification: { title, body } },
-      { headers: { Authorization: `key=${process.env.FCM_SERVER_KEY}` }, timeout: 10_000 },
-    );
-    logger.info('Push sent', { event: title });
-  } catch (err) {
-    logger.error('FCM push error', { error: (err as Error).message });
-  }
-}
-
-// ── Notification Service ──────────────────────────────────────────────────────
-
-export const notificationsService = {
-  send: async (params: {
-    userId: string;
-    email?: string;
-    phone?: string;
-    fcmToken?: string;
-    eventType: string;
-    channels: Array<'email' | 'sms' | 'push' | 'in_app'>;
-    vars: Record<string, string>;
-  }) => {
-    const { userId, email, phone, fcmToken, eventType, channels, vars } = params;
-    const tpl = templates[eventType];
-    if (!tpl) return;
-
-    const title   = tpl.subject;
-    const message = tpl.body(vars);
+  async send(dto: SendNotificationDto): Promise<void> {
+    const template = TEMPLATES[dto.eventType];
+    if (!template) {
+      logger.warn('Unknown notification event type', { eventType: dto.eventType });
+      return;
+    }
 
     const tasks: Promise<void>[] = [];
 
-    if (channels.includes('email') && email) tasks.push(sendEmail(email, eventType, vars));
-    if (channels.includes('sms')   && phone) tasks.push(sendSMS(phone, message));
-    if (channels.includes('push')  && fcmToken) tasks.push(sendPush(fcmToken, title, message));
-
-    await Promise.allSettled(tasks);
-
-    // Persist in_app notification to MongoDB
-    if (channels.includes('in_app') || channels.includes('email')) {
-      await NotificationLog.create({
-        user_id:    userId,
-        channel:    'in_app',
-        event_type: eventType,
-        title,
-        body:       message,
-        is_read:    false,
-      });
+    if (dto.channels.includes('email') && dto.email) {
+      tasks.push(this.sendEmail(dto.email, template, dto.vars));
     }
-  },
+    if (dto.channels.includes('sms') && dto.phone && template.smsBody) {
+      tasks.push(this.sendSms(dto.phone, interpolate(template.smsBody, dto.vars)));
+    }
+    if (dto.channels.includes('push') && dto.fcmToken && template.pushTitle) {
+      tasks.push(this.sendPush(dto.fcmToken, template, dto.vars));
+    }
+    if (dto.channels.includes('in_app')) {
+      tasks.push(
+        this.repo.create({
+          userId:    dto.userId,
+          eventType: dto.eventType,
+          channels:  dto.channels,
+          vars:      dto.vars,
+        }).then(() => void 0),
+      );
+    }
 
-  getNotifications: async (userId: string, page = 1, limit = 20) => {
-    const skip = (page - 1) * limit;
-    const [notifications, total] = await Promise.all([
-      NotificationLog.find({ user_id: userId }).sort({ created_at: -1 }).skip(skip).limit(limit),
-      NotificationLog.countDocuments({ user_id: userId }),
-    ]);
-    return { notifications, total, page, limit, unread: notifications.filter((n) => !n.is_read).length };
-  },
+    const results = await Promise.allSettled(tasks);
+    results.forEach((r) => {
+      if (r.status === 'rejected') {
+        logger.error('Notification delivery failed', { reason: r.reason, event: dto.eventType });
+      }
+    });
+  }
 
-  markRead: async (userId: string, notificationId: string) => {
-    await NotificationLog.findOneAndUpdate(
-      { _id: notificationId, user_id: userId },
-      { is_read: true, delivered_at: new Date() },
+  private async sendEmail(to: string, template: NotificationTemplate, vars: Record<string, string>): Promise<void> {
+    if (!config.sendgrid.apiKey) return;
+
+    await sgMail.send({
+      to,
+      from:    config.sendgrid.fromEmail,
+      subject: interpolate(template.subject, vars),
+      text:    interpolate(template.body, vars),
+    });
+  }
+
+  private async sendSms(to: string, body: string): Promise<void> {
+    if (!config.unifonic.apiKey) return;
+
+    await axios.post('https://api.unifonic.com/rest/SMS/messages', {
+      AppSid:      config.unifonic.apiKey,
+      SenderID:    config.unifonic.senderId,
+      Recipient:   to,
+      Body:        body,
+    });
+  }
+
+  private async sendPush(token: string, template: NotificationTemplate, vars: Record<string, string>): Promise<void> {
+    if (!config.fcm.serverKey) return;
+
+    await axios.post(
+      'https://fcm.googleapis.com/fcm/send',
+      {
+        to:           token,
+        notification: {
+          title: interpolate(template.pushTitle ?? '', vars),
+          body:  interpolate(template.pushBody  ?? '', vars),
+        },
+      },
+      { headers: { Authorization: `key=${config.fcm.serverKey}` } },
     );
-  },
+  }
 
-  markAllRead: async (userId: string) => {
-    await NotificationLog.updateMany({ user_id: userId, is_read: false }, { is_read: true });
-  },
-};
+  async getNotifications(userId: string, limit = 20, offset = 0) {
+    return this.repo.findByUserId(userId, limit, offset);
+  }
+
+  async markRead(id: string, userId: string): Promise<void> {
+    await this.repo.markRead(id, userId);
+  }
+
+  async markAllRead(userId: string): Promise<void> {
+    await this.repo.markAllRead(userId);
+  }
+}
