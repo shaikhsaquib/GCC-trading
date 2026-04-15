@@ -1,0 +1,191 @@
+    <div class="identity-page fade-in">
+      <div class="page-header">
+        <div class="page-title">
+          <h2>Identity & Auth</h2>
+          <p>Manage user accounts, sessions, roles and authentication settings</p>
+        </div>
+        <div class="page-actions">
+          <span class="badge badge-node">Node.js</span>
+          <button class="btn btn-secondary"><span class="material-icons-round">filter_list</span> Filters</button>
+          <button class="btn btn-primary"><span class="material-icons-round">person_add</span> Invite User</button>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px">
+        @for (k of kpis; track k.label) {
+          <div class="stat-card" style="padding:16px">
+            <div class="stat-icon" [style.background]="k.iconBg" style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:10px">
+              <span class="material-icons-round" [style.color]="k.iconColor" style="font-size:18px">{{ k.icon }}</span>
+            </div>
+            <div class="stat-label">{{ k.label }}</div>
+            <div class="stat-value" style="font-size:22px" [style.color]="k.color">{{ k.value }}</div>
+          </div>
+        }
+      </div>
+
+      <!-- Tab Bar -->
+      <div class="tab-bar">
+        @for (tab of tabs; track tab) {
+          <div class="tab" [class.active]="activeTab() === tab" (click)="activeTab.set(tab)">{{ tab }}</div>
+        }
+      </div>
+
+      <div class="identity-layout">
+        <!-- Users Table -->
+        <div class="users-col">
+          <div class="card" style="padding:0;overflow:hidden">
+            <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+              <h4 style="font-size:14px;font-weight:700">Users ({{ filteredUsers().length }})</h4>
+              <div class="search-bar" style="width:240px">
+                <span class="material-icons-round search-icon">search</span>
+                <input class="form-control" style="width:100%;padding-left:36px" placeholder="Search users..." name="us"/>
+              </div>
+            </div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>2FA</th>
+                  <th>Last Login</th>
+                  <th>Sessions</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (u of filteredUsers(); track u.id) {
+                  <tr [class.selected-row]="selectedUser()?.id === u.id" (click)="selectedUser.set(u)">
+                    <td>
+                      <div style="display:flex;align-items:center;gap:10px">
+                        <div class="user-avatar-sm" [style.background]="u.avatarBg">{{ u.initials }}</div>
+                        <div>
+                          <div style="font-weight:600;font-size:13px">{{ u.name }}</div>
+                          <div style="font-size:11px;color:var(--text-secondary)">{{ u.email }}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td><span class="role-badge" [ngClass]="'role-' + u.role.toLowerCase().replace(' ','-')">{{ u.role }}</span></td>
+                    <td>
+                      <span class="badge" [ngClass]="u.status === 'Active' ? 'badge-success' : u.status === 'Suspended' ? 'badge-danger' : 'badge-warning'">
+                        {{ u.status }}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="material-icons-round" [style.color]="u.twoFa ? 'var(--success)' : 'var(--text-muted)'" style="font-size:18px">
+                        {{ u.twoFa ? 'verified' : 'remove_circle_outline' }}
+                      </span>
+                    </td>
+                    <td style="font-size:12px;color:var(--text-secondary)">{{ u.lastLogin }}</td>
+                    <td style="font-size:13px;font-weight:600;color:var(--accent-cyan)">{{ u.sessions }}</td>
+                    <td (click)="$event.stopPropagation()">
+                      <div style="display:flex;gap:6px">
+                        <button class="btn btn-secondary btn-sm">Edit</button>
+                        @if (u.status === 'Active') {
+                          <button class="btn btn-danger btn-sm">Suspend</button>
+                        } @else {
+                          <button class="btn btn-success btn-sm">Activate</button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Right: Detail + Auth Settings -->
+        <div class="detail-col">
+
+          <!-- User Detail -->
+          @if (selectedUser()) {
+            <div class="card" style="padding:20px;margin-bottom:16px">
+              <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+                <div class="user-avatar-lg" [style.background]="selectedUser()!.avatarBg">{{ selectedUser()!.initials }}</div>
+                <div>
+                  <h4 style="font-size:15px;font-weight:700">{{ selectedUser()!.name }}</h4>
+                  <div style="font-size:12px;color:var(--text-secondary)">{{ selectedUser()!.email }}</div>
+                  <span class="role-badge" style="margin-top:6px;display:inline-block" [ngClass]="'role-' + selectedUser()!.role.toLowerCase().replace(' ','-')">{{ selectedUser()!.role }}</span>
+                </div>
+              </div>
+              <div class="detail-grid">
+                <div class="detail-field"><span>Status</span>
+                  <span class="badge" [ngClass]="selectedUser()!.status === 'Active' ? 'badge-success' : 'badge-danger'">{{ selectedUser()!.status }}</span>
+                </div>
+                <div class="detail-field"><span>2FA</span><strong>{{ selectedUser()!.twoFa ? 'Enabled' : 'Disabled' }}</strong></div>
+                <div class="detail-field"><span>Active Sessions</span><strong style="color:var(--accent-cyan)">{{ selectedUser()!.sessions }}</strong></div>
+                <div class="detail-field"><span>Last Login</span><strong>{{ selectedUser()!.lastLogin }}</strong></div>
+                <div class="detail-field"><span>Created</span><strong>{{ selectedUser()!.created }}</strong></div>
+                <div class="detail-field"><span>KYC</span>
+                  <span class="badge" [ngClass]="selectedUser()!.kyc === 'Approved' ? 'badge-success' : 'badge-warning'">{{ selectedUser()!.kyc }}</span>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:16px">
+                <button class="btn btn-secondary btn-sm" style="flex:1;justify-content:center">
+                  <span class="material-icons-round" style="font-size:15px">key</span> Reset Password
+                </button>
+                <button class="btn btn-secondary btn-sm" style="flex:1;justify-content:center">
+                  <span class="material-icons-round" style="font-size:15px">logout</span> Revoke Sessions
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- Auth Settings -->
+          <div class="card" style="padding:20px">
+            <h4 style="margin-bottom:16px">Authentication Settings</h4>
+            <div class="auth-settings">
+              @for (s of authSettings; track s.label) {
+                <div class="auth-setting-row">
+                  <div class="auth-setting-info">
+                    <strong>{{ s.label }}</strong>
+                    <small>{{ s.desc }}</small>
+                  </div>
+                  <div class="toggle-switch" [class.on]="s.enabled" (click)="s.enabled = !s.enabled">
+                    <div class="toggle-thumb"></div>
+                  </div>
+                </div>
+              }
+            </div>
+            <div class="form-group" style="margin-top:16px">
+              <label>Session Timeout</label>
+              <select class="form-control form-select" name="st">
+                <option>30 minutes</option>
+                <option selected>1 hour</option>
+                <option>4 hours</option>
+                <option>8 hours</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Max Failed Attempts</label>
+              <select class="form-control form-select" name="mfa">
+                <option>3 attempts</option>
+                <option selected>5 attempts</option>
+                <option>10 attempts</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Active Sessions -->
+          <div class="card" style="padding:20px;margin-top:16px">
+            <h4 style="margin-bottom:14px">Recent Login Events</h4>
+            <div class="login-events">
+              @for (e of loginEvents; track e.time) {
+                <div class="login-event">
+                  <span class="material-icons-round" [style.color]="e.success ? 'var(--success)' : 'var(--danger)'" style="font-size:16px">
+                    {{ e.success ? 'check_circle' : 'cancel' }}
+                  </span>
+                  <div class="event-info">
+                    <strong>{{ e.user }}</strong>
+                    <small>{{ e.ip }} · {{ e.location }}</small>
+                  </div>
+                  <span class="event-time">{{ e.time }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>

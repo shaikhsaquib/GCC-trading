@@ -1,0 +1,226 @@
+    <div class="wallet-page fade-in">
+      <div class="page-header">
+        <div class="page-title">
+          <h2>Wallet & Payments</h2>
+          <p>Manage your funds — deposit, withdraw and track transactions</p>
+        </div>
+        <div class="page-actions">
+          <span class="badge badge-node">Node.js</span>
+          <button class="btn btn-secondary"><span class="material-icons-round">history</span> History</button>
+          <button class="btn btn-primary" (click)="activeAction.set('deposit')">
+            <span class="material-icons-round">add</span> Add Funds
+          </button>
+        </div>
+      </div>
+
+      <!-- Balance Cards -->
+      <div class="balance-cards">
+        <div class="balance-card primary">
+          <div class="balance-label">Total Portfolio Value</div>
+          <div class="balance-amount">SAR 1,284,500.00</div>
+          <div class="balance-sub">
+            <span class="text-success">▲ 3.42% (SAR 42,620) this month</span>
+          </div>
+          <div class="balance-actions">
+            <button class="btn btn-primary btn-sm" (click)="activeAction.set('deposit')">
+              <span class="material-icons-round">add_circle</span> Deposit
+            </button>
+            <button class="btn btn-secondary btn-sm" (click)="activeAction.set('withdraw')">
+              <span class="material-icons-round">remove_circle</span> Withdraw
+            </button>
+            <button class="btn btn-secondary btn-sm" (click)="activeAction.set('transfer')">
+              <span class="material-icons-round">swap_horiz</span> Transfer
+            </button>
+          </div>
+        </div>
+
+        <div class="balance-sub-grid">
+          @for (b of subBalances; track b.label) {
+            <div class="balance-sub-card">
+              <div class="sub-icon" [style.background]="b.iconBg">
+                <span class="material-icons-round" [style.color]="b.iconColor">{{ b.icon }}</span>
+              </div>
+              <div>
+                <div class="sub-label">{{ b.label }}</div>
+                <div class="sub-amount">{{ b.amount }}</div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="wallet-layout">
+        <!-- Left: Action Panel -->
+        <div class="action-panel">
+          @if (activeAction() === 'deposit') {
+            <div class="card fade-in">
+              <h4 style="margin-bottom:20px">Deposit Funds</h4>
+              <div class="form-group">
+                <label>Payment Method</label>
+                <div class="method-list">
+                  @for (m of paymentMethods; track m.id) {
+                    <div class="method-item" [class.selected]="selectedMethod() === m.id" (click)="selectedMethod.set(m.id)">
+                      <span class="material-icons-round" [style.color]="m.color">{{ m.icon }}</span>
+                      <div>
+                        <strong>{{ m.label }}</strong>
+                        <small>{{ m.desc }}</small>
+                      </div>
+                      @if (selectedMethod() === m.id) {
+                        <span class="material-icons-round" style="color:var(--accent-cyan);margin-left:auto">radio_button_checked</span>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Amount (SAR)</label>
+                <div class="amount-input-wrapper">
+                  <span class="currency-symbol">SAR</span>
+                  <input class="form-control" type="number" placeholder="0.00" style="padding-left:54px;font-size:18px;font-weight:700" [(ngModel)]="depositAmount" name="da"/>
+                </div>
+                <div class="quick-amounts">
+                  @for (qa of [10000, 50000, 100000, 500000]; track qa) {
+                    <button class="chip" (click)="depositAmount = qa">SAR {{ qa | number }}</button>
+                  }
+                </div>
+              </div>
+              <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center">
+                <span class="material-icons-round">add_circle</span> Deposit SAR {{ depositAmount | number }}
+              </button>
+            </div>
+          }
+
+          @if (activeAction() === 'withdraw') {
+            <div class="card fade-in">
+              <h4 style="margin-bottom:20px">Withdraw Funds</h4>
+              <div class="form-group">
+                <label>Bank Account</label>
+                <select class="form-control form-select" name="ba">
+                  <option>Al Rajhi Bank — IBAN SA03 8000 0000 6080 1016 7519</option>
+                  <option>Riyad Bank — IBAN SA46 2000 0001 2345 6789 1234</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Amount (SAR)</label>
+                <div class="amount-input-wrapper">
+                  <span class="currency-symbol">SAR</span>
+                  <input class="form-control" type="number" placeholder="0.00" style="padding-left:54px;font-size:18px;font-weight:700" [(ngModel)]="withdrawAmount" name="wa"/>
+                </div>
+              </div>
+              <div class="withdraw-info">
+                <div class="info-row"><span>Available Balance</span><span>SAR 248,320.00</span></div>
+                <div class="info-row"><span>Processing Time</span><span>1-2 business days</span></div>
+                <div class="info-row"><span>Fee</span><span style="color:var(--success)">Free</span></div>
+              </div>
+              <button class="btn btn-danger btn-lg" style="width:100%;justify-content:center">
+                <span class="material-icons-round">remove_circle</span> Withdraw SAR {{ withdrawAmount | number }}
+              </button>
+            </div>
+          }
+
+          @if (activeAction() === 'transfer') {
+            <div class="card fade-in">
+              <h4 style="margin-bottom:20px">Internal Transfer</h4>
+              <div class="form-group">
+                <label>Recipient User ID or Email</label>
+                <input class="form-control" type="text" placeholder="Enter user ID or email" name="rid"/>
+              </div>
+              <div class="form-group">
+                <label>Amount (SAR)</label>
+                <div class="amount-input-wrapper">
+                  <span class="currency-symbol">SAR</span>
+                  <input class="form-control" type="number" placeholder="0.00" style="padding-left:54px;font-size:18px;font-weight:700" name="ta"/>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Note (Optional)</label>
+                <input class="form-control" type="text" placeholder="Transfer note" name="tn"/>
+              </div>
+              <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center">
+                <span class="material-icons-round">swap_horiz</span> Transfer Funds
+              </button>
+            </div>
+          }
+
+          <!-- Mini Chart: Balance Over Time -->
+          <div class="card mini-chart-card">
+            <h4 style="margin-bottom:16px">Balance Trend (30 days)</h4>
+            <svg width="100%" height="100" viewBox="0 0 300 100" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--accent-cyan)" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="var(--accent-cyan)" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <path [attr.d]="chartPath" fill="url(#chartFill)"/>
+              <path [attr.d]="chartLine" fill="none" stroke="var(--accent-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div class="chart-labels">
+              <span>Mar 16</span><span>Mar 23</span><span>Mar 30</span><span>Apr 6</span><span>Apr 13</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Transaction History -->
+        <div class="card transactions-panel">
+          <div class="panel-header">
+            <h4>Transaction History</h4>
+            <div class="header-filters">
+              @for (tf of txFilters; track tf) {
+                <span class="chip" [class.active]="txFilter() === tf" (click)="txFilter.set(tf)">{{ tf }}</span>
+              }
+            </div>
+          </div>
+
+          <div class="search-bar" style="margin-bottom:16px">
+            <span class="material-icons-round search-icon">search</span>
+            <input class="form-control" style="width:100%;padding-left:36px" placeholder="Search transactions..." name="ts"/>
+          </div>
+
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th style="text-align:right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (tx of transactions; track tx.id) {
+                <tr>
+                  <td>
+                    <div class="tx-type-icon" [style.background]="tx.iconBg">
+                      <span class="material-icons-round" [style.color]="tx.iconColor" style="font-size:16px">{{ tx.icon }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="tx-desc">
+                      <strong>{{ tx.desc }}</strong>
+                      <small>{{ tx.ref }}</small>
+                    </div>
+                  </td>
+                  <td style="color:var(--text-secondary)">{{ tx.date }}</td>
+                  <td><span class="badge" [ngClass]="txStatusBadge(tx.status)">{{ tx.status }}</span></td>
+                  <td style="text-align:right; font-weight:700" [style.color]="tx.amount > 0 ? 'var(--success)' : 'var(--danger)'">
+                    {{ tx.amount > 0 ? '+' : '' }}SAR {{ Math.abs(tx.amount) | number:'1.2-2' }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          <div class="table-footer">
+            <span class="text-muted">Showing 10 of 284 transactions</span>
+            <div class="pagination">
+              <button class="btn btn-secondary btn-sm">Previous</button>
+              <button class="btn btn-secondary btn-sm active">1</button>
+              <button class="btn btn-secondary btn-sm">2</button>
+              <button class="btn btn-secondary btn-sm">3</button>
+              <button class="btn btn-secondary btn-sm">Next</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>

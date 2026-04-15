@@ -1,0 +1,70 @@
+    .aml-layout { display: grid; grid-template-columns: 360px 1fr; gap: 20px; }
+
+    .alert-banner {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px; background: rgba(255,71,87,0.08);
+      border: 1px solid rgba(255,71,87,0.3); border-radius: var(--radius-md);
+      margin-bottom: 24px; font-size: 13px;
+      .material-icons-round { color: var(--danger); font-size: 20px; }
+      strong { color: var(--danger); }
+      span { color: var(--text-secondary); }
+    }
+
+    .alerts-panel { padding: 18px; overflow: hidden; display: flex; flex-direction: column; }
+
+    .alert-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1; }
+
+    .alert-card {
+      background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-md);
+      padding: 14px; cursor: pointer; transition: all 0.15s;
+      &:hover { border-color: var(--border-light); }
+      &.selected { border-color: var(--accent-cyan); background: rgba(0,212,255,0.04); }
+      &.risk-high { border-left: 3px solid var(--danger); }
+      &.risk-medium { border-left: 3px solid var(--warning); }
+      &.risk-low { border-left: 3px solid var(--success); }
+    }
+
+    .alert-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+
+    .alert-risk-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.5px; }
+    .risk-high   { background: rgba(255,71,87,0.15); color: var(--danger); }
+    .risk-medium { background: rgba(255,165,2,0.15); color: var(--warning); }
+    .risk-low    { background: rgba(46,213,115,0.15); color: var(--success); }
+
+    .alert-time  { font-size: 11px; color: var(--text-muted); }
+    .alert-title { display: block; font-size: 13px; margin-bottom: 4px; }
+    .alert-desc  { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+
+    .alert-meta { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); }
+
+    .right-col { display: flex; flex-direction: column; gap: 16px; }
+
+    .alert-detail { padding: 20px; }
+
+    .detail-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+
+    .detail-item { display: flex; flex-direction: column; gap: 4px; }
+    .info-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .info-value { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+
+    .rules-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .rule-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+
+    .action-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    .btn-warning-btn { background: rgba(255,165,2,0.15); color: var(--warning); border: 1px solid rgba(255,165,2,0.3); padding: 9px 20px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
+
+    .risk-dist-card { padding: 18px; }
+
+    .risk-bars { display: flex; flex-direction: column; gap: 12px; }
+
+    .risk-bar-item { display: flex; align-items: center; gap: 12px; }
+
+    .rb-label { font-size: 12px; font-weight: 600; width: 70px; }
+
+    .rb-track { flex: 1; height: 8px; background: var(--bg-surface); border-radius: 4px; overflow: hidden; }
+
+    .rb-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+
+    .rb-count { font-size: 12px; color: var(--text-secondary); width: 30px; text-align: right; }

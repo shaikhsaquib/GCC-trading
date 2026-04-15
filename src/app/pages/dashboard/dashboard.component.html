@@ -1,0 +1,112 @@
+    <div class="dashboard fade-in">
+
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-title">
+          <h2>Platform Overview</h2>
+          <p>GCC Bond Trading System — All modules at a glance</p>
+        </div>
+        <div class="page-actions">
+          <span class="badge badge-success">
+            <span class="status-dot active"></span> All Systems Operational
+          </span>
+          <button class="btn btn-primary">
+            <span class="material-icons-round">add</span> New Trade
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Stats -->
+      <div class="stats-grid">
+        @for (stat of kpis; track stat.label) {
+          <div class="stat-card">
+            <div class="stat-icon" [style.background]="stat.iconBg">
+              <span class="material-icons-round" [style.color]="stat.iconColor">{{ stat.icon }}</span>
+            </div>
+            <div class="stat-label">{{ stat.label }}</div>
+            <div class="stat-value">{{ stat.value }}</div>
+            <div class="stat-change" [class.up]="stat.up" [class.down]="!stat.up">
+              {{ stat.up ? '▲' : '▼' }} {{ stat.change }} vs last week
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Module Grid -->
+      <div class="section-header">
+        <h3>Modules</h3>
+        <p class="text-muted">Each module = one job. Click to navigate.</p>
+      </div>
+
+      <div class="modules-grid">
+        @for (mod of modules; track mod.title) {
+          <a class="module-card" [routerLink]="mod.route" [style.--accent]="mod.color">
+            <div class="module-header">
+              <div class="module-icon" [style.background]="'rgba(' + mod.color + ',0.12)'">
+                <span class="material-icons-round" [style.color]="'rgb(' + mod.color + ')'">{{ mod.icon }}</span>
+              </div>
+              <div class="module-status">
+                <span class="status-dot" [class.active]="mod.status==='active'" [class.pending]="mod.status==='idle'" [class.error]="mod.status==='warning'"></span>
+              </div>
+            </div>
+            <h4 class="module-title">{{ mod.title }}</h4>
+            <p class="module-desc">{{ mod.desc }}</p>
+            <div class="module-footer">
+              <span class="badge" [class]="'badge-' + mod.techClass">{{ mod.tech }}</span>
+              <span class="material-icons-round arrow-icon">arrow_forward</span>
+            </div>
+          </a>
+        }
+      </div>
+
+      <!-- Bottom Row -->
+      <div class="bottom-row">
+
+        <!-- Recent Activity -->
+        <div class="card activity-card">
+          <div class="card-header">
+            <h4>Recent Activity</h4>
+            <button class="btn btn-secondary btn-sm">View All</button>
+          </div>
+          <div class="activity-list">
+            @for (act of recentActivity; track act.id) {
+              <div class="activity-item">
+                <div class="activity-icon" [style.background]="act.iconBg">
+                  <span class="material-icons-round" [style.color]="act.iconColor" style="font-size:16px">{{ act.icon }}</span>
+                </div>
+                <div class="activity-content">
+                  <p class="activity-title">{{ act.title }}</p>
+                  <p class="activity-meta">{{ act.meta }}</p>
+                </div>
+                <span class="activity-time">{{ act.time }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- System Health -->
+        <div class="card health-card">
+          <div class="card-header">
+            <h4>System Health</h4>
+            <span class="badge badge-success">Healthy</span>
+          </div>
+          <div class="health-list">
+            @for (svc of services; track svc.name) {
+              <div class="health-item">
+                <div class="health-name">
+                  <span class="status-dot" [class.active]="svc.up" [class.error]="!svc.up"></span>
+                  {{ svc.name }}
+                </div>
+                <div class="health-bar">
+                  <div class="progress-bar" style="flex:1">
+                    <div class="progress-fill" [style.width]="svc.uptime + '%'"></div>
+                  </div>
+                  <span class="health-val">{{ svc.uptime }}%</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+      </div>
+    </div>

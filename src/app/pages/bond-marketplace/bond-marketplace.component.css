@@ -1,0 +1,53 @@
+    .marketplace-layout { display: grid; grid-template-columns: 220px 1fr; gap: 20px; }
+
+    .filter-sidebar { padding: 20px; height: fit-content; }
+
+    .filter-section { margin-bottom: 20px; }
+
+    .filter-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+
+    .filter-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer; margin-bottom: 6px; }
+
+    .range-inputs { display: flex; align-items: center; gap: 8px; }
+
+    .rating-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .content-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+
+    .bond-name-cell { display: flex; align-items: center; gap: 10px; strong { display: block; font-size: 13px; } small { font-size: 11px; color: var(--text-secondary); } }
+
+    .bond-type-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    .rating-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+    .rating-aaa { background: rgba(46,213,115,0.15); color: var(--success); }
+    .rating-aa  { background: rgba(0,212,255,0.15);  color: var(--accent-cyan); }
+    .rating-a   { background: rgba(23,195,178,0.15); color: var(--accent-teal); }
+    .rating-bbb { background: rgba(255,193,7,0.15);  color: var(--warning); }
+    .rating-bb  { background: rgba(255,71,87,0.15);  color: var(--danger); }
+
+    .bonds-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+
+    .bond-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md);
+      padding: 16px; cursor: pointer; transition: all 0.2s;
+      &:hover { border-color: var(--accent-cyan); transform: translateY(-2px); }
+    }
+
+    .bond-card-header { display: flex; align-items: center; justify-content: space-between; }
+
+    .bond-type-label { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+
+    .bond-card-stats { display: flex; gap: 16px; margin-bottom: 12px; }
+
+    .bc-stat { display: flex; flex-direction: column; gap: 2px; }
+    .bc-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .bc-val { font-size: 15px; font-weight: 700; }
+
+    .bond-card-footer { display: flex; align-items: center; justify-content: space-between; }
+
+    .table-footer { display: flex; align-items: center; justify-content: space-between; }
+
+    .pagination { display: flex; gap: 6px; }
+
+    .btn.active { background: rgba(0,212,255,0.1); color: var(--accent-cyan); border-color: var(--accent-cyan); }
+    .maturities { }
