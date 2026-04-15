@@ -1,0 +1,135 @@
+    <div class="notif-page fade-in">
+      <div class="page-header">
+        <div class="page-title">
+          <h2>Notifications</h2>
+          <p>Manage alerts, send push/email/SMS notifications</p>
+        </div>
+        <div class="page-actions">
+          <span class="badge badge-node">Node.js</span>
+          <button class="btn btn-secondary" (click)="markAllRead()">
+            <span class="material-icons-round">done_all</span> Mark All Read
+          </button>
+          <button class="btn btn-primary">
+            <span class="material-icons-round">send</span> Send Notification
+          </button>
+        </div>
+      </div>
+
+      <div class="notif-layout">
+        <!-- Left: Notification Feed -->
+        <div class="feed-col">
+          <!-- Tab bar -->
+          <div class="tab-bar">
+            @for (tab of tabs; track tab.label) {
+              <div class="tab" [class.active]="activeTab() === tab.key" (click)="activeTab.set(tab.key)">
+                {{ tab.label }}
+                @if (tab.count) { <span class="tab-count">{{ tab.count }}</span> }
+              </div>
+            }
+          </div>
+
+          <!-- Notification list -->
+          <div class="notif-list">
+            @for (n of filteredNotifs(); track n.id) {
+              <div class="notif-item" [class.unread]="!n.read" (click)="n.read = true">
+                <div class="notif-icon-wrapper" [style.background]="n.iconBg">
+                  <span class="material-icons-round" [style.color]="n.iconColor">{{ n.icon }}</span>
+                </div>
+                <div class="notif-content">
+                  <div class="notif-header-row">
+                    <strong>{{ n.title }}</strong>
+                    <span class="notif-time">{{ n.time }}</span>
+                  </div>
+                  <p class="notif-body">{{ n.body }}</p>
+                  <div class="notif-tags">
+                    <span class="chip" style="font-size:10px;padding:2px 8px">{{ n.category }}</span>
+                    @for (ch of n.channels; track ch) {
+                      <span class="channel-tag">
+                        <span class="material-icons-round" style="font-size:12px">{{ channelIcon(ch) }}</span>
+                        {{ ch }}
+                      </span>
+                    }
+                  </div>
+                </div>
+                @if (!n.read) { <div class="unread-dot"></div> }
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Right: Settings + Compose -->
+        <div class="settings-col">
+
+          <!-- Compose Panel -->
+          <div class="card compose-card">
+            <h4 style="margin-bottom:16px">Send Notification</h4>
+            <div class="form-group">
+              <label>Target Audience</label>
+              <select class="form-control form-select" name="target">
+                <option>All Users</option>
+                <option>KYC Approved Users</option>
+                <option>Active Traders</option>
+                <option>Specific User</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Notification Type</label>
+              <div class="notif-type-grid">
+                @for (t of notifTypes; track t.key) {
+                  <div class="notif-type-card" [class.selected]="selectedType() === t.key" (click)="selectedType.set(t.key)">
+                    <span class="material-icons-round" style="font-size:20px" [style.color]="t.color">{{ t.icon }}</span>
+                    <span>{{ t.label }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Title</label>
+              <input class="form-control" type="text" placeholder="Notification title" name="nt"/>
+            </div>
+            <div class="form-group">
+              <label>Message</label>
+              <textarea class="form-control" rows="3" placeholder="Notification body..." name="nm" style="resize:none"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Delivery Channels</label>
+              <div class="channel-toggles">
+                @for (ch of channels; track ch.key) {
+                  <label class="channel-toggle" [class.enabled]="ch.enabled">
+                    <input type="checkbox" [(ngModel)]="ch.enabled" [name]="ch.key" style="display:none"/>
+                    <span class="material-icons-round" style="font-size:18px">{{ ch.icon }}</span>
+                    <span>{{ ch.label }}</span>
+                    <span class="toggle-indicator">{{ ch.enabled ? 'ON' : 'OFF' }}</span>
+                  </label>
+                }
+              </div>
+            </div>
+            <button class="btn btn-primary" style="width:100%;justify-content:center">
+              <span class="material-icons-round">send</span> Send Now
+            </button>
+          </div>
+
+          <!-- Preferences -->
+          <div class="card pref-card">
+            <h4 style="margin-bottom:16px">Notification Preferences</h4>
+            <div class="pref-list">
+              @for (pref of preferences; track pref.label) {
+                <div class="pref-item">
+                  <div class="pref-info">
+                    <strong>{{ pref.label }}</strong>
+                    <small>{{ pref.desc }}</small>
+                  </div>
+                  <div class="pref-channels">
+                    @for (ch of ['push','email','sms']; track ch) {
+                      <div class="pref-ch" [class.on]="getPref(pref, ch)" (click)="togglePref(pref, ch)">
+                        <span class="material-icons-round" style="font-size:14px">{{ channelIcon(ch) }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
