@@ -1,0 +1,105 @@
+import { Routes } from '@angular/router';
+import { MainLayoutComponent } from './layout/main-layout.component';
+
+export const routes: Routes = [
+  /* ─── Auth pages (no sidebar) ─── */
+  {
+    path: 'auth',
+    children: [
+      {
+        path: 'login',
+        loadComponent: () =>
+          import('./pages/auth/login.component').then((m) => m.LoginComponent),
+      },
+      {
+        path: 'register',
+        loadComponent: () =>
+          import('./pages/auth/register.component').then((m) => m.RegisterComponent),
+      },
+      {
+        path: '2fa',
+        loadComponent: () =>
+          import('./pages/auth/two-factor.component').then((m) => m.TwoFactorComponent),
+      },
+      { path: '', redirectTo: 'login', pathMatch: 'full' },
+    ],
+  },
+
+  /* ─── Main app (with sidebar layout) ─── */
+  {
+    path: '',
+    component: MainLayoutComponent,
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./pages/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+      },
+      {
+        path: 'kyc',
+        loadComponent: () =>
+          import('./pages/kyc/kyc.component').then((m) => m.KycComponent),
+      },
+      {
+        path: 'wallet',
+        loadComponent: () =>
+          import('./pages/wallet/wallet.component').then((m) => m.WalletComponent),
+      },
+      {
+        path: 'marketplace',
+        loadComponent: () =>
+          import('./pages/bond-marketplace/bond-marketplace.component').then(
+            (m) => m.BondMarketplaceComponent,
+          ),
+      },
+      {
+        path: 'trading',
+        loadComponent: () =>
+          import('./pages/trading-engine/trading-engine.component').then(
+            (m) => m.TradingEngineComponent,
+          ),
+      },
+      {
+        path: 'settlement',
+        loadComponent: () =>
+          import('./pages/settlement/settlement.component').then((m) => m.SettlementComponent),
+      },
+      {
+        path: 'portfolio',
+        loadComponent: () =>
+          import('./pages/portfolio/portfolio.component').then((m) => m.PortfolioComponent),
+      },
+      {
+        path: 'aml',
+        loadComponent: () =>
+          import('./pages/aml-compliance/aml-compliance.component').then(
+            (m) => m.AmlComplianceComponent,
+          ),
+      },
+      {
+        path: 'notifications',
+        loadComponent: () =>
+          import('./pages/notifications/notifications.component').then(
+            (m) => m.NotificationsComponent,
+          ),
+      },
+      {
+        path: 'admin',
+        loadComponent: () =>
+          import('./pages/admin/admin.component').then((m) => m.AdminComponent),
+      },
+      {
+        path: 'audit',
+        loadComponent: () =>
+          import('./pages/audit-trail/audit-trail.component').then((m) => m.AuditTrailComponent),
+      },
+      {
+        path: 'scheduler',
+        loadComponent: () =>
+          import('./pages/scheduler/scheduler.component').then((m) => m.SchedulerComponent),
+      },
+    ],
+  },
+
+  { path: '**', redirectTo: '' },
+];
