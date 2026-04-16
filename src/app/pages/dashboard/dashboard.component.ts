@@ -35,7 +35,9 @@ export class DashboardComponent implements OnInit {
   private readonly kycSvc       = inject(KycService);
   readonly auth                 = inject(AuthService);
 
-  readonly isAdmin = this.auth.isAdmin;
+  readonly isAdmin    = this.auth.isAdmin;
+  readonly isActive   = this.auth.isActive;
+  readonly isPending  = () => !this.auth.isAdmin() && !this.auth.isActive();
 
   // ── Admin state ──────────────────────────────────────────────────────────────
 

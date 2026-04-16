@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { MainLayoutComponent } from './layout/main-layout.component';
-import { authGuard, adminGuard } from './core/guards/auth.guard';
+import { authGuard, adminGuard, activeGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   /* ─── Auth pages (no sidebar, no guard) ─── */
@@ -59,11 +59,13 @@ export const routes: Routes = [
       },
       {
         path: 'wallet',
+        canActivate: [activeGuard],
         loadComponent: () =>
           import('./pages/wallet/wallet.component').then(m => m.WalletComponent),
       },
       {
         path: 'marketplace',
+        canActivate: [activeGuard],
         loadComponent: () =>
           import('./pages/bond-marketplace/bond-marketplace.component').then(
             m => m.BondMarketplaceComponent,
@@ -71,6 +73,7 @@ export const routes: Routes = [
       },
       {
         path: 'trading',
+        canActivate: [activeGuard],
         loadComponent: () =>
           import('./pages/trading-engine/trading-engine.component').then(
             m => m.TradingEngineComponent,
@@ -84,6 +87,7 @@ export const routes: Routes = [
       },
       {
         path: 'portfolio',
+        canActivate: [activeGuard],
         loadComponent: () =>
           import('./pages/portfolio/portfolio.component').then(m => m.PortfolioComponent),
       },

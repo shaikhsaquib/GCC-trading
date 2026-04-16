@@ -15,3 +15,12 @@ export const adminGuard: CanActivateFn = () => {
   if (!auth.isAdmin())    return router.createUrlTree(['/']);
   return true;
 };
+
+/** Requires the account to be ACTIVE (KYC approved). Redirects PENDING_KYC to /kyc. */
+export const activeGuard: CanActivateFn = () => {
+  const auth   = inject(AuthService);
+  const router = inject(Router);
+  if (!auth.isLoggedIn()) return router.createUrlTree(['/auth/login']);
+  if (!auth.isActive())   return router.createUrlTree(['/kyc']);
+  return true;
+};

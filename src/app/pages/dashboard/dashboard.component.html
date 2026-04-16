@@ -129,9 +129,15 @@
         <p>Your GCC Bond trading summary</p>
       </div>
       <div class="page-actions">
-        <a class="btn btn-primary" routerLink="/marketplace">
-          <span class="material-icons-round">public</span> Browse Bonds
-        </a>
+        @if (isActive()) {
+          <a class="btn btn-primary" routerLink="/marketplace">
+            <span class="material-icons-round">public</span> Browse Bonds
+          </a>
+        } @else {
+          <a class="btn btn-primary" routerLink="/kyc">
+            <span class="material-icons-round">verified_user</span> Complete KYC
+          </a>
+        }
       </div>
     </div>
 

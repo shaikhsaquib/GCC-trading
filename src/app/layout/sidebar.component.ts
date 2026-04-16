@@ -87,6 +87,22 @@ export class SidebarComponent {
     },
   ];
 
+  private readonly pendingNavGroups: NavGroup[] = [
+    {
+      title: 'Main',
+      items: [
+        { label: 'Dashboard',        icon: 'dashboard',    route: '/' },
+      ],
+    },
+    {
+      title: 'My Account',
+      items: [
+        { label: 'KYC & Onboarding', icon: 'verified_user', route: '/kyc' },
+        { label: 'Notifications',    icon: 'notifications',  route: '/notifications' },
+      ],
+    },
+  ];
+
   private readonly investorNavGroups: NavGroup[] = [
     {
       title: 'Main',
@@ -113,6 +129,8 @@ export class SidebarComponent {
   ];
 
   get navGroups(): NavGroup[] {
-    return this.auth.isAdmin() ? this.adminNavGroups : this.investorNavGroups;
+    if (this.auth.isAdmin())  return this.adminNavGroups;
+    if (this.auth.isActive()) return this.investorNavGroups;
+    return this.pendingNavGroups;
   }
 }
