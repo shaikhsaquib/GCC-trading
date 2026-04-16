@@ -1,4 +1,4 @@
-using GccBond.Settlement.Services;
+using GccBond.Settlement.Interfaces;
 using Hangfire;
 using Serilog;
 
@@ -6,9 +6,9 @@ namespace GccBond.Settlement.Jobs;
 
 public class SettlementJob
 {
-    private readonly SettlementService _service;
+    private readonly ISettlementService _service;
 
-    public SettlementJob(SettlementService service) => _service = service;
+    public SettlementJob(ISettlementService service) => _service = service;
 
     /// <summary>
     /// Runs daily at 06:00 UTC (T+1 settlement).
