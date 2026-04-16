@@ -176,6 +176,49 @@ export interface AmlAlert {
   createdAt:   string;
 }
 
+// ── KYC ───────────────────────────────────────────────────────────────────────
+
+export type KycStatus    = 'Draft' | 'Submitted' | 'UnderReview' | 'Approved' | 'Rejected';
+export type RiskLevel    = 'LOW' | 'MEDIUM' | 'HIGH';
+export type DocumentType =
+  | 'PASSPORT' | 'NATIONAL_ID' | 'DRIVING_LICENSE'
+  | 'PROOF_OF_ADDRESS' | 'SELFIE' | 'LIVENESS_VIDEO';
+
+export interface KycSubmission {
+  id:                  string;
+  user_id:             string;
+  status:              KycStatus;
+  risk_level:          RiskLevel | null;
+  onfido_applicant_id: string | null;
+  onfido_check_id:     string | null;
+  liveness_score:      number | null;
+  submission_count:    number;
+  reviewer_id:         string | null;
+  review_notes:        string | null;
+  reviewed_at:         string | null;
+  submitted_at:        string | null;
+  created_at:          string;
+  updated_at:          string;
+}
+
+export interface KycDocument {
+  id:              string;
+  submission_id:   string;
+  document_type:   DocumentType;
+  mongo_doc_id:    string;
+  file_name:       string;
+  mime_type:       string;
+  file_size_bytes: number;
+  status:          string;
+  created_at:      string;
+}
+
+export interface KycQueueItem extends KycSubmission {
+  first_name: string;
+  last_name:  string;
+  email:      string;
+}
+
 // ── Shared API wrapper ────────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {
