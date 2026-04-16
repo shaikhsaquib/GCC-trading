@@ -61,7 +61,7 @@ public class BondRepository : IBondRepository
             $"SELECT * FROM bonds.listings WHERE {where} ORDER BY {sortCol} {dir} LIMIT @Limit OFFSET @Offset",
             param);
 
-        var total = await _db.ExecuteScalarAsync<int>(
+        var total = await _db.ExecuteScalarAsync<int?>(
             $"SELECT COUNT(*) FROM bonds.listings WHERE {where}", param);
 
         return (items, total ?? 0);
