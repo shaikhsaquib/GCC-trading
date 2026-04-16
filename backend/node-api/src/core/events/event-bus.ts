@@ -80,10 +80,21 @@ class RabbitMqEventBus implements IEventBus {
   async publish<T>(routingKey: string, payload: T, correlationId = ''): Promise<void> {
     // Auto-reconnect if channel was dropped
     if (!this.channel) {
-      await this.connect();
+      try {
+        await this.connect();
+      } catch (err) {
+        logger.warn('EventBus publish skipped — broker unreachable', {
+          routingKey,
+          error: (err as Error).message,
+        });
+        return; // Degrade gracefully; do not crash the HTTP request
+      }
     }
 
-    if (!this.channel) throw new Error('EventBus not connected');
+    if (!this.channel) {
+      logger.warn('EventBus publish skipped — no channel', { routingKey });
+      return;
+    }
 
     const envelope: DomainEvent<T> = {
       eventId:       uuidv4(),
@@ -131,10 +142,16 @@ class RabbitMqEventBus implements IEventBus {
       try {
         const event = JSON.parse(msg.content.toString()) as DomainEvent<T>;
         await handler(event);
-        this.channel!.ack(msg);
+        // Channel may have closed while handler was running
+        if (this.channel) this.channel.ack(msg);
       } catch (err) {
         logger.error('Event handler failed', { queue, routingKey, error: (err as Error).message });
-        this.channel!.nack(msg, false, false); // send to DLQ
+        // Channel may have closed while handler was running — nack safely
+        try {
+          if (this.channel) this.channel.nack(msg, false, false); // send to DLQ
+        } catch (nackErr) {
+          logger.warn('nack failed — channel already closed', { queue });
+        }
       }
     });
   }

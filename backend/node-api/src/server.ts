@@ -68,8 +68,10 @@ async function shutdown(signal: string): Promise<void> {
 process.on('SIGTERM', () => void shutdown('SIGTERM'));
 process.on('SIGINT',  () => void shutdown('SIGINT'));
 process.on('unhandledRejection', (reason) => {
-  logger.error('Unhandled promise rejection', { reason });
-  process.exit(1);
+  // Log but do NOT exit — transient infra errors (Redis/RabbitMQ reconnect)
+  // should not crash the entire process. Only truly fatal errors should exit.
+  const message = reason instanceof Error ? reason.message : JSON.stringify(reason);
+  logger.error('Unhandled promise rejection', { reason: message });
 });
 process.on('uncaughtException', (err) => {
   logger.error('Uncaught exception', { error: err.message, stack: err.stack });
