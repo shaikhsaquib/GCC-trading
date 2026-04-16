@@ -23,23 +23,66 @@ export interface IEventBus {
 // ---------------------------------------------------------------------------
 
 class RabbitMqEventBus implements IEventBus {
-  private connection: Connection | null = null;
-  private channel:    Channel    | null = null;
+  private connection:   Connection | null = null;
+  private channel:      Channel    | null = null;
+  private reconnecting: boolean = false;
 
   async connect(): Promise<void> {
-    this.connection = await amqplib.connect(config.rabbitmq.url);
+    // Append heartbeat=30 so CloudAMQP/broker keeps the connection alive
+    const url = config.rabbitmq.url;
+    const urlWithHeartbeat = url.includes('?') ? `${url}&heartbeat=30` : `${url}?heartbeat=30`;
+
+    this.connection = await amqplib.connect(urlWithHeartbeat);
     this.channel    = await this.connection.createChannel();
 
     await this.channel.assertExchange(EXCHANGE,     'topic', { durable: true });
     await this.channel.assertExchange(DLX_EXCHANGE, 'topic', { durable: true });
 
-    this.connection.on('error', (err) => logger.error('RabbitMQ connection error', { error: err.message }));
-    this.connection.on('close', () => logger.warn('RabbitMQ connection closed'));
+    this.connection.on('error', (err) => {
+      logger.error('RabbitMQ connection error', { error: err.message });
+    });
+
+    this.connection.on('close', () => {
+      logger.warn('RabbitMQ connection closed — will reconnect in 5 s');
+      this.connection = null;
+      this.channel    = null;
+      this.scheduleReconnect();
+    });
+
+    this.channel.on('error', (err) => {
+      logger.error('RabbitMQ channel error', { error: err.message });
+      this.channel = null;
+    });
+
+    this.channel.on('close', () => {
+      logger.warn('RabbitMQ channel closed');
+      this.channel = null;
+    });
 
     logger.info('RabbitMQ connected');
   }
 
+  private scheduleReconnect(): void {
+    if (this.reconnecting) return;
+    this.reconnecting = true;
+    setTimeout(async () => {
+      this.reconnecting = false;
+      try {
+        await this.connect();
+        logger.info('RabbitMQ reconnected');
+      } catch (err) {
+        logger.error('RabbitMQ reconnect failed', { error: (err as Error).message });
+        this.scheduleReconnect();
+      }
+    }, 5_000);
+  }
+
   async publish<T>(routingKey: string, payload: T, correlationId = ''): Promise<void> {
+    // Auto-reconnect if channel was dropped
+    if (!this.channel) {
+      await this.connect();
+    }
+
     if (!this.channel) throw new Error('EventBus not connected');
 
     const envelope: DomainEvent<T> = {
