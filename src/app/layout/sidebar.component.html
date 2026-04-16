@@ -57,13 +57,13 @@
       <!-- Footer -->
       <div class="sidebar-footer">
         <div class="user-info" [class.compact]="collapsed()">
-          <div class="user-avatar">AH</div>
+          <div class="user-avatar">{{ userInitials() }}</div>
           @if (!collapsed()) {
             <div class="user-details">
-              <span class="user-name">Ahmed Hassan</span>
-              <span class="user-role">Super Admin</span>
+              <span class="user-name">{{ userName() }}</span>
+              <span class="user-role">{{ userRole() }}</span>
             </div>
-            <button class="btn btn-icon" title="Logout">
+            <button class="btn btn-icon" title="Logout" (click)="logout()">
               <span class="material-icons-round" style="font-size:18px;color:var(--text-secondary)">logout</span>
             </button>
           }

@@ -44,6 +44,8 @@
         </button>
 
         <!-- Avatar -->
-        <div class="header-avatar">AH</div>
+        <div class="header-avatar" title="Logout" (click)="auth.logout()" style="cursor:pointer">
+          {{ userInitials() }}
+        </div>
       </div>
     </header>

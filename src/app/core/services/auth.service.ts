@@ -89,11 +89,18 @@ export class AuthService {
   // ── Logout ──────────────────────────────────────────────────────────────────
 
   logout() {
-    if (this.getAccessToken()) {
-      this.http.post(`${environment.apiUrl}/auth/logout`, {}).subscribe();
-    }
+    const token = this.getAccessToken();
+    // Clear local session immediately so the UI reflects logged-out state
     this.clearSession();
     this.router.navigate(['/auth/login']);
+    // Best-effort server-side token revocation (fire-and-forget)
+    if (token) {
+      this.http
+        .post(`${environment.apiUrl}/auth/logout`, {}, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .subscribe({ error: () => {} });
+    }
   }
 
   getAccessToken(): string | null {

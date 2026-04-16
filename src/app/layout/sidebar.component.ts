@@ -1,7 +1,8 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, computed } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NgClass } from '@angular/common';
 import { LayoutService } from './layout.service';
+import { AuthService } from '../core/services/auth.service';
 
 interface NavItem {
   label: string;
@@ -26,8 +27,24 @@ interface NavGroup {
 export class SidebarComponent {
   collapsed   = signal(false);
   readonly layout = inject(LayoutService);
+  readonly auth   = inject(AuthService);
+
+  readonly userInitials = computed(() => {
+    const u = this.auth.user();
+    if (!u) return '?';
+    return `${u.firstName?.[0] ?? ''}${u.lastName?.[0] ?? ''}`.toUpperCase();
+  });
+
+  readonly userName = computed(() => {
+    const u = this.auth.user();
+    return u ? `${u.firstName} ${u.lastName}` : '';
+  });
+
+  readonly userRole = computed(() => this.auth.user()?.role ?? '');
 
   onNavClick() { this.layout.close(); }
+
+  logout() { this.auth.logout(); }
 
   navGroups: NavGroup[] = [
     {
