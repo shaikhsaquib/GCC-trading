@@ -1,6 +1,23 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AdminService } from '../../services/admin.service';
+import { AdminStats, AdminUser } from '../../core/models/api.models';
+
+interface UserDisplay {
+  id:          string;
+  name:        string;
+  initials:    string;
+  avatarColor: string;
+  role:        string;
+  kyc:         string;
+  accountType: string;
+  joined:      string;
+  lastLogin:   string;
+  status:      string;
+}
+
+const AVATAR_COLORS = ['#7c4dff', '#00d4ff', '#17c3b2', '#ff4757', '#ffc107', '#00e676'];
 
 @Component({
   selector: 'app-admin',
@@ -9,56 +26,165 @@ import { FormsModule } from '@angular/forms';
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.css',
 })
-export class AdminComponent {
-  activeTab = signal('User Management');
-  userSearch = '';
+export class AdminComponent implements OnInit {
+  private readonly adminSvc = inject(AdminService);
+
+  activeTab    = signal('User Management');
+  userSearch   = '';
   statusFilter = '';
+  loading      = signal(true);
+  usersLoading = signal(true);
+  error        = signal<string | null>(null);
 
   tabs = ['User Management', 'KYC Review', 'System Reports', 'Permissions'];
 
   adminStats = [
-    { label: 'Total Users', value: '3,842', color: 'var(--text-primary)' },
-    { label: 'Active Today', value: '1,247', color: 'var(--success)' },
-    { label: 'New This Week', value: '124', color: 'var(--accent-cyan)' },
-    { label: 'KYC Pending', value: '48', color: 'var(--warning)' },
-    { label: 'Suspended', value: '7', color: 'var(--danger)' },
-    { label: 'Admins', value: '12', color: 'var(--accent-purple)' },
+    { label: 'Total Users',    value: '—', color: 'var(--text-primary)' },
+    { label: 'Active Today',   value: '—', color: 'var(--success)' },
+    { label: 'New This Week',  value: '—', color: 'var(--accent-cyan)' },
+    { label: 'KYC Pending',    value: '—', color: 'var(--warning)' },
+    { label: 'Suspended',      value: '—', color: 'var(--danger)' },
+    { label: 'Admins',         value: '—', color: 'var(--accent-purple)' },
   ];
 
-  users = [
-    { id: 1, name: 'Mohammed Al-Rashid', email: 'm.rashid@example.com', initials: 'MR', avatarColor: '#7c4dff', role: 'Trader', kyc: 'Approved', accountType: 'Individual', portfolio: '1.2M', joined: 'Jan 2023', lastLogin: '2h ago', status: 'Active' },
-    { id: 2, name: 'Fatima Al-Zahrani', email: 'f.zahrani@example.com', initials: 'FZ', avatarColor: '#00d4ff', role: 'Investor', kyc: 'Approved', accountType: 'Individual', portfolio: '450K', joined: 'Mar 2023', lastLogin: 'Yesterday', status: 'Active' },
-    { id: 3, name: 'Khalid Al-Mutairi', email: 'k.mutairi@example.com', initials: 'KM', avatarColor: '#17c3b2', role: 'Investor', kyc: 'Approved', accountType: 'Corporate', portfolio: '8.4M', joined: 'Jun 2022', lastLogin: '3 days ago', status: 'Active' },
-    { id: 4, name: 'Omar Al-Farouqi', email: 'o.farouqi@example.com', initials: 'OF', avatarColor: '#ff4757', role: 'Investor', kyc: 'Rejected', accountType: 'Institution', portfolio: '0', joined: 'Apr 2024', lastLogin: '5 days ago', status: 'Suspended' },
-    { id: 5, name: 'Nora Al-Shehri', email: 'n.shehri@example.com', initials: 'NS', avatarColor: '#ffc107', role: 'Investor', kyc: 'Pending', accountType: 'Individual', portfolio: '120K', joined: 'Apr 2024', lastLogin: 'Today', status: 'Pending KYC' },
-    { id: 6, name: 'Ahmed Al-Ghamdi', email: 'a.ghamdi@example.com', initials: 'AG', avatarColor: '#00e676', role: 'Admin', kyc: 'Approved', accountType: 'Staff', portfolio: '—', joined: 'May 2021', lastLogin: '1h ago', status: 'Active' },
-  ];
+  private _users = signal<UserDisplay[]>([]);
 
+  // Static data (would need dedicated APIs to make fully dynamic)
   kycApplications = [
-    { id: 1, name: 'Mohammed Al-Rashid', initials: 'MR', avatarColor: '#7c4dff', type: 'Individual', nationality: 'Saudi', status: 'Pending', risk: 'LOW', submitted: '2h ago', docs: [{ label: 'National ID', verified: false }, { label: 'Selfie', verified: true }, { label: 'Bank Stmt', verified: false }] },
-    { id: 2, name: 'Fatima Al-Zahrani', initials: 'FZ', avatarColor: '#00d4ff', type: 'Individual', nationality: 'Saudi', status: 'In Review', risk: 'LOW', submitted: '5h ago', docs: [{ label: 'National ID', verified: true }, { label: 'Selfie', verified: true }, { label: 'Bank Stmt', verified: false }] },
-    { id: 3, name: 'Hind Al-Qahtani', initials: 'HQ', avatarColor: '#17c3b2', type: 'Corporate', nationality: 'Saudi', status: 'Pending', risk: 'MEDIUM', submitted: '1d ago', docs: [{ label: 'CR', verified: false }, { label: 'MOA', verified: false }, { label: 'UBO Docs', verified: false }] },
+    { id: 1, name: 'Mohammed Al-Rashid', initials: 'MR', avatarColor: '#7c4dff', type: 'Individual', nationality: 'Saudi', status: 'Pending',   risk: 'LOW',    submitted: '2h ago', docs: [{ label: 'National ID', verified: false }, { label: 'Selfie', verified: true  }, { label: 'Bank Stmt', verified: false }] },
+    { id: 2, name: 'Fatima Al-Zahrani',  initials: 'FZ', avatarColor: '#00d4ff', type: 'Individual', nationality: 'Saudi', status: 'In Review', risk: 'LOW',    submitted: '5h ago', docs: [{ label: 'National ID', verified: true  }, { label: 'Selfie', verified: true  }, { label: 'Bank Stmt', verified: false }] },
+    { id: 3, name: 'Hind Al-Qahtani',    initials: 'HQ', avatarColor: '#17c3b2', type: 'Corporate',  nationality: 'Saudi', status: 'Pending',   risk: 'MEDIUM', submitted: '1d ago', docs: [{ label: 'CR', verified: false }, { label: 'MOA', verified: false }, { label: 'UBO Docs', verified: false }] },
   ];
 
   reports = [
-    { name: 'User Activity Report', desc: 'Login sessions, trades and wallet activity per user', icon: 'person', iconBg: 'rgba(0,212,255,0.1)', iconColor: 'var(--accent-cyan)' },
-    { name: 'KYC Status Report', desc: 'Verification rates, pending queue and approval timelines', icon: 'verified_user', iconBg: 'rgba(0,230,118,0.1)', iconColor: 'var(--success)' },
-    { name: 'Trading Volume Report', desc: 'Daily, weekly and monthly trading volumes by bond type', icon: 'bar_chart', iconBg: 'rgba(124,77,255,0.1)', iconColor: 'var(--accent-purple)' },
-    { name: 'Revenue & Fees Report', desc: 'Commission income, VAT collected, fee breakdown', icon: 'payments', iconBg: 'rgba(23,195,178,0.1)', iconColor: 'var(--accent-teal)' },
-    { name: 'AML/Compliance Report', desc: 'Alert statistics, SAR filings and risk distribution', icon: 'security', iconBg: 'rgba(255,71,87,0.1)', iconColor: 'var(--danger)' },
-    { name: 'Settlement Report', desc: 'T+1 queue, failed settlements and counterparty stats', icon: 'task_alt', iconBg: 'rgba(255,193,7,0.1)', iconColor: 'var(--warning)' },
-    { name: 'Regulatory Report (SAMA)', desc: 'SAMA-compliant monthly regulatory submission', icon: 'account_balance', iconBg: 'rgba(0,212,255,0.08)', iconColor: 'var(--accent-cyan)' },
-    { name: 'Audit Summary Report', desc: 'Immutable action logs summary for compliance review', icon: 'storage', iconBg: 'rgba(124,77,255,0.08)', iconColor: 'var(--accent-purple)' },
+    { name: 'User Activity Report',      desc: 'Login sessions, trades and wallet activity per user',       icon: 'person',          iconBg: 'rgba(0,212,255,0.1)',  iconColor: 'var(--accent-cyan)' },
+    { name: 'KYC Status Report',         desc: 'Verification rates, pending queue and approval timelines',  icon: 'verified_user',   iconBg: 'rgba(0,230,118,0.1)',  iconColor: 'var(--success)' },
+    { name: 'Trading Volume Report',     desc: 'Daily, weekly and monthly trading volumes by bond type',    icon: 'bar_chart',       iconBg: 'rgba(124,77,255,0.1)', iconColor: 'var(--accent-purple)' },
+    { name: 'Revenue & Fees Report',     desc: 'Commission income, VAT collected, fee breakdown',           icon: 'payments',        iconBg: 'rgba(23,195,178,0.1)', iconColor: 'var(--accent-teal)' },
+    { name: 'AML/Compliance Report',     desc: 'Alert statistics, SAR filings and risk distribution',       icon: 'security',        iconBg: 'rgba(255,71,87,0.1)',  iconColor: 'var(--danger)' },
+    { name: 'Settlement Report',         desc: 'T+1 queue, failed settlements and counterparty stats',      icon: 'task_alt',        iconBg: 'rgba(255,193,7,0.1)',  iconColor: 'var(--warning)' },
+    { name: 'Regulatory Report (SAMA)',  desc: 'SAMA-compliant monthly regulatory submission',              icon: 'account_balance', iconBg: 'rgba(0,212,255,0.08)', iconColor: 'var(--accent-cyan)' },
+    { name: 'Audit Summary Report',      desc: 'Immutable action logs summary for compliance review',       icon: 'storage',         iconBg: 'rgba(124,77,255,0.08)', iconColor: 'var(--accent-purple)' },
   ];
 
+  ngOnInit() {
+    this.loadStats();
+    this.loadUsers();
+  }
+
+  private loadStats() {
+    this.adminSvc.getDashboard().subscribe({
+      next: (s: AdminStats) => {
+        this.loading.set(false);
+        this.adminStats = [
+          { label: 'Total Users',   value: s.totalUsers.toLocaleString(),  color: 'var(--text-primary)' },
+          { label: 'Active Today',  value: s.activeUsers.toLocaleString(), color: 'var(--success)' },
+          { label: 'New This Week', value: '—',                            color: 'var(--accent-cyan)' },
+          { label: 'KYC Pending',   value: s.pendingKyc.toLocaleString(),  color: 'var(--warning)' },
+          { label: 'Suspended',     value: '—',                            color: 'var(--danger)' },
+          { label: 'Admins',        value: '—',                            color: 'var(--accent-purple)' },
+        ];
+      },
+      error: () => this.loading.set(false),
+    });
+  }
+
+  private loadUsers() {
+    this.adminSvc.listUsers({ limit: 100 }).subscribe({
+      next: res => {
+        this.usersLoading.set(false);
+        this._users.set((res.data ?? []).map((u, i) => this.mapUser(u, i)));
+      },
+      error: () => this.usersLoading.set(false),
+    });
+  }
+
+  private mapUser(u: AdminUser, idx: number): UserDisplay {
+    const fullName = `${u.first_name} ${u.last_name}`.trim();
+    const initials = `${u.first_name[0] ?? ''}${u.last_name[0] ?? ''}`.toUpperCase();
+    return {
+      id:          u.id,
+      name:        fullName,
+      initials,
+      avatarColor: AVATAR_COLORS[idx % AVATAR_COLORS.length],
+      role:        this.mapRole(u.role),
+      kyc:         this.mapKyc(u.status),
+      accountType: 'Individual',
+      joined:      new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      lastLogin:   u.last_login_at ? this.relativeTime(u.last_login_at) : 'Never',
+      status:      this.mapStatus(u.status),
+    };
+  }
+
+  private mapRole(role: string): string {
+    const map: Record<string, string> = {
+      INVESTOR: 'Investor', KYC_OFFICER: 'KYC Officer',
+      L2_ADMIN: 'Admin', ADMIN: 'Admin', COMPLIANCE: 'Compliance',
+    };
+    return map[role] ?? role;
+  }
+
+  private mapKyc(status: string): string {
+    const map: Record<string, string> = {
+      PENDING_KYC: 'Pending', ACTIVE: 'Approved',
+      SUSPENDED: 'Approved', DEACTIVATED: 'Approved',
+    };
+    return map[status] ?? 'Pending';
+  }
+
+  private mapStatus(status: string): string {
+    const map: Record<string, string> = {
+      PENDING_KYC: 'Pending KYC', ACTIVE: 'Active',
+      SUSPENDED: 'Suspended', DEACTIVATED: 'Suspended',
+    };
+    return map[status] ?? status;
+  }
+
+  private relativeTime(iso: string): string {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1)   return 'just now';
+    if (mins < 60)  return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24)   return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return days === 1 ? 'Yesterday' : `${days} days ago`;
+  }
+
+  suspendUser(id: string) {
+    this.adminSvc.suspendUser(id).subscribe({
+      next: () => {
+        this._users.update(list =>
+          list.map(u => u.id === id ? { ...u, status: 'Suspended' } : u)
+        );
+      },
+    });
+  }
+
+  activateUser(id: string) {
+    this.adminSvc.activateUser(id).subscribe({
+      next: () => {
+        this._users.update(list =>
+          list.map(u => u.id === id ? { ...u, status: 'Active', kyc: 'Approved' } : u)
+        );
+      },
+    });
+  }
+
+  get users() {
+    return this._users();
+  }
+
   filteredUsers() {
-    return this.users.filter(u =>
-      (!this.userSearch || u.name.toLowerCase().includes(this.userSearch.toLowerCase()) || u.email.toLowerCase().includes(this.userSearch.toLowerCase())) &&
-      (!this.statusFilter || u.status === this.statusFilter)
+    const search = this.userSearch.toLowerCase();
+    const status = this.statusFilter;
+    return this._users().filter(u =>
+      (!search || u.name.toLowerCase().includes(search)) &&
+      (!status || u.status === status)
     );
   }
 
-  roleBadge(role: string) { return { 'role-admin': role === 'Admin', 'role-trader': role === 'Trader', 'role-investor': role === 'Investor' }; }
-  kycBadge(kyc: string) { return { 'badge-success': kyc === 'Approved', 'badge-warning': kyc === 'Pending', 'badge-info': kyc === 'In Review', 'badge-danger': kyc === 'Rejected' }; }
-  userStatusBadge(s: string) { return { 'status-active': s === 'Active', 'status-pending': s === 'Pending KYC', 'status-suspended': s === 'Suspended' }; }
+  roleBadge(role: string)   { return { 'role-admin': role === 'Admin', 'role-trader': role === 'Trader', 'role-investor': role === 'Investor' }; }
+  kycBadge(kyc: string)     { return { 'badge-success': kyc === 'Approved', 'badge-warning': kyc === 'Pending', 'badge-info': kyc === 'In Review', 'badge-danger': kyc === 'Rejected' }; }
+  userStatusBadge(s: string){ return { 'status-active': s === 'Active', 'status-pending': s === 'Pending KYC', 'status-suspended': s === 'Suspended' }; }
 }
