@@ -16,6 +16,7 @@ class PostgresClient {
       max:              config.database.poolMax,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 5_000,
+      ssl: { rejectUnauthorized: false },
     });
 
     this.pool.on('error', (err) => {
