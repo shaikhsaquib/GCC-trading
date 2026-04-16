@@ -41,19 +41,25 @@ public static class Events
 
 public class RabbitMqEventBus : IEventBus, IDisposable
 {
-    private readonly IConnection   _connection;
-    private readonly IModel        _channel;
-    private const string Exchange  = "gcc-bond";
-    private const string DlxExchange = "gcc-bond-dlx";
-    private readonly string        _serviceName;
+    private IConnection?  _connection;
+    private IModel?       _channel;
+    private const string  Exchange    = "gcc-bond";
+    private const string  DlxExchange = "gcc-bond-dlx";
+    private readonly string           _amqpUrl;
+    private readonly string           _serviceName;
 
     public RabbitMqEventBus(string amqpUrl, string serviceName)
     {
+        _amqpUrl     = amqpUrl;
         _serviceName = serviceName;
+    }
 
+    /// <summary>Establishes the RabbitMQ connection. Called once at startup.</summary>
+    public Task ConnectAsync()
+    {
         var factory = new ConnectionFactory
         {
-            Uri              = new Uri(amqpUrl),
+            Uri                    = new Uri(_amqpUrl),
             DispatchConsumersAsync = true,
         };
 
@@ -65,7 +71,13 @@ public class RabbitMqEventBus : IEventBus, IDisposable
 
         // Dead-letter exchange
         _channel.ExchangeDeclare(DlxExchange, ExchangeType.Topic, durable: true);
+
+        Log.Information("RabbitMQ connected ({ServiceName})", _serviceName);
+        return Task.CompletedTask;
     }
+
+    private IModel Channel => _channel
+        ?? throw new InvalidOperationException("RabbitMqEventBus.ConnectAsync() must be called before use");
 
     public Task PublishAsync<T>(string routingKey, T payload) where T : class
         => PublishAsync(routingKey, payload, "");
@@ -82,12 +94,12 @@ public class RabbitMqEventBus : IEventBus, IDisposable
 
         var body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(envelope));
 
-        var props = _channel.CreateBasicProperties();
+        var props = Channel.CreateBasicProperties();
         props.Persistent    = true;
         props.ContentType   = "application/json";
         props.CorrelationId = correlationId;
 
-        _channel.BasicPublish(Exchange, routingKey, props, body);
+        Channel.BasicPublish(Exchange, routingKey, props, body);
         return Task.CompletedTask;
     }
 
@@ -99,8 +111,8 @@ public class RabbitMqEventBus : IEventBus, IDisposable
         var dlqName = $"{queue}-dlq";
 
         // Declare DLQ
-        _channel.QueueDeclare(dlqName, durable: true, exclusive: false, autoDelete: false);
-        _channel.QueueBind(dlqName, DlxExchange, routingKey);
+        Channel.QueueDeclare(dlqName, durable: true, exclusive: false, autoDelete: false);
+        Channel.QueueBind(dlqName, DlxExchange, routingKey);
 
         // Declare main queue with DLX
         var args = new Dictionary<string, object>
@@ -108,12 +120,12 @@ public class RabbitMqEventBus : IEventBus, IDisposable
             ["x-dead-letter-exchange"]    = DlxExchange,
             ["x-dead-letter-routing-key"] = routingKey,
         };
-        _channel.QueueDeclare(queue, durable: true, exclusive: false, autoDelete: false, arguments: args);
-        _channel.QueueBind(queue, Exchange, routingKey);
+        Channel.QueueDeclare(queue, durable: true, exclusive: false, autoDelete: false, arguments: args);
+        Channel.QueueBind(queue, Exchange, routingKey);
 
-        _channel.BasicQos(0, 10, false); // prefetch 10
+        Channel.BasicQos(0, 10, false); // prefetch 10
 
-        var consumer = new AsyncEventingBasicConsumer(_channel);
+        var consumer = new AsyncEventingBasicConsumer(Channel);
         consumer.Received += async (_, ea) =>
         {
             var body = Encoding.UTF8.GetString(ea.Body.ToArray());
@@ -123,16 +135,16 @@ public class RabbitMqEventBus : IEventBus, IDisposable
                 if (evt is not null)
                     await handler(evt);
 
-                _channel.BasicAck(ea.DeliveryTag, false);
+                Channel.BasicAck(ea.DeliveryTag, false);
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Event handler failed for {Queue}", queue);
-                _channel.BasicNack(ea.DeliveryTag, false, false); // send to DLQ
+                Channel.BasicNack(ea.DeliveryTag, false, false); // send to DLQ
             }
         };
 
-        _channel.BasicConsume(queue, autoAck: false, consumer);
+        Channel.BasicConsume(queue, autoAck: false, consumer);
         return Task.CompletedTask;
     }
 

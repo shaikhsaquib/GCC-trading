@@ -34,7 +34,12 @@ public static class SharedServiceExtensions
 
         services.AddSingleton(_ => new DatabaseHelper(connStr));
         services.AddSingleton(_ => new RedisHelper(redisConn));
-        services.AddSingleton<IEventBus>(_ => new RabbitMqEventBus(rabbitMqUrl, serviceName));
+        services.AddSingleton<IEventBus>(_ =>
+        {
+            var bus = new RabbitMqEventBus(rabbitMqUrl, serviceName);
+            bus.ConnectAsync().GetAwaiter().GetResult();
+            return bus;
+        });
 
         return services;
     }
