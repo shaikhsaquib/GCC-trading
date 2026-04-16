@@ -78,6 +78,7 @@ export const routes: Routes = [
       },
       {
         path: 'settlement',
+        canActivate: [adminGuard],
         loadComponent: () =>
           import('./pages/settlement/settlement.component').then(m => m.SettlementComponent),
       },
