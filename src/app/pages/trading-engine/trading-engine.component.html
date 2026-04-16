@@ -15,7 +15,7 @@
       <!-- Bond Selector -->
       <div class="bond-selector-bar">
         @for (bond of watchlist; track bond.isin) {
-          <div class="watchlist-item" [class.active]="selectedBond().isin === bond.isin" (click)="selectedBond.set(bond)">
+          <div class="watchlist-item" [class.active]="selectedBond().isin === bond.isin" (click)="selectBond(bond)">
             <span class="wi-name">{{ bond.shortName }}</span>
             <span class="wi-price">{{ bond.price }}</span>
             <span class="wi-change" [class.up]="bond.change > 0" [class.down]="bond.change < 0">
@@ -113,12 +113,28 @@
               </span></div>
             </div>
 
+            @if (orderSuccess()) {
+              <div class="alert-success" style="padding:10px 14px;border-radius:8px;background:rgba(46,213,115,0.1);color:var(--success);font-size:13px;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+                <span class="material-icons-round" style="font-size:16px">check_circle</span>{{ orderSuccess() }}
+              </div>
+            }
+            @if (orderError()) {
+              <div class="alert-danger" style="padding:10px 14px;border-radius:8px;background:rgba(255,71,87,0.1);color:var(--danger);font-size:13px;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+                <span class="material-icons-round" style="font-size:16px">error</span>{{ orderError() }}
+              </div>
+            }
             <button class="btn btn-lg submit-order-btn"
               [class.buy-btn]="orderSide() === 'buy'"
               [class.sell-btn]="orderSide() === 'sell'"
+              [disabled]="submitting() || !selectedBond().id"
+              (click)="placeOrder()"
               style="width:100%;justify-content:center">
-              <span class="material-icons-round">{{ orderSide() === 'buy' ? 'trending_up' : 'trending_down' }}</span>
-              {{ orderSide() === 'buy' ? 'Place Buy Order' : 'Place Sell Order' }}
+              @if (submitting()) {
+                <span class="material-icons-round" style="animation:spin 1s linear infinite">sync</span> Placing...
+              } @else {
+                <span class="material-icons-round">{{ orderSide() === 'buy' ? 'trending_up' : 'trending_down' }}</span>
+                {{ orderSide() === 'buy' ? 'Place Buy Order' : 'Place Sell Order' }}
+              }
             </button>
           </div>
         </div>

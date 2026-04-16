@@ -179,6 +179,7 @@ export class TradingEngineComponent implements OnInit {
         this.submitting.set(false);
         this.orderSuccess.set(`Order #${res.data.id.slice(0, 8)} placed successfully`);
         this.loadOrders();
+        setTimeout(() => this.orderSuccess.set(null), 5000);
       },
       error: err => {
         this.submitting.set(false);

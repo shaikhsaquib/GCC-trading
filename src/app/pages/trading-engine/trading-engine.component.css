@@ -136,3 +136,5 @@
     .order-form { display: flex; flex-direction: column; gap: 14px; }
 
     .form-group { display: flex; flex-direction: column; gap: 6px; label { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; } }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
