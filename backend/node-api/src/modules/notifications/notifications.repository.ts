@@ -8,7 +8,12 @@ export class NotificationsRepository {
     channels:  NotificationChannel[];
     vars:      Record<string, string>;
   }): Promise<INotificationLog> {
-    return NotificationLog.create(params);
+    return NotificationLog.create({
+      user_id:    params.userId,
+      event_type: params.eventType,
+      channels:   params.channels,
+      vars:       params.vars,
+    });
   }
 
   async findByUserId(userId: string, limit: number, offset: number): Promise<{
