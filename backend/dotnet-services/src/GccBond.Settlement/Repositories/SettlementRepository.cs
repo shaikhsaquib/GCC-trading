@@ -2,6 +2,7 @@ using Dapper;
 using GccBond.Settlement.Interfaces;
 using GccBond.Shared.Infrastructure;
 using GccBond.Shared.Models;
+using SettlementModel = GccBond.Shared.Models.Settlement;
 
 namespace GccBond.Settlement.Repositories;
 
@@ -11,8 +12,8 @@ public class SettlementRepository : ISettlementRepository
 
     public SettlementRepository(DatabaseHelper db) => _db = db;
 
-    public Task<IEnumerable<Settlement>> GetPendingAsync(int maxRetries)
-        => _db.QueryAsync<Settlement>(@"
+    public Task<IEnumerable<SettlementModel>> GetPendingAsync(int maxRetries)
+        => _db.QueryAsync<SettlementModel>(@"
             SELECT s.* FROM settlement.settlements s
             WHERE s.status IN ('Pending','Processing')
               AND s.settlement_date <= @Today
@@ -20,17 +21,17 @@ public class SettlementRepository : ISettlementRepository
             ORDER BY s.settlement_date ASC",
             new { Today = DateTime.UtcNow.Date, MaxRetries = maxRetries });
 
-    public Task<Settlement?> GetByTradeIdAsync(Guid tradeId)
-        => _db.QueryFirstOrDefaultAsync<Settlement>(
+    public Task<SettlementModel?> GetByTradeIdAsync(Guid tradeId)
+        => _db.QueryFirstOrDefaultAsync<SettlementModel>(
             "SELECT * FROM settlement.settlements WHERE trade_id = @TradeId",
             new { TradeId = tradeId });
 
-    public Task<IEnumerable<Settlement>> GetAllAsync(string? status, int limit, int offset)
+    public Task<IEnumerable<SettlementModel>> GetAllAsync(string? status, int limit, int offset)
     {
         var sql = status is null
             ? "SELECT * FROM settlement.settlements ORDER BY created_at DESC LIMIT @Limit OFFSET @Offset"
             : "SELECT * FROM settlement.settlements WHERE status = @Status ORDER BY created_at DESC LIMIT @Limit OFFSET @Offset";
-        return _db.QueryAsync<Settlement>(sql, new { Status = status, Limit = limit, Offset = offset });
+        return _db.QueryAsync<SettlementModel>(sql, new { Status = status, Limit = limit, Offset = offset });
     }
 
     public Task<Trade?> GetTradeAsync(Guid tradeId)

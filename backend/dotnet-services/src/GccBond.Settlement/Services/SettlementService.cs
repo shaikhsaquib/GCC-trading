@@ -4,6 +4,7 @@ using GccBond.Shared.Exceptions;
 using GccBond.Shared.Infrastructure;
 using GccBond.Shared.Models;
 using Serilog;
+using SettlementModel = GccBond.Shared.Models.Settlement;
 
 namespace GccBond.Settlement.Services;
 
@@ -38,7 +39,7 @@ public class SettlementService : ISettlementService
         Log.Information("Settlement batch complete");
     }
 
-    public async Task ProcessSettlementAsync(Settlement settlement)
+    public async Task ProcessSettlementAsync(SettlementModel settlement)
     {
         try
         {
@@ -83,9 +84,9 @@ public class SettlementService : ISettlementService
         }
     }
 
-    public Task<IEnumerable<Settlement>> GetSettlementsAsync(string? status, int limit, int offset)
+    public Task<IEnumerable<SettlementModel>> GetSettlementsAsync(string? status, int limit, int offset)
         => _repo.GetAllAsync(status, limit, offset);
 
-    public Task<Settlement?> GetByTradeIdAsync(Guid tradeId)
+    public Task<SettlementModel?> GetByTradeIdAsync(Guid tradeId)
         => _repo.GetByTradeIdAsync(tradeId);
 }

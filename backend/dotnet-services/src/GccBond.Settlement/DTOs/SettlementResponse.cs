@@ -1,4 +1,5 @@
 using GccBond.Shared.Models;
+using SettlementModel = GccBond.Shared.Models.Settlement;
 
 namespace GccBond.Settlement.DTOs;
 
@@ -13,7 +14,7 @@ public record SettlementResponse
     public string?  FailureReason  { get; init; }
     public DateTime CreatedAt      { get; init; }
 
-    public static SettlementResponse FromModel(Settlement s) => new()
+    public static SettlementResponse FromModel(SettlementModel s) => new()
     {
         Id             = s.Id,
         TradeId        = s.TradeId,
