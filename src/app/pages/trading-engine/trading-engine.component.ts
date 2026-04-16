@@ -1,6 +1,7 @@
 import { Component, signal, inject, OnInit } from '@angular/core';
 import { NgClass, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { TradingService, PlaceOrderDto } from '../../services/trading.service';
 import { BondService } from '../../services/bond.service';
 import { Order, Bond } from '../../core/models/api.models';
@@ -39,6 +40,7 @@ interface OrderDisplay {
 export class TradingEngineComponent implements OnInit {
   private readonly tradingSvc = inject(TradingService);
   private readonly bondSvc    = inject(BondService);
+  private readonly route      = inject(ActivatedRoute);
 
   orderSide  = signal<'buy' | 'sell'>('buy');
   orderType  = signal('Limit');
@@ -98,14 +100,19 @@ export class TradingEngineComponent implements OnInit {
   }
 
   private loadBonds() {
+    const preselectedId = this.route.snapshot.queryParamMap.get('bondId');
     this.bondSvc.search({ page: 1, pageSize: 10, status: 'Active' }).subscribe({
       next: res => {
         this.loading.set(false);
         const bonds = (res.data?.items ?? []).map(b => this.mapWatchlistBond(b));
         this._watchlist.set(bonds);
-        if (bonds.length > 0 && !this.selectedBond().id) {
-          this.selectedBond.set(bonds[0]);
-          this.limitPrice = parseFloat(bonds[0].price) || 100.25;
+        // Auto-select the bond coming from the marketplace, otherwise default to first
+        const target = preselectedId
+          ? bonds.find(b => b.id === preselectedId) ?? bonds[0]
+          : bonds[0];
+        if (target) {
+          this.selectedBond.set(target);
+          this.limitPrice = parseFloat(target.price) || 100.25;
         }
       },
       error: () => this.loading.set(false),

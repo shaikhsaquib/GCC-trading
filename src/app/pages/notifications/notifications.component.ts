@@ -1,6 +1,7 @@
 import { Component, signal, inject, OnInit } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../core/services/auth.service';
 import { NotificationsService } from '../../services/notifications.service';
 import { Notification } from '../../core/models/api.models';
 
@@ -40,6 +41,8 @@ const EVENT_META: Record<string, { title: string; icon: string; bg: string; colo
 })
 export class NotificationsComponent implements OnInit {
   private readonly notifSvc = inject(NotificationsService);
+  readonly auth             = inject(AuthService);
+  readonly isAdmin          = this.auth.isAdmin;
 
   activeTab    = signal('all');
   selectedType = signal('trade');
@@ -54,6 +57,7 @@ export class NotificationsComponent implements OnInit {
     { key: 'kyc',    label: 'KYC',          count: null },
   ];
 
+  // Admin-only: AML Alert type used in the compose panel
   notifTypes = [
     { key: 'trade',   label: 'Trade Alert',  icon: 'swap_horiz',    color: 'var(--accent-purple)' },
     { key: 'payment', label: 'Payment',      icon: 'payments',      color: 'var(--accent-teal)' },
@@ -67,15 +71,21 @@ export class NotificationsComponent implements OnInit {
     { key: 'sms',   label: 'SMS',                icon: 'sms',           enabled: false },
   ];
 
-  preferences = [
-    { label: 'Trade Executions',    desc: 'Order filled, cancelled or expired',    push: true,  email: true,  sms: true },
-    { label: 'Price Alerts',        desc: 'Bond price moves beyond threshold',     push: true,  email: false, sms: false },
-    { label: 'Coupon Payments',     desc: 'Coupon received or maturity',           push: true,  email: true,  sms: false },
-    { label: 'Settlement Updates',  desc: 'T+1 settlement status changes',         push: true,  email: true,  sms: false },
-    { label: 'KYC Status',          desc: 'Verification approved/rejected',        push: true,  email: true,  sms: true },
-    { label: 'AML Alerts',          desc: 'Compliance and risk alerts',            push: true,  email: true,  sms: true },
-    { label: 'System Announcements',desc: 'Maintenance and feature updates',       push: false, email: true,  sms: false },
+  private readonly allPreferences = [
+    { label: 'Trade Executions',    desc: 'Order filled, cancelled or expired',  push: true,  email: true,  sms: true,  adminOnly: false },
+    { label: 'Price Alerts',        desc: 'Bond price moves beyond threshold',   push: true,  email: false, sms: false, adminOnly: false },
+    { label: 'Coupon Payments',     desc: 'Coupon received or maturity',         push: true,  email: true,  sms: false, adminOnly: false },
+    { label: 'Settlement Updates',  desc: 'T+1 settlement status changes',       push: true,  email: true,  sms: false, adminOnly: false },
+    { label: 'KYC Status',          desc: 'Verification approved/rejected',      push: true,  email: true,  sms: true,  adminOnly: false },
+    { label: 'AML Alerts',          desc: 'Compliance and risk alerts',          push: true,  email: true,  sms: true,  adminOnly: true  },
+    { label: 'System Announcements',desc: 'Maintenance and feature updates',     push: false, email: true,  sms: false, adminOnly: false },
   ];
+
+  get preferences() {
+    return this.isAdmin()
+      ? this.allPreferences
+      : this.allPreferences.filter(p => !p.adminOnly);
+  }
 
   private _allNotifs = signal<NotifDisplay[]>([]);
 

@@ -1,6 +1,7 @@
 import { Component, signal, inject, OnInit } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { BondService } from '../../services/bond.service';
 import { Bond } from '../../core/models/api.models';
 
@@ -22,7 +23,7 @@ interface BondDisplay {
 @Component({
   selector: 'app-bond-marketplace',
   standalone: true,
-  imports: [NgClass, FormsModule],
+  imports: [NgClass, FormsModule, RouterLink],
   templateUrl: './bond-marketplace.component.html',
   styleUrl: './bond-marketplace.component.css',
 })

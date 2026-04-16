@@ -106,6 +106,7 @@ export class SidebarComponent {
       title: 'Trading',
       items: [
         { label: 'Bond Marketplace', icon: 'public',      route: '/marketplace' },
+        { label: 'Trading Engine',   icon: 'swap_horiz',  route: '/trading' },
         { label: 'My Portfolio',     icon: 'trending_up', route: '/portfolio' },
       ],
     },
