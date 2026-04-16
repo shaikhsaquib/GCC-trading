@@ -1,5 +1,6 @@
-using GccBond.Shared.Models;
-using GccBond.Trading.Services;
+using GccBond.Shared.DTOs;
+using GccBond.Trading.DTOs;
+using GccBond.Trading.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,53 +11,58 @@ namespace GccBond.Trading.Controllers;
 [Authorize]
 public class OrdersController : ControllerBase
 {
-    private readonly TradingService _trading;
+    private readonly ITradingService _trading;
 
-    public OrdersController(TradingService trading) => _trading = trading;
+    public OrdersController(ITradingService trading) => _trading = trading;
 
-    private Guid CurrentUserId => Guid.Parse(User.FindFirst("sub")!.Value);
+    private Guid CurrentUserId => Guid.TryParse(
+        User.FindFirst("sub")?.Value ?? User.FindFirst("userId")?.Value, out var id) ? id : Guid.Empty;
 
     // POST /api/v1/orders
     [HttpPost]
     public async Task<IActionResult> PlaceOrder([FromBody] PlaceOrderRequest req)
     {
         var order = await _trading.PlaceOrderAsync(req with { UserId = CurrentUserId });
-        return Created($"/api/v1/orders/{order.Id}", order);
+        return CreatedAtAction(nameof(GetOrder),
+            new { id = order.Id },
+            ApiResponse<OrderResponse>.Ok(OrderResponse.FromModel(order)));
     }
 
     // GET /api/v1/orders
     [HttpGet]
     public async Task<IActionResult> GetOrders(
         [FromQuery] string? status,
-        [FromQuery] int     limit  = 50,
+        [FromQuery] int     limit  = 20,
         [FromQuery] int     offset = 0)
     {
         var orders = await _trading.GetUserOrdersAsync(CurrentUserId, status, limit, offset);
-        return Ok(orders);
+        return Ok(ApiResponse<IEnumerable<OrderResponse>>.Ok(
+            orders.Select(OrderResponse.FromModel)));
     }
 
-    // GET /api/v1/orders/:id
+    // GET /api/v1/orders/{id}
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetOrder(Guid id)
     {
         var order = await _trading.GetOrderAsync(id, CurrentUserId);
-        return order is null ? NotFound() : Ok(order);
+        if (order is null) return NotFound(ApiResponse<object>.Fail("Order not found"));
+        return Ok(ApiResponse<OrderResponse>.Ok(OrderResponse.FromModel(order)));
     }
 
-    // DELETE /api/v1/orders/:id  (cancel)
+    // DELETE /api/v1/orders/{id}
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> CancelOrder(Guid id)
     {
         var order = await _trading.CancelOrderAsync(id, CurrentUserId);
-        return Ok(order);
+        return Ok(ApiResponse<OrderResponse>.Ok(OrderResponse.FromModel(order)));
     }
 
-    // GET /api/v1/orders/book/:bondId
+    // GET /api/v1/orders/book/{bondId}?depth=20
     [HttpGet("book/{bondId:guid}")]
     [AllowAnonymous]
     public async Task<IActionResult> GetOrderBook(Guid bondId, [FromQuery] int depth = 20)
     {
         var book = await _trading.GetOrderBookAsync(bondId, depth);
-        return Ok(book);
+        return Ok(ApiResponse<OrderBookResponse>.Ok(book));
     }
 }

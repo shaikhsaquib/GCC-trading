@@ -1,11 +1,11 @@
-using GccBond.Marketplace.Services;
-using GccBond.Shared.Infrastructure;
+using GccBond.Marketplace.Extensions;
+using GccBond.Marketplace.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console()
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
 try
@@ -13,14 +13,13 @@ try
     var builder = WebApplication.CreateBuilder(args);
     builder.Host.UseSerilog();
 
-    var connStr   = Environment.GetEnvironmentVariable("DATABASE_URL")
-                    ?? throw new InvalidOperationException("DATABASE_URL is not set");
-    var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
+    var jwtSecret = builder.Configuration["JWT_SECRET"]
+                    ?? Environment.GetEnvironmentVariable("JWT_SECRET")
                     ?? throw new InvalidOperationException("JWT_SECRET is not set");
 
-    builder.Services.AddSingleton(new DatabaseHelper(connStr));
-    builder.Services.AddScoped<MarketplaceService>();
+    builder.Services.AddMarketplaceServices(builder.Configuration);
     builder.Services.AddControllers();
+    builder.Services.AddEndpointsApiExplorer();
 
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(o =>
@@ -28,7 +27,7 @@ try
             o.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey         = new SymmetricSecurityKey(
+                IssuerSigningKey = new SymmetricSecurityKey(
                     System.Text.Encoding.UTF8.GetBytes(jwtSecret)),
                 ValidateIssuer   = false,
                 ValidateAudience = false,
@@ -39,6 +38,7 @@ try
     builder.Services.AddHealthChecks();
 
     var app = builder.Build();
+    app.UseMiddleware<ExceptionMiddleware>();
     app.UseSerilogRequestLogging();
     app.UseAuthentication();
     app.UseAuthorization();

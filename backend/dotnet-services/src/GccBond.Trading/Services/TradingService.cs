@@ -1,28 +1,23 @@
-using Dapper;
+using GccBond.Shared.Exceptions;
 using GccBond.Shared.Infrastructure;
 using GccBond.Shared.Models;
+using GccBond.Trading.DTOs;
+using GccBond.Trading.Interfaces;
 using Serilog;
 
 namespace GccBond.Trading.Services;
 
-public record PlaceOrderRequest
+/// <summary>
+/// Business logic for order placement and cancellation (FSD §6.4, §8.4).
+/// Contains NO SQL — all data access goes through IOrderRepository.
+/// </summary>
+public class TradingService : ITradingService
 {
-    public Guid      UserId        { get; init; }
-    public Guid      BondId        { get; init; }
-    public OrderSide Side          { get; init; }
-    public OrderType OrderType     { get; init; }
-    public decimal   Quantity      { get; init; }
-    public decimal?  Price         { get; init; }
-    public DateTime? ExpiresAt     { get; init; }
-    public string    IdempotencyKey{ get; init; } = "";
-}
-
-public class TradingService
-{
-    private readonly DatabaseHelper _db;
-    private readonly RedisHelper    _redis;
-    private readonly IEventBus      _eventBus;
-    private readonly MatchingEngine _matchingEngine;
+    private readonly IOrderRepository _orders;
+    private readonly DatabaseHelper   _db;
+    private readonly RedisHelper      _redis;
+    private readonly IEventBus        _eventBus;
+    private readonly IMatchingEngine  _matchingEngine;
 
     // Risk-tiered trade limits (FSD §8.4)
     private static readonly Dictionary<string, decimal> TradeLimits = new()
@@ -32,34 +27,36 @@ public class TradingService
         ["HIGH"]   = 200_000m,
     };
 
-    public TradingService(DatabaseHelper db, RedisHelper redis, IEventBus eventBus, MatchingEngine matchingEngine)
+    public TradingService(
+        IOrderRepository orders,
+        DatabaseHelper   db,
+        RedisHelper      redis,
+        IEventBus        eventBus,
+        IMatchingEngine  matchingEngine)
     {
+        _orders         = orders;
         _db             = db;
         _redis          = redis;
         _eventBus       = eventBus;
         _matchingEngine = matchingEngine;
     }
 
-    // ── Place Order ────────────────────────────────────────────────────────────
-
     public async Task<Order> PlaceOrderAsync(PlaceOrderRequest req)
     {
         // Idempotency check
-        var existing = await _db.QueryFirstOrDefaultAsync<Order>(
-            "SELECT * FROM trading.orders WHERE idempotency_key = @Key",
-            new { Key = req.IdempotencyKey });
+        var existing = await _orders.GetByIdempotencyKeyAsync(req.IdempotencyKey);
         if (existing is not null) return existing;
 
-        // Trading enabled?
+        // Trading feature flag
         var tradingEnabled = await _redis.GetFeatureFlagAsync("ENABLE_TRADING");
         if (!tradingEnabled)
-            throw new InvalidOperationException("Trading is currently disabled");
+            throw new BusinessRuleException("Trading is currently disabled");
 
         // Load bond
         var bond = await _db.QueryFirstOrDefaultAsync<BondListing>(
             "SELECT * FROM bonds.listings WHERE id = @Id AND status = 'Active'",
             new { Id = req.BondId });
-        if (bond is null) throw new KeyNotFoundException("Bond not found or not active");
+        if (bond is null) throw new NotFoundException("Bond");
 
         // Load user risk profile
         var riskRow = await _db.QueryFirstOrDefaultAsync<dynamic>(
@@ -68,161 +65,118 @@ public class TradingService
         var riskLevel = (string?)riskRow?.risk_level ?? "LOW";
 
         // Validate trade value vs risk limit
-        var price     = req.Price ?? bond.CurrentPrice;
-        var tradeValue= req.Quantity * price;
-        var limit     = TradeLimits.GetValueOrDefault(riskLevel.ToUpper(), 10_000m);
+        var price      = req.Price ?? bond.CurrentPrice;
+        var tradeValue = req.Quantity * price;
+        var limit      = TradeLimits.GetValueOrDefault(riskLevel.ToUpper(), 10_000m);
+
         if (tradeValue > limit)
-            throw new InvalidOperationException($"Trade value {tradeValue:F2} AED exceeds risk limit {limit:F2} AED for {riskLevel} risk profile");
+            throw new BusinessRuleException(
+                $"Trade value {tradeValue:F2} AED exceeds {riskLevel} risk limit of {limit:F2} AED");
 
-        // Validate minimum investment for buy orders
         if (req.Side == OrderSide.Buy && req.Quantity < bond.MinInvestment)
-            throw new InvalidOperationException($"Minimum investment is {bond.MinInvestment:F2}");
+            throw new BusinessRuleException($"Minimum investment is {bond.MinInvestment:F2}");
 
-        // Validate limit order has a price
         if (req.OrderType == OrderType.Limit && req.Price is null)
-            throw new ArgumentException("Limit order requires a price");
+            throw new ValidationException("Price is required for limit orders");
 
-        // For buy orders: check and freeze wallet funds
+        // Freeze funds for buy orders
         if (req.Side == OrderSide.Buy)
             await FreezeFundsAsync(req.UserId, tradeValue);
 
-        var orderId = Guid.NewGuid();
-        var now     = DateTime.UtcNow;
-
-        var order = await _db.TransactionAsync(async (conn, tx) =>
+        var order = new Order
         {
-            await conn.ExecuteAsync(@"
-                INSERT INTO trading.orders
-                    (id, user_id, bond_id, side, order_type, quantity, filled_quantity,
-                     price, avg_fill_price, status, expires_at, idempotency_key, created_at, updated_at)
-                VALUES
-                    (@Id, @UserId, @BondId, @Side, @OrderType, @Quantity, 0,
-                     @Price, NULL, 'Open', @ExpiresAt, @IdempotencyKey, @Now, @Now)",
-                new
-                {
-                    Id             = orderId,
-                    req.UserId,
-                    req.BondId,
-                    Side           = req.Side.ToString(),
-                    OrderType      = req.OrderType.ToString(),
-                    req.Quantity,
-                    req.Price,
-                    req.ExpiresAt,
-                    req.IdempotencyKey,
-                    Now            = now,
-                }, tx);
+            Id             = Guid.NewGuid(),
+            UserId         = req.UserId,
+            BondId         = req.BondId,
+            Side           = req.Side,
+            OrderType      = req.OrderType,
+            Quantity       = req.Quantity,
+            FilledQuantity = 0,
+            Price          = req.Price,
+            Status         = OrderStatus.Open,
+            ExpiresAt      = req.ExpiresAt,
+            IdempotencyKey = req.IdempotencyKey,
+            CreatedAt      = DateTime.UtcNow,
+            UpdatedAt      = DateTime.UtcNow,
+        };
 
-            return await conn.QueryFirstOrDefaultAsync<Order>(
-                "SELECT * FROM trading.orders WHERE id = @Id", new { Id = orderId }, tx);
-        });
+        var created = await _orders.CreateAsync(order);
 
         // Add to Redis order book cache
-        await AddToOrderBook(order!);
+        await AddToOrderBookAsync(created);
 
-        // Trigger matching engine (non-blocking — runs in background task)
-        _ = Task.Run(() => _matchingEngine.MatchAsync(order!));
+        // Trigger matching engine (non-blocking background task)
+        _ = Task.Run(() => _matchingEngine.MatchAsync(created));
 
-        return order!;
+        return created;
     }
-
-    // ── Cancel Order ───────────────────────────────────────────────────────────
 
     public async Task<Order> CancelOrderAsync(Guid orderId, Guid userId)
     {
-        var order = await _db.QueryFirstOrDefaultAsync<Order>(
-            "SELECT * FROM trading.orders WHERE id = @Id AND user_id = @UserId",
-            new { Id = orderId, UserId = userId });
-
-        if (order is null) throw new KeyNotFoundException("Order not found");
+        var order = await _orders.GetByIdAndUserAsync(orderId, userId)
+            ?? throw new NotFoundException("Order");
 
         if (order.Status is not (OrderStatus.Open or OrderStatus.PartiallyFilled))
-            throw new InvalidOperationException($"Cannot cancel order in status {order.Status}");
+            throw new BusinessRuleException($"Cannot cancel order in status {order.Status}");
 
-        await _db.ExecuteAsync(@"
-            UPDATE trading.orders
-            SET status = 'Cancelled', cancel_reason = 'User cancelled', updated_at = @Now
-            WHERE id = @Id",
-            new { Id = orderId, Now = DateTime.UtcNow });
+        await _orders.UpdateStatusAsync(orderId, OrderStatus.Cancelled, "User cancelled");
+        await RemoveFromOrderBookAsync(order);
 
-        // Remove from Redis order book
-        await RemoveFromOrderBook(order);
-
-        // Unfreeze wallet funds for buy orders
+        // Unfreeze remaining frozen funds
         if (order.Side == OrderSide.Buy)
         {
             var unfilled  = order.Quantity - order.FilledQuantity;
             var frozenAmt = unfilled * (order.Price ?? 0);
-            if (frozenAmt > 0)
-                await UnfreezeFundsAsync(userId, frozenAmt);
+            if (frozenAmt > 0) await UnfreezeFundsAsync(userId, frozenAmt);
         }
 
-        await _eventBus.PublishAsync(Events.OrderCancelled, new { order_id = orderId, user_id = userId });
+        await _eventBus.PublishAsync(Events.OrderCancelled,
+            new { order_id = orderId, user_id = userId });
 
         return order with { Status = OrderStatus.Cancelled };
     }
 
-    // ── Query ──────────────────────────────────────────────────────────────────
+    public Task<Order?> GetOrderAsync(Guid orderId, Guid userId)
+        => _orders.GetByIdAndUserAsync(orderId, userId);
 
-    public async Task<Order?> GetOrderAsync(Guid orderId, Guid userId)
-        => await _db.QueryFirstOrDefaultAsync<Order>(
-            "SELECT * FROM trading.orders WHERE id = @Id AND user_id = @UserId",
-            new { Id = orderId, UserId = userId });
+    public Task<IEnumerable<Order>> GetUserOrdersAsync(Guid userId, string? status, int limit, int offset)
+        => _orders.GetUserOrdersAsync(userId, status, limit, offset);
 
-    public async Task<IEnumerable<Order>> GetUserOrdersAsync(Guid userId, string? status = null, int limit = 50, int offset = 0)
+    public async Task<OrderBookResponse> GetOrderBookAsync(Guid bondId, int depth)
     {
-        var sql = status is null
-            ? "SELECT * FROM trading.orders WHERE user_id = @UserId ORDER BY created_at DESC LIMIT @Limit OFFSET @Offset"
-            : "SELECT * FROM trading.orders WHERE user_id = @UserId AND status = @Status ORDER BY created_at DESC LIMIT @Limit OFFSET @Offset";
-        return await _db.QueryAsync<Order>(sql, new { UserId = userId, Status = status, Limit = limit, Offset = offset });
-    }
-
-    public async Task<IEnumerable<dynamic>> GetOrderBookAsync(Guid bondId, int depth = 20)
-    {
-        var buys = await _db.QueryAsync<dynamic>(@"
-            SELECT price, SUM(quantity - filled_quantity) AS quantity, COUNT(*) AS orders
-            FROM trading.orders
-            WHERE bond_id = @BondId AND side = 'Buy' AND status IN ('Open','PartiallyFilled')
-            GROUP BY price ORDER BY price DESC LIMIT @Depth",
-            new { BondId = bondId, Depth = depth });
-
-        var sells = await _db.QueryAsync<dynamic>(@"
-            SELECT price, SUM(quantity - filled_quantity) AS quantity, COUNT(*) AS orders
-            FROM trading.orders
-            WHERE bond_id = @BondId AND side = 'Sell' AND status IN ('Open','PartiallyFilled')
-            GROUP BY price ORDER BY price ASC LIMIT @Depth",
-            new { BondId = bondId, Depth = depth });
-
-        return new { bids = buys, asks = sells } as dynamic;
+        var (bids, asks) = await _orders.GetOrderBookAsync(bondId, depth);
+        return new OrderBookResponse
+        {
+            Bids = bids.Select(b => new OrderBookLevel { Price = (decimal)b.price, Quantity = (decimal)b.quantity, Orders = (int)b.orders }),
+            Asks = asks.Select(a => new OrderBookLevel { Price = (decimal)a.price, Quantity = (decimal)a.quantity, Orders = (int)a.orders }),
+        };
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
-    private async Task AddToOrderBook(Order order)
+    private async Task AddToOrderBookAsync(Order order)
     {
-        var bondId = order.BondId.ToString();
+        var key = $"order-book:{order.BondId}:";
         if (order.Side == OrderSide.Buy)
         {
-            // Negate price so highest price sorts first (ascending order)
             var score = order.OrderType == OrderType.Market ? double.MaxValue : -(double)(order.Price ?? 0);
-            await _redis.OrderBookAddAsync($"order-book:{bondId}:buy", order.Id.ToString(), score);
+            await _redis.OrderBookAddAsync(key + "buy", order.Id.ToString(), score);
         }
         else
         {
             var score = order.OrderType == OrderType.Market ? 0.0 : (double)(order.Price ?? 0);
-            await _redis.OrderBookAddAsync($"order-book:{bondId}:sell", order.Id.ToString(), score);
+            await _redis.OrderBookAddAsync(key + "sell", order.Id.ToString(), score);
         }
     }
 
-    private async Task RemoveFromOrderBook(Order order)
+    private async Task RemoveFromOrderBookAsync(Order order)
     {
-        var bondId = order.BondId.ToString();
-        var key    = order.Side == OrderSide.Buy ? $"order-book:{bondId}:buy" : $"order-book:{bondId}:sell";
-        await _redis.OrderBookRemoveAsync(key, order.Id.ToString());
+        var side = order.Side == OrderSide.Buy ? "buy" : "sell";
+        await _redis.OrderBookRemoveAsync($"order-book:{order.BondId}:{side}", order.Id.ToString());
     }
 
     private async Task FreezeFundsAsync(Guid userId, decimal amount)
     {
-        // Call wallet service via DB (shared PostgreSQL) — freeze funds to prevent double-spending
         var rows = await _db.ExecuteAsync(@"
             UPDATE wallet.wallets
             SET available_balance = available_balance - @Amount,
@@ -232,7 +186,7 @@ public class TradingService
             new { UserId = userId, Amount = amount });
 
         if (rows == 0)
-            throw new InvalidOperationException("Insufficient available balance");
+            throw new BusinessRuleException("Insufficient available balance");
     }
 
     private Task UnfreezeFundsAsync(Guid userId, decimal amount)

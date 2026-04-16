@@ -1,28 +1,29 @@
+using GccBond.Settlement.Extensions;
 using GccBond.Settlement.Jobs;
-using GccBond.Settlement.Services;
-using GccBond.Shared.Infrastructure;
+using GccBond.Settlement.Middleware;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
-Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateLogger();
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
 
 try
 {
     var builder = WebApplication.CreateBuilder(args);
     builder.Host.UseSerilog();
 
-    var connStr   = Environment.GetEnvironmentVariable("DATABASE_URL")
+    var connStr   = builder.Configuration.GetConnectionString("Postgres")
+                    ?? Environment.GetEnvironmentVariable("DATABASE_URL")
                     ?? throw new InvalidOperationException("DATABASE_URL is not set");
-    var amqpUrl   = Environment.GetEnvironmentVariable("RABBITMQ_URL") ?? "amqp://localhost";
-    var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
+    var jwtSecret = builder.Configuration["JWT_SECRET"]
+                    ?? Environment.GetEnvironmentVariable("JWT_SECRET")
                     ?? throw new InvalidOperationException("JWT_SECRET is not set");
 
-    builder.Services.AddSingleton(new DatabaseHelper(connStr));
-    builder.Services.AddSingleton<IEventBus>(new RabbitMqEventBus(amqpUrl, "settlement"));
-    builder.Services.AddScoped<SettlementService>();
+    builder.Services.AddSettlementServices(builder.Configuration);
     builder.Services.AddScoped<SettlementJob>();
     builder.Services.AddControllers();
 
@@ -56,6 +57,7 @@ try
     builder.Services.AddHealthChecks();
 
     var app = builder.Build();
+    app.UseMiddleware<ExceptionMiddleware>();
     app.UseSerilogRequestLogging();
     app.UseAuthentication();
     app.UseAuthorization();

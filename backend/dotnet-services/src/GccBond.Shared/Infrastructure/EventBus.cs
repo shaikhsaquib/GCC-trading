@@ -1,4 +1,5 @@
 using System.Text;
+using GccBond.Shared.Interfaces;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -10,40 +11,33 @@ namespace GccBond.Shared.Infrastructure;
 
 public record DomainEvent<T>
 {
-    public string EventId      { get; init; } = Guid.NewGuid().ToString();
-    public string EventType    { get; init; } = "";
-    public string Source       { get; init; } = "dotnet";
-    public T?     Payload      { get; init; }
-    public string CorrelationId{ get; init; } = "";
-    public DateTime Timestamp  { get; init; } = DateTime.UtcNow;
+    public string   EventId       { get; init; } = Guid.NewGuid().ToString();
+    public string   EventType     { get; init; } = "";
+    public string   Source        { get; init; } = "dotnet";
+    public T?       Payload       { get; init; }
+    public string   CorrelationId { get; init; } = "";
+    public DateTime Timestamp     { get; init; } = DateTime.UtcNow;
 }
 
 // ── Well-known routing keys ───────────────────────────────────────────────────
 
 public static class Events
 {
-    public const string UserRegistered  = "user.registered";
-    public const string KycApproved     = "kyc.approved";
-    public const string KycRejected     = "kyc.rejected";
-    public const string WalletFunded    = "wallet.funded";
-    public const string TradeExecuted   = "trade.executed";
-    public const string OrderFilled     = "order.filled";
-    public const string OrderCancelled  = "order.cancelled";
-    public const string OrderExpired    = "order.expired";
-    public const string SettlementDone  = "settlement.completed";
-    public const string SettlementFailed= "settlement.failed";
-    public const string CouponPaid      = "coupon.paid";
-    public const string AmlAlert        = "aml.alert";
+    public const string UserRegistered   = "user.registered";
+    public const string KycApproved      = "kyc.approved";
+    public const string KycRejected      = "kyc.rejected";
+    public const string WalletFunded     = "wallet.funded";
+    public const string TradeExecuted    = "trade.executed";
+    public const string OrderFilled      = "order.filled";
+    public const string OrderCancelled   = "order.cancelled";
+    public const string OrderExpired     = "order.expired";
+    public const string SettlementDone   = "settlement.completed";
+    public const string SettlementFailed = "settlement.failed";
+    public const string CouponPaid       = "coupon.paid";
+    public const string AmlAlert         = "aml.alert";
 }
 
-// ── RabbitMQ event bus ────────────────────────────────────────────────────────
-
-public interface IEventBus
-{
-    Task PublishAsync<T>(string routingKey, T payload, string correlationId = "");
-    Task SubscribeAsync<T>(string queue, string routingKey, Func<DomainEvent<T>, Task> handler);
-    void Close();
-}
+// ── RabbitMQ event bus — implements shared IEventBus interface ────────────────
 
 public class RabbitMqEventBus : IEventBus, IDisposable
 {
@@ -73,7 +67,10 @@ public class RabbitMqEventBus : IEventBus, IDisposable
         _channel.ExchangeDeclare(DlxExchange, ExchangeType.Topic, durable: true);
     }
 
-    public Task PublishAsync<T>(string routingKey, T payload, string correlationId = "")
+    public Task PublishAsync<T>(string routingKey, T payload) where T : class
+        => PublishAsync(routingKey, payload, "");
+
+    public Task PublishAsync<T>(string routingKey, T payload, string correlationId = "") where T : class
     {
         var envelope = new DomainEvent<T>
         {
@@ -93,6 +90,9 @@ public class RabbitMqEventBus : IEventBus, IDisposable
         _channel.BasicPublish(Exchange, routingKey, props, body);
         return Task.CompletedTask;
     }
+
+    public Task SubscribeAsync<T>(string queue, string routingKey, Func<T, Task> handler) where T : class
+        => SubscribeAsync<T>(queue, routingKey, (DomainEvent<T> e) => e.Payload is not null ? handler(e.Payload) : Task.CompletedTask);
 
     public Task SubscribeAsync<T>(string queue, string routingKey, Func<DomainEvent<T>, Task> handler)
     {

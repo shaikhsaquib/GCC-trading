@@ -1,4 +1,7 @@
-using GccBond.AML.Services;
+using GccBond.AML.DTOs;
+using GccBond.AML.Interfaces;
+using GccBond.Shared.DTOs;
+using GccBond.Shared.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,9 +12,15 @@ namespace GccBond.AML.Controllers;
 [Authorize(Roles = "ADMIN,L2_ADMIN,COMPLIANCE")]
 public class AmlController : ControllerBase
 {
-    private readonly AmlService _aml;
+    private readonly IAmlService _aml;
+    private readonly string      _serviceSecret;
 
-    public AmlController(AmlService aml) => _aml = aml;
+    public AmlController(IAmlService aml, IConfiguration config)
+    {
+        _aml           = aml;
+        _serviceSecret = config["SERVICE_SECRET"]
+                         ?? Environment.GetEnvironmentVariable("SERVICE_SECRET") ?? "";
+    }
 
     // GET /api/v1/aml/alerts
     [HttpGet("alerts")]
@@ -21,35 +30,33 @@ public class AmlController : ControllerBase
         [FromQuery] int     offset = 0)
     {
         var alerts = await _aml.GetAlertsAsync(status, limit, offset);
-        return Ok(alerts);
+        return Ok(ApiResponse<IEnumerable<AmlAlertResponse>>.Ok(
+            alerts.Select(AmlAlertResponse.FromModel)));
     }
 
-    // PATCH /api/v1/aml/alerts/:id
+    // PATCH /api/v1/aml/alerts/{id}
     [HttpPatch("alerts/{id:guid}")]
     public async Task<IActionResult> UpdateAlert(Guid id, [FromBody] UpdateAlertRequest req)
     {
-        if (!Enum.TryParse<AlertStatus>(req.Status, out var status))
-            return BadRequest("Invalid status");
+        if (!Enum.TryParse<AlertStatus>(req.Status, true, out var status))
+            return BadRequest(ApiResponse<object>.Fail("Invalid status value"));
 
         await _aml.UpdateAlertStatusAsync(id, status, req.SarRef);
         return NoContent();
     }
 
-    // POST /api/v1/aml/screen  (internal — called by Trading/Wallet services)
+    // POST /api/v1/aml/screen  (internal — secured via X-Service-Key header)
     [HttpPost("screen")]
-    [AllowAnonymous] // secured via service-to-service secret header
+    [AllowAnonymous]
     public async Task<IActionResult> Screen([FromBody] ScreenRequest req)
     {
         var serviceKey = Request.Headers["X-Service-Key"].FirstOrDefault();
-        if (serviceKey != Environment.GetEnvironmentVariable("SERVICE_SECRET"))
-            return Unauthorized();
+        if (string.IsNullOrEmpty(_serviceSecret) || serviceKey != _serviceSecret)
+            return Unauthorized(ApiResponse<object>.Fail("Invalid service key"));
 
         await _aml.ScreenTransactionAsync(
             req.UserId, req.Amount, req.Currency, req.TransactionId, req.Type);
 
-        return Ok(new { screened = true });
+        return Ok(ApiResponse<object>.Ok(new { screened = true }));
     }
 }
-
-public record UpdateAlertRequest(string Status, string? SarRef);
-public record ScreenRequest(Guid UserId, decimal Amount, string Currency, string TransactionId, string Type);

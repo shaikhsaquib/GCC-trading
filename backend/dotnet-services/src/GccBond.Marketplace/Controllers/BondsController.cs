@@ -1,5 +1,6 @@
-using GccBond.Marketplace.Services;
-using GccBond.Shared.Models;
+using GccBond.Marketplace.DTOs;
+using GccBond.Marketplace.Interfaces;
+using GccBond.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,51 +10,48 @@ namespace GccBond.Marketplace.Controllers;
 [Route("api/v1/bonds")]
 public class BondsController : ControllerBase
 {
-    private readonly MarketplaceService _marketplace;
+    private readonly IMarketplaceService _marketplace;
 
-    public BondsController(MarketplaceService marketplace) => _marketplace = marketplace;
+    public BondsController(IMarketplaceService marketplace) => _marketplace = marketplace;
 
     // GET /api/v1/bonds
     [HttpGet]
     [AllowAnonymous]
     public async Task<IActionResult> SearchBonds([FromQuery] BondSearchRequest req)
     {
-        var (items, total) = await _marketplace.SearchBondsAsync(req);
-        return Ok(new
-        {
-            data    = items,
-            total,
-            limit   = req.Limit,
-            offset  = req.Offset,
-        });
+        var result = await _marketplace.SearchBondsAsync(req);
+        return Ok(ApiResponse<PagedBondResponse>.Ok(result));
     }
 
-    // GET /api/v1/bonds/:id
+    // GET /api/v1/bonds/{id}
     [HttpGet("{id:guid}")]
     [AllowAnonymous]
     public async Task<IActionResult> GetBond(Guid id)
     {
         var detail = await _marketplace.GetBondDetailAsync(id);
-        return detail is null ? NotFound() : Ok(detail);
+        if (detail is null) return NotFound(ApiResponse<object>.Fail("Bond not found"));
+        return Ok(ApiResponse<BondDetailResponse>.Ok(detail));
     }
 
     // POST /api/v1/bonds  (admin only)
     [HttpPost]
     [Authorize(Roles = "ADMIN,L2_ADMIN")]
-    public async Task<IActionResult> CreateBond([FromBody] BondListing bond)
+    public async Task<IActionResult> CreateBond([FromBody] CreateBondRequest req)
     {
-        var created = await _marketplace.CreateBondAsync(bond);
-        return Created($"/api/v1/bonds/{created.Id}", created);
+        var bond = await _marketplace.CreateBondAsync(req);
+        return CreatedAtAction(nameof(GetBond),
+            new { id = bond.Id },
+            ApiResponse<BondResponse>.Ok(bond));
     }
 
-    // PATCH /api/v1/bonds/:id/price  (admin only)
+    // PATCH /api/v1/bonds/{id}/price  (admin only)
     [HttpPatch("{id:guid}/price")]
     [Authorize(Roles = "ADMIN,L2_ADMIN")]
-    public async Task<IActionResult> UpdatePrice(Guid id, [FromBody] PriceUpdateRequest req)
+    public async Task<IActionResult> UpdatePrice(Guid id, [FromBody] UpdatePriceRequest req)
     {
         await _marketplace.UpdateBondPriceAsync(id, req.Price);
         return NoContent();
     }
 }
 
-public record PriceUpdateRequest(decimal Price);
+public record UpdatePriceRequest(decimal Price);
