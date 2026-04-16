@@ -93,7 +93,7 @@ export class KycRepository {
       db.query(
         `SELECT ks.*, u.first_name, u.last_name, u.email
          FROM kyc.submissions ks
-         JOIN auth.users u ON u.id = ks.user_id
+         JOIN app_auth.users u ON u.id = ks.user_id
          ${conditions}
          ORDER BY ks.created_at DESC
          LIMIT $1 OFFSET $2`,

@@ -148,7 +148,7 @@ export class KycService {
         [dto.riskLevel, reviewerId, dto.reviewNotes ?? null, submissionId],
       );
       await client.query(
-        "UPDATE auth.users SET status = 'ACTIVE', updated_at = NOW() WHERE id = $1",
+        "UPDATE app_auth.users SET status = 'ACTIVE', updated_at = NOW() WHERE id = $1",
         [submission.user_id],
       );
     });

@@ -7,7 +7,7 @@ export class AdminRepository {
       db.query<{ total: string; active: string }>(`
         SELECT COUNT(*) AS total,
                COUNT(*) FILTER (WHERE status = 'ACTIVE') AS active
-        FROM auth.users`),
+        FROM app_auth.users`),
       db.query<{ pending: string }>(`
         SELECT COUNT(*) AS pending FROM kyc.submissions WHERE status IN ('Submitted','UnderReview')`),
       db.query<{ total: string }>(`
@@ -51,11 +51,11 @@ export class AdminRepository {
       db.query(
         `SELECT id, first_name, last_name, role, status, nationality,
                 preferred_currency, created_at, last_login_at
-         FROM auth.users ${where} ORDER BY created_at DESC LIMIT $${idx} OFFSET $${idx+1}`,
+         FROM app_auth.users ${where} ORDER BY created_at DESC LIMIT $${idx} OFFSET $${idx+1}`,
         [...params, limit, offset],
       ),
       db.query<{ count: string }>(
-        `SELECT COUNT(*) FROM auth.users ${where}`,
+        `SELECT COUNT(*) FROM app_auth.users ${where}`,
         params,
       ),
     ]);
@@ -65,7 +65,7 @@ export class AdminRepository {
 
   async updateUserStatus(id: string, status: string): Promise<void> {
     await db.query(
-      "UPDATE auth.users SET status = $1, updated_at = NOW() WHERE id = $2",
+      "UPDATE app_auth.users SET status = $1, updated_at = NOW() WHERE id = $2",
       [status, id],
     );
   }

@@ -18,7 +18,7 @@ import { logger }               from '../logger';
 
 async function getUserContact(userId: string) {
   const r = await db.query<{ email: string; phone: string; first_name: string }>(
-    'SELECT email, phone, first_name FROM auth.users WHERE id = $1',
+    'SELECT email, phone, first_name FROM app_auth.users WHERE id = $1',
     [userId],
   );
   const row = r.rows[0];
@@ -66,7 +66,7 @@ export async function registerEventHandlers(
       const user = await getUserContact(user_id);
 
       const currencyRow = await db.query<{ preferred_currency: string }>(
-        'SELECT preferred_currency FROM auth.users WHERE id = $1',
+        'SELECT preferred_currency FROM app_auth.users WHERE id = $1',
         [user_id],
       );
       const currency = (currencyRow.rows[0]?.preferred_currency ?? 'AED') as any;
