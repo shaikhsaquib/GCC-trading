@@ -46,7 +46,7 @@ export class SidebarComponent {
 
   logout() { this.auth.logout(); }
 
-  navGroups: NavGroup[] = [
+  private readonly adminNavGroups: NavGroup[] = [
     {
       title: 'Main',
       items: [
@@ -56,34 +56,63 @@ export class SidebarComponent {
     {
       title: 'User',
       items: [
-        { label: 'Identity & Auth', icon: 'lock', route: '/identity' },
-        { label: 'KYC & Onboarding', icon: 'verified_user', route: '/kyc' },
+        { label: 'Identity & Auth',   icon: 'lock',                   route: '/identity' },
+        { label: 'KYC & Onboarding',  icon: 'verified_user',          route: '/kyc' },
         { label: 'Wallet & Payments', icon: 'account_balance_wallet', route: '/wallet' },
       ],
     },
     {
       title: 'Trading',
       items: [
-        { label: 'Bond Marketplace', icon: 'public', route: '/marketplace' },
-        { label: 'Trading Engine', icon: 'swap_horiz', route: '/trading' },
-        { label: 'Settlement', icon: 'task_alt', route: '/settlement' },
-        { label: 'Portfolio Mgmt', icon: 'trending_up', route: '/portfolio' },
+        { label: 'Bond Marketplace', icon: 'public',      route: '/marketplace' },
+        { label: 'Trading Engine',   icon: 'swap_horiz',  route: '/trading' },
+        { label: 'Settlement',       icon: 'task_alt',    route: '/settlement' },
+        { label: 'Portfolio Mgmt',   icon: 'trending_up', route: '/portfolio' },
       ],
     },
     {
       title: 'Compliance',
       items: [
-        { label: 'AML & Compliance', icon: 'security', route: '/aml', badge: '3', badgeClass: 'alert' },
-        { label: 'Audit Trail', icon: 'storage', route: '/audit' },
+        { label: 'AML & Compliance', icon: 'security', route: '/aml',   badge: '3', badgeClass: 'alert' },
+        { label: 'Audit Trail',      icon: 'storage',  route: '/audit' },
       ],
     },
     {
       title: 'System',
       items: [
-        { label: 'Notifications', icon: 'notifications', route: '/notifications' },
-        { label: 'Admin Module', icon: 'manage_accounts', route: '/admin' },
-        { label: 'Scheduler', icon: 'schedule', route: '/scheduler' },
+        { label: 'Notifications', icon: 'notifications',   route: '/notifications' },
+        { label: 'Admin Module',  icon: 'manage_accounts', route: '/admin' },
+        { label: 'Scheduler',     icon: 'schedule',        route: '/scheduler' },
       ],
     },
   ];
+
+  private readonly investorNavGroups: NavGroup[] = [
+    {
+      title: 'Main',
+      items: [
+        { label: 'Dashboard', icon: 'dashboard', route: '/' },
+      ],
+    },
+    {
+      title: 'My Account',
+      items: [
+        { label: 'Identity & Auth',   icon: 'lock',                   route: '/identity' },
+        { label: 'KYC & Onboarding',  icon: 'verified_user',          route: '/kyc' },
+        { label: 'Wallet & Payments', icon: 'account_balance_wallet', route: '/wallet' },
+        { label: 'Notifications',     icon: 'notifications',          route: '/notifications' },
+      ],
+    },
+    {
+      title: 'Trading',
+      items: [
+        { label: 'Bond Marketplace', icon: 'public',      route: '/marketplace' },
+        { label: 'My Portfolio',     icon: 'trending_up', route: '/portfolio' },
+      ],
+    },
+  ];
+
+  get navGroups(): NavGroup[] {
+    return this.auth.isAdmin() ? this.adminNavGroups : this.investorNavGroups;
+  }
 }
