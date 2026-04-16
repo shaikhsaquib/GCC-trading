@@ -28,9 +28,22 @@ import { notifService, walletService, auditService } from './routes';
 async function bootstrap(): Promise<void> {
   logger.info('Starting GCC Bond Node API...', { env: config.env });
 
-  // 1. Connect infrastructure
-  await connectMongoDB();
-  await eventBus.connect();
+  // 1. Connect infrastructure (non-fatal — degrade gracefully if unavailable)
+  try {
+    await connectMongoDB();
+  } catch (err) {
+    logger.warn('MongoDB unavailable — KYC document upload and audit logs disabled', {
+      error: (err as Error).message,
+    });
+  }
+
+  try {
+    await eventBus.connect();
+  } catch (err) {
+    logger.warn('RabbitMQ unavailable — event publishing disabled', {
+      error: (err as Error).message,
+    });
+  }
 
   // Verify PostgreSQL is reachable
   const pgOk = await db.healthCheck();
