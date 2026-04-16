@@ -22,6 +22,16 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/auth/two-factor.component').then(m => m.TwoFactorComponent),
       },
+      {
+        path: 'forgot-password',
+        loadComponent: () =>
+          import('./pages/auth/forgot-password.component').then(m => m.ForgotPasswordComponent),
+      },
+      {
+        path: 'reset-password',
+        loadComponent: () =>
+          import('./pages/auth/reset-password.component').then(m => m.ResetPasswordComponent),
+      },
       { path: '', redirectTo: 'login', pathMatch: 'full' },
     ],
   },

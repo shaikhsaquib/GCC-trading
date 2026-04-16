@@ -103,6 +103,20 @@ export class AuthService {
     }
   }
 
+  // ── Password Reset ───────────────────────────────────────────────────────────
+
+  requestPasswordReset(email: string) {
+    return this.http.post<Wrapped<{ message: string }>>(
+      `${environment.apiUrl}/auth/password/reset-request`, { email },
+    ).pipe(map(res => res.data));
+  }
+
+  resetPassword(token: string, newPassword: string) {
+    return this.http.post<Wrapped<{ message: string }>>(
+      `${environment.apiUrl}/auth/password/reset`, { token, newPassword },
+    ).pipe(map(res => res.data));
+  }
+
   getAccessToken(): string | null {
     return localStorage.getItem(KEYS.access);
   }

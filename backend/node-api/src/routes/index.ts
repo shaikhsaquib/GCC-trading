@@ -15,6 +15,9 @@ import { createWalletRouter }        from '../modules/wallet/wallet.routes';
 import { createNotificationsRouter } from '../modules/notifications/notifications.routes';
 import { createAdminRouter }         from '../modules/admin/admin.routes';
 import { createBondsRouter }         from '../modules/bonds/bonds.routes';
+import { createOrdersRouter }        from '../modules/orders/orders.routes';
+import { createPortfolioRouter }     from '../modules/portfolio/portfolio.routes';
+import { createSettlementsRouter }   from '../modules/settlements/settlements.routes';
 
 // Services & Repositories (dependency wiring)
 import { AuthRepository }          from '../modules/auth/auth.repository';
@@ -81,6 +84,9 @@ export function createApiRouter(): Router {
   router.use('/notifications', createNotificationsRouter(notifCtrl));
   router.use('/admin',         createAdminRouter(adminCtrl));
   router.use('/bonds',         createBondsRouter(bondsCtrl));
+  router.use('/orders',        createOrdersRouter());
+  router.use('/portfolio',     createPortfolioRouter());
+  router.use('/settlements',   createSettlementsRouter());
 
   return router;
 }
