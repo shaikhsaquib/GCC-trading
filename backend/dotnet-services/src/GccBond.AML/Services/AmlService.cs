@@ -1,3 +1,4 @@
+using GccBond.Shared.Interfaces;
 using GccBond.AML.Interfaces;
 using GccBond.Shared.Infrastructure;
 using GccBond.Shared.Models;

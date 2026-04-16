@@ -1,3 +1,4 @@
+using GccBond.Shared.Interfaces;
 using GccBond.Shared.Exceptions;
 using GccBond.Shared.Infrastructure;
 using GccBond.Shared.Models;
