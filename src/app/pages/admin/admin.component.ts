@@ -7,11 +7,13 @@ import { AdminStats, AdminUser } from '../../core/models/api.models';
 interface UserDisplay {
   id:          string;
   name:        string;
+  email:       string;
   initials:    string;
   avatarColor: string;
   role:        string;
   kyc:         string;
   accountType: string;
+  portfolio:   string;
   joined:      string;
   lastLogin:   string;
   status:      string;
@@ -105,11 +107,13 @@ export class AdminComponent implements OnInit {
     return {
       id:          u.id,
       name:        fullName,
+      email:       u.email ?? '—',
       initials,
       avatarColor: AVATAR_COLORS[idx % AVATAR_COLORS.length],
       role:        this.mapRole(u.role),
       kyc:         this.mapKyc(u.status),
       accountType: 'Individual',
+      portfolio:   '—',
       joined:      new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
       lastLogin:   u.last_login_at ? this.relativeTime(u.last_login_at) : 'Never',
       status:      this.mapStatus(u.status),

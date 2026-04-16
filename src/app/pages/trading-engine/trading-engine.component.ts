@@ -54,7 +54,10 @@ export class TradingEngineComponent implements OnInit {
   orderSuccess = signal<string | null>(null);
   orderError   = signal<string | null>(null);
 
-  selectedBond = signal<WatchlistBond | null>(null);
+  selectedBond = signal<WatchlistBond>({
+    id: '', name: '—', isin: '—', shortName: '—',
+    price: '—', change: 0, coupon: 0, ytm: 0, maturity: '—', rating: '—',
+  });
 
   private _watchlist = signal<WatchlistBond[]>([]);
   private _myOrders  = signal<OrderDisplay[]>([]);
@@ -100,7 +103,7 @@ export class TradingEngineComponent implements OnInit {
         this.loading.set(false);
         const bonds = (res.data?.items ?? []).map(b => this.mapWatchlistBond(b));
         this._watchlist.set(bonds);
-        if (bonds.length > 0 && !this.selectedBond()) {
+        if (bonds.length > 0 && !this.selectedBond().id) {
           this.selectedBond.set(bonds[0]);
           this.limitPrice = parseFloat(bonds[0].price) || 100.25;
         }

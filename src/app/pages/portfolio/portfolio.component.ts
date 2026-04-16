@@ -15,7 +15,7 @@ interface HoldingDisplay {
   mktValue:  number;
   pnl:       number;
   pnlPct:    number;
-  ytm:       number | null;
+  ytm:       number;
   maturity:  string;
   weight:    number;
 }
@@ -33,7 +33,7 @@ export class PortfolioComponent implements OnInit {
   loading         = signal(true);
   holdingsLoading = signal(true);
 
-  kpis = [
+  kpis: Array<{ label: string; value: string; color: string; sub: string | null; up: boolean }> = [
     { label: 'Total Portfolio Value', value: '—', color: 'var(--text-primary)', sub: null, up: true },
     { label: 'Unrealized P&L',        value: '—', color: 'var(--success)',      sub: null, up: true },
     { label: 'Avg YTM',               value: '—', color: 'var(--accent-cyan)',  sub: null, up: true },
@@ -138,7 +138,7 @@ export class PortfolioComponent implements OnInit {
       mktValue:  h.currentValue,
       pnl,
       pnlPct:    parseFloat(pnlPct.toFixed(2)),
-      ytm:       null,
+      ytm:       0,
       maturity:  '—',
       weight,
     };

@@ -149,15 +149,16 @@ export interface AdminStats {
 }
 
 export interface AdminUser {
-  id:                string;
-  first_name:        string;
-  last_name:         string;
-  role:              string;
-  status:            string;
-  nationality:       string;
+  id:                 string;
+  first_name:         string;
+  last_name:          string;
+  email?:             string;
+  role:               string;
+  status:             string;
+  nationality:        string;
   preferred_currency: string;
-  created_at:        string;
-  last_login_at:     string | null;
+  created_at:         string;
+  last_login_at:      string | null;
 }
 
 // ── AML ───────────────────────────────────────────────────────────────────────

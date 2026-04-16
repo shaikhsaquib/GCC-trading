@@ -15,7 +15,7 @@ interface BondDisplay {
   coupon:    number;
   maturity:  string;
   price:     string;
-  ytm:       number | null;
+  ytm:       number;
   volume:    string;
 }
 
@@ -99,7 +99,7 @@ export class BondMarketplaceComponent implements OnInit {
       coupon:    b.couponRate,
       maturity:  new Date(b.maturityDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
       price:     b.currentPrice?.toFixed(2) ?? '—',
-      ytm:       null,
+      ytm:       0,
       volume:    '—',
     };
   }

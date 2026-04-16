@@ -31,6 +31,9 @@ export class RegisterComponent {
     nationality: '', dateOfBirth: '',
     password: '', confirmPassword: '',
     currency: 'AED',
+    nationalId:  '',
+    accountType: '',
+    experience:  '',
   };
 
   accountTypes = [
