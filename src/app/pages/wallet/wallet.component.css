@@ -72,3 +72,5 @@
     .pagination { display: flex; gap: 6px; }
 
     .btn.active { background: rgba(0,212,255,0.1); color: var(--accent-cyan); border-color: var(--accent-cyan); }
+
+    @keyframes spin { to { transform: rotate(360deg); } }

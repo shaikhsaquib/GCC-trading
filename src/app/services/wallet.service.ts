@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
+import { map } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { WalletBalance, WalletTransaction, Paginated } from '../core/models/api.models';
+import { WalletBalance, WalletTransaction, Paginated, ApiResponse } from '../core/models/api.models';
 
 @Injectable({ providedIn: 'root' })
 export class WalletService {
@@ -9,23 +10,27 @@ export class WalletService {
   private readonly base = `${environment.apiUrl}/wallet`;
 
   getBalance() {
-    return this.http.get<WalletBalance>(`${this.base}/balance`);
+    return this.http
+      .get<ApiResponse<WalletBalance>>(`${this.base}/balance`)
+      .pipe(map(res => res.data));
   }
 
   getTransactions(limit = 20, offset = 0) {
     const params = new HttpParams().set('limit', limit).set('offset', offset);
-    return this.http.get<Paginated<WalletTransaction>>(`${this.base}/transactions`, { params });
+    return this.http
+      .get<ApiResponse<{ data: WalletTransaction[]; total: number }>>(`${this.base}/transactions`, { params })
+      .pipe(map(res => res.data));
   }
 
   deposit(amount: number, currency: string, method: string) {
-    return this.http.post<{ checkoutUrl: string; transactionId: string }>(
+    return this.http.post<ApiResponse<{ checkoutUrl: string; transactionId: string }>>(
       `${this.base}/deposit`, { amount, currency, method },
-    );
+    ).pipe(map(res => res.data));
   }
 
   withdraw(amount: number, currency: string, bankName: string, iban: string) {
-    return this.http.post<{ requestId: string; requiresApproval: boolean }>(
+    return this.http.post<ApiResponse<{ requestId: string; requiresApproval: boolean }>>(
       `${this.base}/withdraw`, { amount, currency, bankName, iban },
-    );
+    ).pipe(map(res => res.data));
   }
 }

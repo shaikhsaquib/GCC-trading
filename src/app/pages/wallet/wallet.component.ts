@@ -19,12 +19,22 @@ export class WalletComponent implements OnInit {
   txFilter       = signal('All');
   depositAmount  = 0;
   withdrawAmount = 0;
+  selectedBankIdx = 0;
   Math = Math;
 
   loading    = signal(true);
   txLoading  = signal(true);
   error      = signal<string | null>(null);
+  success    = signal<string | null>(null);
   submitting = signal(false);
+
+  availableBalance = signal(0);
+  balanceCurrency  = signal('SAR');
+
+  banks = [
+    { name: 'Al Rajhi Bank',  iban: 'SA0380000000608010167519' },
+    { name: 'Riyad Bank',     iban: 'SA4620000001234567891234' },
+  ];
 
   private _rawTx = signal<WalletTransaction[]>([]);
 
@@ -63,7 +73,9 @@ export class WalletComponent implements OnInit {
     this.walletSvc.getBalance().subscribe({
       next: (b: WalletBalance) => {
         this.loading.set(false);
-        const fmt = (n: number) => `${b.currency} ${n.toLocaleString()}`;
+        this.availableBalance.set(b.availableBalance);
+        this.balanceCurrency.set(b.currency);
+        const fmt = (n: number) => `${b.currency} ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         this.subBalances = [
           { label: 'Available Cash',   amount: fmt(b.availableBalance), icon: 'account_balance_wallet', iconBg: 'rgba(0,212,255,0.1)',  iconColor: 'var(--accent-cyan)' },
           { label: 'Total Balance',    amount: fmt(b.balance),          icon: 'trending_up',            iconBg: 'rgba(23,195,178,0.1)', iconColor: 'var(--accent-teal)' },
@@ -78,7 +90,7 @@ export class WalletComponent implements OnInit {
   private loadTransactions() {
     this.walletSvc.getTransactions().subscribe({
       next: res => {
-        this._rawTx.set(res.data ?? []);
+        this._rawTx.set(res?.data ?? []);
         this.txLoading.set(false);
       },
       error: () => this.txLoading.set(false),
@@ -86,37 +98,54 @@ export class WalletComponent implements OnInit {
   }
 
   submitDeposit() {
-    if (this.depositAmount <= 0) return;
+    if (this.depositAmount <= 0) {
+      this.error.set('Please enter a deposit amount greater than 0.');
+      return;
+    }
     this.submitting.set(true);
     this.error.set(null);
-    this.walletSvc.deposit(this.depositAmount, 'SAR', this.selectedMethod()).subscribe({
+    this.success.set(null);
+    this.walletSvc.deposit(this.depositAmount, this.balanceCurrency(), this.selectedMethod()).subscribe({
       next: () => {
         this.submitting.set(false);
+        this.success.set(`Deposit of ${this.balanceCurrency()} ${this.depositAmount.toLocaleString()} initiated successfully.`);
         this.depositAmount = 0;
         this.loadBalance();
         this.loadTransactions();
+        setTimeout(() => this.success.set(null), 5000);
       },
       error: err => {
         this.submitting.set(false);
-        this.error.set(err?.error?.message ?? 'Deposit failed. Please try again.');
+        this.error.set(err?.error?.error?.message ?? err?.error?.message ?? 'Deposit failed. Please try again.');
       },
     });
   }
 
   submitWithdraw() {
-    if (this.withdrawAmount <= 0) return;
+    if (this.withdrawAmount <= 0) {
+      this.error.set('Please enter a withdrawal amount greater than 0.');
+      return;
+    }
+    if (this.withdrawAmount > this.availableBalance()) {
+      this.error.set('Withdrawal amount exceeds available balance.');
+      return;
+    }
+    const bank = this.banks[this.selectedBankIdx];
     this.submitting.set(true);
     this.error.set(null);
-    this.walletSvc.withdraw(this.withdrawAmount, 'SAR', '', '').subscribe({
+    this.success.set(null);
+    this.walletSvc.withdraw(this.withdrawAmount, this.balanceCurrency(), bank.name, bank.iban).subscribe({
       next: () => {
         this.submitting.set(false);
+        this.success.set(`Withdrawal of ${this.balanceCurrency()} ${this.withdrawAmount.toLocaleString()} submitted. Pending approval.`);
         this.withdrawAmount = 0;
         this.loadBalance();
         this.loadTransactions();
+        setTimeout(() => this.success.set(null), 5000);
       },
       error: err => {
         this.submitting.set(false);
-        this.error.set(err?.error?.message ?? 'Withdrawal failed. Please try again.');
+        this.error.set(err?.error?.error?.message ?? err?.error?.message ?? 'Withdrawal failed. Please try again.');
       },
     });
   }

@@ -84,8 +84,24 @@
                   }
                 </div>
               </div>
-              <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center">
-                <span class="material-icons-round">add_circle</span> Deposit SAR {{ depositAmount | number }}
+              @if (error()) {
+                <div style="padding:10px 14px;border-radius:8px;background:rgba(255,71,87,0.1);color:var(--danger);font-size:13px;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+                  <span class="material-icons-round" style="font-size:16px">error</span>{{ error() }}
+                </div>
+              }
+              @if (success()) {
+                <div style="padding:10px 14px;border-radius:8px;background:rgba(46,213,115,0.1);color:var(--success);font-size:13px;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+                  <span class="material-icons-round" style="font-size:16px">check_circle</span>{{ success() }}
+                </div>
+              }
+              <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center"
+                [disabled]="submitting()"
+                (click)="submitDeposit()">
+                @if (submitting()) {
+                  <span class="material-icons-round" style="animation:spin 1s linear infinite">sync</span> Processing...
+                } @else {
+                  <span class="material-icons-round">add_circle</span> Deposit {{ balanceCurrency() }} {{ depositAmount | number }}
+                }
               </button>
             </div>
           }
@@ -95,25 +111,42 @@
               <h4 style="margin-bottom:20px">Withdraw Funds</h4>
               <div class="form-group">
                 <label>Bank Account</label>
-                <select class="form-control form-select" name="ba">
-                  <option>Al Rajhi Bank — IBAN SA03 8000 0000 6080 1016 7519</option>
-                  <option>Riyad Bank — IBAN SA46 2000 0001 2345 6789 1234</option>
+                <select class="form-control form-select" name="ba" [(ngModel)]="selectedBankIdx">
+                  @for (b of banks; track b.iban; let i = $index) {
+                    <option [value]="i">{{ b.name }} — IBAN {{ b.iban }}</option>
+                  }
                 </select>
               </div>
               <div class="form-group">
-                <label>Amount (SAR)</label>
+                <label>Amount ({{ balanceCurrency() }})</label>
                 <div class="amount-input-wrapper">
-                  <span class="currency-symbol">SAR</span>
+                  <span class="currency-symbol">{{ balanceCurrency() }}</span>
                   <input class="form-control" type="number" placeholder="0.00" style="padding-left:54px;font-size:18px;font-weight:700" [(ngModel)]="withdrawAmount" name="wa"/>
                 </div>
               </div>
               <div class="withdraw-info">
-                <div class="info-row"><span>Available Balance</span><span>SAR 248,320.00</span></div>
+                <div class="info-row"><span>Available Balance</span><span>{{ balanceCurrency() }} {{ availableBalance() | number:'1.2-2' }}</span></div>
                 <div class="info-row"><span>Processing Time</span><span>1-2 business days</span></div>
                 <div class="info-row"><span>Fee</span><span style="color:var(--success)">Free</span></div>
               </div>
-              <button class="btn btn-danger btn-lg" style="width:100%;justify-content:center">
-                <span class="material-icons-round">remove_circle</span> Withdraw SAR {{ withdrawAmount | number }}
+              @if (error()) {
+                <div style="padding:10px 14px;border-radius:8px;background:rgba(255,71,87,0.1);color:var(--danger);font-size:13px;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+                  <span class="material-icons-round" style="font-size:16px">error</span>{{ error() }}
+                </div>
+              }
+              @if (success()) {
+                <div style="padding:10px 14px;border-radius:8px;background:rgba(46,213,115,0.1);color:var(--success);font-size:13px;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+                  <span class="material-icons-round" style="font-size:16px">check_circle</span>{{ success() }}
+                </div>
+              }
+              <button class="btn btn-danger btn-lg" style="width:100%;justify-content:center"
+                [disabled]="submitting()"
+                (click)="submitWithdraw()">
+                @if (submitting()) {
+                  <span class="material-icons-round" style="animation:spin 1s linear infinite">sync</span> Processing...
+                } @else {
+                  <span class="material-icons-round">remove_circle</span> Withdraw {{ balanceCurrency() }} {{ withdrawAmount | number }}
+                }
               </button>
             </div>
           }
