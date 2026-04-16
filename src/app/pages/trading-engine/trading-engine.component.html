@@ -123,10 +123,16 @@
                 <span class="material-icons-round" style="font-size:16px">error</span>{{ orderError() }}
               </div>
             }
+            @if (loading() && !selectedBond().id) {
+              <div style="text-align:center;color:var(--text-secondary);font-size:12px;margin-bottom:8px">
+                <span class="material-icons-round" style="font-size:14px;vertical-align:middle;animation:spin 1s linear infinite">sync</span>
+                Loading bonds...
+              </div>
+            }
             <button class="btn btn-lg submit-order-btn"
               [class.buy-btn]="orderSide() === 'buy'"
               [class.sell-btn]="orderSide() === 'sell'"
-              [disabled]="submitting() || !selectedBond().id"
+              [disabled]="submitting()"
               (click)="placeOrder()"
               style="width:100%;justify-content:center">
               @if (submitting()) {

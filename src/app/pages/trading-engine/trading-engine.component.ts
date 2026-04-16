@@ -160,7 +160,15 @@ export class TradingEngineComponent implements OnInit {
 
   placeOrder() {
     const bond = this.selectedBond();
-    if (!bond || this.quantity <= 0) return;
+
+    if (!bond.id) {
+      this.orderError.set('No bond selected — please wait for the bond list to load or select a bond from the watchlist.');
+      return;
+    }
+    if (this.quantity <= 0) {
+      this.orderError.set('Quantity must be greater than 0.');
+      return;
+    }
 
     this.submitting.set(true);
     this.orderError.set(null);
@@ -183,7 +191,12 @@ export class TradingEngineComponent implements OnInit {
       },
       error: err => {
         this.submitting.set(false);
-        this.orderError.set(err?.error?.error ?? err?.error?.message ?? 'Order placement failed');
+        const msg =
+          err?.error?.error?.message ??
+          err?.error?.message ??
+          err?.message ??
+          'Order placement failed';
+        this.orderError.set(msg);
       },
     });
   }
