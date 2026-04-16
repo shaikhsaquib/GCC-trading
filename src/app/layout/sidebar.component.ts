@@ -97,7 +97,6 @@ export class SidebarComponent {
     {
       title: 'My Account',
       items: [
-        { label: 'Identity & Auth',   icon: 'lock',                   route: '/identity' },
         { label: 'KYC & Onboarding',  icon: 'verified_user',          route: '/kyc' },
         { label: 'Wallet & Payments', icon: 'account_balance_wallet', route: '/wallet' },
         { label: 'Notifications',     icon: 'notifications',          route: '/notifications' },
