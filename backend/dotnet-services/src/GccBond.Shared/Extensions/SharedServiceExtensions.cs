@@ -15,12 +15,18 @@ public static class SharedServiceExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var connStr      = configuration.GetConnectionString("Postgres")
-                          ?? throw new InvalidOperationException("Connection string 'Postgres' is missing");
-        var redisConn    = configuration.GetConnectionString("Redis")
-                          ?? throw new InvalidOperationException("Connection string 'Redis' is missing");
-        var rabbitMqUrl  = configuration["RabbitMQ:Url"]
-                          ?? throw new InvalidOperationException("RabbitMQ:Url is missing");
+        // appsettings.json → environment variable fallback
+        var connStr     = configuration.GetConnectionString("Postgres")
+                          ?? Environment.GetEnvironmentVariable("DATABASE_URL")
+                          ?? throw new InvalidOperationException("DATABASE_URL / ConnectionStrings:Postgres is missing");
+
+        var redisConn   = configuration.GetConnectionString("Redis")
+                          ?? Environment.GetEnvironmentVariable("REDIS_URL")
+                          ?? throw new InvalidOperationException("REDIS_URL / ConnectionStrings:Redis is missing");
+
+        var rabbitMqUrl = configuration["RabbitMQ:Url"]
+                          ?? Environment.GetEnvironmentVariable("RABBITMQ_URL")
+                          ?? throw new InvalidOperationException("RABBITMQ_URL / RabbitMQ:Url is missing");
 
         services.AddSingleton(_ => new DatabaseHelper(connStr));
         services.AddSingleton(_ => new RedisHelper(redisConn));
