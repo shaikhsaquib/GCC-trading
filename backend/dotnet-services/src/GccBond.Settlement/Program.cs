@@ -11,14 +11,38 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
+// Hangfire.PostgreSql requires Npgsql key-value format, not a URI.
+// This converts "postgresql://user:pass@host:port/db" → "Host=host;Port=port;..."
+static string ToNpgsqlKeyValue(string connStr)
+{
+    if (!connStr.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) &&
+        !connStr.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+        return connStr; // Already in key-value format
+
+    var uri      = new Uri(connStr);
+    var userInfo = uri.UserInfo.Split(':', 2);
+    var user     = Uri.UnescapeDataString(userInfo[0]);
+    var pass     = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+    var host     = uri.Host;
+    var port     = uri.Port > 0 ? uri.Port : 5432;
+    var database = uri.AbsolutePath.TrimStart('/');
+
+    // Parse any query params (e.g. ?sslmode=require)
+    var query = uri.Query.TrimStart('?');
+    var extra = string.IsNullOrEmpty(query) ? "" : ";" + query.Replace("=", "=").Replace("&", ";");
+
+    return $"Host={host};Port={port};Database={database};Username={user};Password={pass};SSL Mode=Require;Trust Server Certificate=true{extra}";
+}
+
 try
 {
     var builder = WebApplication.CreateBuilder(args);
     builder.Host.UseSerilog();
 
-    var connStr   = builder.Configuration.GetConnectionString("Postgres")
-                    ?? Environment.GetEnvironmentVariable("DATABASE_URL")
-                    ?? throw new InvalidOperationException("DATABASE_URL is not set");
+    var rawConnStr = builder.Configuration.GetConnectionString("Postgres")
+                     ?? Environment.GetEnvironmentVariable("DATABASE_URL")
+                     ?? throw new InvalidOperationException("DATABASE_URL is not set");
+    var connStr   = ToNpgsqlKeyValue(rawConnStr);
     var jwtSecret = builder.Configuration["JWT_SECRET"]
                     ?? Environment.GetEnvironmentVariable("JWT_SECRET")
                     ?? throw new InvalidOperationException("JWT_SECRET is not set");
