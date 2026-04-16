@@ -28,9 +28,13 @@ public static class SharedServiceExtensions
                           ?? Environment.GetEnvironmentVariable("RABBITMQ_URL")
                           ?? throw new InvalidOperationException("RABBITMQ_URL / RabbitMQ:Url is missing");
 
+        var serviceName = configuration["ServiceName"]
+                          ?? Environment.GetEnvironmentVariable("SERVICE_NAME")
+                          ?? "gcc-bond-service";
+
         services.AddSingleton(_ => new DatabaseHelper(connStr));
         services.AddSingleton(_ => new RedisHelper(redisConn));
-        services.AddSingleton<IEventBus>(_ => new RabbitMqEventBus(rabbitMqUrl));
+        services.AddSingleton<IEventBus>(_ => new RabbitMqEventBus(rabbitMqUrl, serviceName));
 
         return services;
     }

@@ -46,7 +46,7 @@ public class OrdersController : ControllerBase
     {
         var order = await _trading.GetOrderAsync(id, CurrentUserId);
         if (order is null) return NotFound(ApiResponse<object>.Fail("Order not found"));
-        return Ok(ApiResponse<OrderResponse>.Ok(OrderResponse.FromModel(order)));
+        return Ok(ApiResponse<OrderResponse>.Ok(OrderResponse.FromModel(order!)));
     }
 
     // DELETE /api/v1/orders/{id}
