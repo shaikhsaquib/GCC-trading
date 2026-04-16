@@ -1,11 +1,13 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { catchError, tap, throwError } from 'rxjs';
+import { catchError, map, tap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   User, LoginResponse, Require2FAResponse, TokenPair,
 } from '../models/api.models';
+
+interface Wrapped<T> { success: boolean; data: T; }
 
 const KEYS = {
   access:  'gcc_access_token',
@@ -44,10 +46,11 @@ export class AuthService {
   login(email: string, password: string) {
     this._loading.set(true);
     return this.http
-      .post<LoginResponse | Require2FAResponse>(
+      .post<Wrapped<LoginResponse | Require2FAResponse>>(
         `${environment.apiUrl}/auth/login`, { email, password },
       )
       .pipe(
+        map(res => res.data),
         tap(res => {
           if (!('requires2FA' in res)) this.storeSession(res as LoginResponse);
           this._loading.set(false);
@@ -63,8 +66,8 @@ export class AuthService {
 
   verify2FA(tempToken: string, totpCode: string) {
     return this.http
-      .post<LoginResponse>(`${environment.apiUrl}/auth/2fa/verify`, { tempToken, totpCode })
-      .pipe(tap(res => this.storeSession(res)));
+      .post<Wrapped<LoginResponse>>(`${environment.apiUrl}/auth/2fa/verify`, { tempToken, totpCode })
+      .pipe(map(res => res.data), tap(res => this.storeSession(res)));
   }
 
   // ── Refresh ─────────────────────────────────────────────────────────────────
@@ -73,8 +76,9 @@ export class AuthService {
     const token = localStorage.getItem(KEYS.refresh);
     if (!token) return throwError(() => new Error('No refresh token'));
     return this.http
-      .post<TokenPair>(`${environment.apiUrl}/auth/refresh`, { refreshToken: token })
+      .post<Wrapped<TokenPair>>(`${environment.apiUrl}/auth/refresh`, { refreshToken: token })
       .pipe(
+        map(res => res.data),
         tap(res => {
           localStorage.setItem(KEYS.access,  res.accessToken);
           localStorage.setItem(KEYS.refresh, res.refreshToken);

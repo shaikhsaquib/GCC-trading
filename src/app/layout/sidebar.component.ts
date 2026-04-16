@@ -1,6 +1,7 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NgClass } from '@angular/common';
+import { LayoutService } from './layout.service';
 
 interface NavItem {
   label: string;
@@ -23,7 +24,10 @@ interface NavGroup {
   styleUrl: './sidebar.component.css',
 })
 export class SidebarComponent {
-  collapsed = signal(false);
+  collapsed   = signal(false);
+  readonly layout = inject(LayoutService);
+
+  onNavClick() { this.layout.close(); }
 
   navGroups: NavGroup[] = [
     {

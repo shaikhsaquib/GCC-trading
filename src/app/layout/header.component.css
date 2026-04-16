@@ -156,3 +156,32 @@
       font-weight: 700;
       cursor: pointer;
     }
+
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: var(--radius-sm);
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      &:hover { color: var(--accent-cyan); }
+      .material-icons-round { font-size: 22px; }
+    }
+
+    /* ── Responsive ─────────────────────────────────────────────────────────── */
+
+    @media (max-width: 768px) {
+      .header { padding: 0 12px; gap: 10px; }
+      .hamburger { display: flex; }
+      .ticker-bar { display: none; }
+      .market-status { display: none; }
+      .header-search input { width: 150px; }
+    }
+
+    @media (max-width: 480px) {
+      .header-search { display: none; }
+    }

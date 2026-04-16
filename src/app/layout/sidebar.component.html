@@ -1,4 +1,4 @@
-    <aside class="sidebar" [class.collapsed]="collapsed()">
+    <aside class="sidebar" [class.collapsed]="collapsed()" [class.mobile-open]="layout.mobileSidebarOpen()">
 
       <!-- Brand -->
       <div class="brand">
@@ -40,6 +40,7 @@
               routerLinkActive="active"
               [routerLinkActiveOptions]="{ exact: item.route === '/' || item.route === '' }"
               [title]="collapsed() ? item.label : ''"
+              (click)="onNavClick()"
             >
               <span class="nav-icon material-icons-round">{{ item.icon }}</span>
               @if (!collapsed()) {
