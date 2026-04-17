@@ -75,6 +75,12 @@ const TEMPLATES: Record<NotificationEvent, NotificationTemplate> = {
     pushTitle: 'Account Suspended',
     pushBody:  'Your account has been suspended.',
   },
+  SETTLEMENT_COMPLETE: {
+    subject:   'Trade Settlement Complete',
+    body:      'Hello {{first_name}}, your {{side}} order for {{quantity}} units of {{bond_name}} at {{price}} has settled. Total: {{total}} {{currency}} (fee: {{fee}}).',
+    pushTitle: 'Settlement Complete',
+    pushBody:  '{{side}} order for {{bond_name}} settled. Total: {{total}} {{currency}}.',
+  },
 };
 
 function interpolate(template: string, vars: Record<string, string>): string {
