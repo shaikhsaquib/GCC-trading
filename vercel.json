@@ -1,0 +1,14 @@
+{
+  "buildCommand": "ng build --configuration production",
+  "outputDirectory": "dist/gcc-bond-trading/browser",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://YOUR-APP-NAME.onrender.com/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
