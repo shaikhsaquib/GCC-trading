@@ -58,6 +58,7 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
   submitting    = signal(false);
   orderSuccess  = signal<string | null>(null);
   orderError    = signal<string | null>(null);
+  cancellingId  = signal<string | null>(null);
 
   marketTime = signal(this.formatTime());
   marketOpen = signal(true);
@@ -79,7 +80,11 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
   private clockSub: Subscription | null = null;
 
   get watchlist() { return this._watchlist(); }
-  get myOrders()  { return this._myOrders(); }
+  get myOrders()  {
+    return this._myOrders().filter(o =>
+      o.status !== 'Cancelled' && o.status !== 'Filled' && o.status !== 'Rejected'
+    );
+  }
 
   ngOnInit() {
     this.loadBonds();
@@ -258,8 +263,13 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
   }
 
   cancelOrder(id: string) {
+    this.cancellingId.set(id);
     this.tradingSvc.cancelOrder(id).subscribe({
-      next: () => this._myOrders.update(list => list.map(o => o.id === id ? { ...o, status: 'Cancelled' } : o)),
+      next: () => {
+        this.cancellingId.set(null);
+        this._myOrders.update(list => list.filter(o => o.id !== id));
+      },
+      error: () => this.cancellingId.set(null),
     });
   }
 
