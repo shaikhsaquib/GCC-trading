@@ -1,4 +1,14 @@
     .marketplace-layout { display: grid; grid-template-columns: 220px 1fr; gap: 20px; }
+    .marketplace-layout.has-detail { grid-template-columns: 220px 1fr 280px; }
+
+    .bond-detail-panel { padding: 20px; height: fit-content; position: sticky; top: 80px; }
+
+    .detail-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .dm-item { display: flex; flex-direction: column; gap: 3px; }
+    .dm-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+    .dm-val { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     .filter-sidebar { padding: 20px; height: fit-content; }
 

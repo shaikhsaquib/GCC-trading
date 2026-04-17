@@ -2,29 +2,37 @@
       <div class="page-header">
         <div class="page-title">
           <h2>Bond Marketplace</h2>
-          <p>List, search, filter and compare bonds from GCC and global issuers</p>
+          <p>Browse, filter and compare GCC and global bonds</p>
         </div>
         <div class="page-actions">
           <span class="badge badge-dotnet">.NET Core</span>
           <button class="btn btn-secondary" (click)="viewMode.set(viewMode() === 'table' ? 'grid' : 'table')">
             <span class="material-icons-round">{{ viewMode() === 'table' ? 'grid_view' : 'table_rows' }}</span>
           </button>
-          <button class="btn btn-primary"><span class="material-icons-round">compare</span> Compare ({{ compareList().length }})</button>
+          @if (compareList().length > 0) {
+            <button class="btn btn-primary">
+              <span class="material-icons-round">compare</span> Compare ({{ compareList().length }})
+            </button>
+          }
         </div>
       </div>
 
-      <!-- Quick Stats -->
-      <div class="stats-grid" style="grid-template-columns: repeat(4,1fr); margin-bottom:20px">
+      <!-- Market Stats -->
+      <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
         @for (s of marketStats; track s.label) {
           <div class="stat-card" style="padding:16px">
             <div class="stat-label">{{ s.label }}</div>
-            <div class="stat-value" style="font-size:20px">{{ s.value }}</div>
-            <div class="stat-change" [class.up]="s.up" [class.down]="!s.up">{{ s.up ? '▲' : '▼' }} {{ s.chg }}</div>
+            <div class="stat-value" style="font-size:22px">
+              @if (loading()) { <span style="color:var(--text-muted)">—</span> }
+              @else { {{ s.value }} }
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">{{ s.sub }}</div>
           </div>
         }
       </div>
 
-      <div class="marketplace-layout">
+      <div class="marketplace-layout" [class.has-detail]="selectedBond()">
+
         <!-- Filter Sidebar -->
         <aside class="filter-sidebar card">
           <h4 style="margin-bottom:16px">Filters</h4>
@@ -33,16 +41,10 @@
             <div class="filter-label">Bond Type</div>
             @for (t of bondTypes; track t) {
               <label class="filter-check">
-                <input type="checkbox" [checked]="true" style="accent-color:var(--accent-cyan)"/> {{ t }}
-              </label>
-            }
-          </div>
-
-          <div class="filter-section">
-            <div class="filter-label">Issuer Region</div>
-            @for (r of regions; track r) {
-              <label class="filter-check">
-                <input type="checkbox" [checked]="true" style="accent-color:var(--accent-cyan)"/> {{ r }}
+                <input type="checkbox"
+                       [checked]="activeTypes().length === 0 || activeTypes().includes(t)"
+                       (change)="toggleType(t)"
+                       style="accent-color:var(--accent-cyan)"/> {{ t }}
               </label>
             }
           </div>
@@ -51,7 +53,7 @@
             <div class="filter-label">Coupon Rate (%)</div>
             <div class="range-inputs">
               <input class="form-control" type="number" placeholder="Min" style="font-size:12px" [(ngModel)]="minCoupon" name="minc"/>
-              <span>—</span>
+              <span style="color:var(--text-muted)">—</span>
               <input class="form-control" type="number" placeholder="Max" style="font-size:12px" [(ngModel)]="maxCoupon" name="maxc"/>
             </div>
           </div>
@@ -60,43 +62,59 @@
             <div class="filter-label">Maturity</div>
             @for (m of maturities; track m.label) {
               <label class="filter-check">
-                <input type="checkbox" [checked]="m.checked" (change)="m.checked = !m.checked" style="accent-color:var(--accent-cyan)"/> {{ m.label }}
+                <input type="checkbox"
+                       [checked]="activeMaturities().includes(m.label)"
+                       (change)="toggleMaturity(m.label)"
+                       style="accent-color:var(--accent-cyan)"/> {{ m.label }}
               </label>
             }
           </div>
 
           <div class="filter-section">
-            <div class="filter-label">Rating</div>
+            <div class="filter-label">Credit Rating</div>
             <div class="rating-chips">
               @for (r of ratings; track r) {
-                <span class="chip" [class.active]="activeRatings().includes(r)" (click)="toggleRating(r)">{{ r }}</span>
+                <span class="chip"
+                      [class.active]="activeRatings().includes(r)"
+                      (click)="toggleRating(r)">{{ r }}</span>
               }
             </div>
           </div>
 
-          <button class="btn btn-secondary" style="width:100%;justify-content:center;margin-top:8px">
+          <button class="btn btn-secondary" style="width:100%;justify-content:center;margin-top:8px"
+                  (click)="resetFilters()">
             <span class="material-icons-round">refresh</span> Reset Filters
           </button>
         </aside>
 
         <!-- Main Content -->
         <div class="bonds-content">
-          <!-- Search + Sort -->
+          <!-- Search + Sort toolbar -->
           <div class="content-toolbar">
             <div class="search-bar" style="flex:1">
               <span class="material-icons-round search-icon">search</span>
-              <input class="form-control" style="width:100%;padding-left:36px" placeholder="Search by name, ISIN, issuer..." [(ngModel)]="searchTerm" name="bs"/>
+              <input class="form-control" style="width:100%;padding-left:36px"
+                     placeholder="Search by name, ISIN, issuer..."
+                     [(ngModel)]="searchTerm" name="bs"/>
             </div>
             <select class="form-control form-select" style="width:180px" [(ngModel)]="sortBy" name="sb">
-              <option value="yield">Sort: Yield ↓</option>
-              <option value="price">Sort: Price ↓</option>
-              <option value="maturity">Sort: Maturity</option>
+              <option value="yield">Sort: YTM ↓</option>
               <option value="coupon">Sort: Coupon ↓</option>
+              <option value="price">Sort: Price ↓</option>
+              <option value="maturity">Sort: Maturity ↑</option>
             </select>
           </div>
 
+          <!-- Loading state -->
+          @if (loading()) {
+            <div class="card" style="padding:40px;text-align:center;color:var(--text-muted)">
+              <span class="material-icons-round" style="font-size:32px;animation:spin 1s linear infinite;display:block;margin-bottom:12px">sync</span>
+              Loading bonds...
+            </div>
+          }
+
           <!-- Table View -->
-          @if (viewMode() === 'table') {
+          @else if (viewMode() === 'table') {
             <div class="card" style="padding:0;overflow:hidden">
               <table class="data-table">
                 <thead>
@@ -109,15 +127,23 @@
                     <th>Maturity</th>
                     <th>Price</th>
                     <th>YTM</th>
-                    <th>Volume</th>
+                    <th>Vol. (simulated)</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
+                  @if (filteredBonds().length === 0) {
+                    <tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-muted)">
+                      No bonds match your filters
+                    </td></tr>
+                  }
                   @for (bond of filteredBonds(); track bond.isin) {
-                    <tr (click)="selectedBond.set(bond)">
+                    <tr [class.selected-row]="selectedBond()?.isin === bond.isin"
+                        (click)="selectedBond.set(bond)">
                       <td (click)="$event.stopPropagation()">
-                        <input type="checkbox" style="accent-color:var(--accent-cyan)" [checked]="compareList().includes(bond.isin)" (change)="toggleCompare(bond.isin)"/>
+                        <input type="checkbox" style="accent-color:var(--accent-cyan)"
+                               [checked]="compareList().includes(bond.isin)"
+                               (change)="toggleCompare(bond.isin)"/>
                       </td>
                       <td>
                         <div class="bond-name-cell">
@@ -133,8 +159,8 @@
                       <td class="text-cyan" style="font-weight:600">{{ bond.coupon }}%</td>
                       <td style="color:var(--text-secondary)">{{ bond.maturity }}</td>
                       <td style="font-weight:600">{{ bond.price }}</td>
-                      <td [style.color]="bond.ytm > 4 ? 'var(--success)' : 'var(--warning)'">{{ bond.ytm }}%</td>
-                      <td style="color:var(--text-secondary)">SAR {{ bond.volume }}</td>
+                      <td style="font-weight:700" [style.color]="ytmColor(bond.ytm)">{{ bond.ytm | number:'1.2-2' }}%</td>
+                      <td style="color:var(--text-secondary);font-size:12px">{{ bond.volume }}</td>
                       <td (click)="$event.stopPropagation()">
                         <div style="display:flex;gap:6px">
                           <a class="btn btn-success btn-sm"
@@ -142,7 +168,9 @@
                              [queryParams]="{ bondId: bond.id }">
                             <span class="material-icons-round" style="font-size:14px">swap_horiz</span> Trade
                           </a>
-                          <button class="btn btn-secondary btn-sm">Details</button>
+                          <button class="btn btn-secondary btn-sm" (click)="selectedBond.set(bond)">
+                            Details
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -153,20 +181,37 @@
           }
 
           <!-- Grid View -->
-          @if (viewMode() === 'grid') {
+          @else {
             <div class="bonds-grid">
+              @if (filteredBonds().length === 0) {
+                <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">
+                  No bonds match your filters
+                </div>
+              }
               @for (bond of filteredBonds(); track bond.isin) {
-                <div class="bond-card" (click)="selectedBond.set(bond)">
+                <div class="bond-card" [class.selected-row]="selectedBond()?.isin === bond.isin"
+                     (click)="selectedBond.set(bond)">
                   <div class="bond-card-header">
-                    <span class="bond-type-label" [style.background]="bond.typeColor + '22'" [style.color]="bond.typeColor">{{ bond.type }}</span>
+                    <span class="bond-type-label"
+                          [style.background]="bond.typeColor + '22'"
+                          [style.color]="bond.typeColor">{{ bond.type }}</span>
                     <span class="rating-badge" [ngClass]="ratingClass(bond.rating)">{{ bond.rating }}</span>
                   </div>
-                  <h4 style="font-size:13px;margin:10px 0 4px">{{ bond.name }}</h4>
+                  <h4 style="font-size:13px;margin:10px 0 2px;line-height:1.4">{{ bond.name }}</h4>
                   <p style="font-size:11px;color:var(--text-secondary);margin-bottom:14px">{{ bond.issuer }}</p>
                   <div class="bond-card-stats">
-                    <div class="bc-stat"><div class="bc-label">Coupon</div><div class="bc-val text-cyan">{{ bond.coupon }}%</div></div>
-                    <div class="bc-stat"><div class="bc-label">YTM</div><div class="bc-val" [style.color]="bond.ytm > 4 ? 'var(--success)' : 'var(--warning)'">{{ bond.ytm }}%</div></div>
-                    <div class="bc-stat"><div class="bc-label">Price</div><div class="bc-val">{{ bond.price }}</div></div>
+                    <div class="bc-stat">
+                      <div class="bc-label">Coupon</div>
+                      <div class="bc-val text-cyan">{{ bond.coupon }}%</div>
+                    </div>
+                    <div class="bc-stat">
+                      <div class="bc-label">YTM</div>
+                      <div class="bc-val" [style.color]="ytmColor(bond.ytm)">{{ bond.ytm | number:'1.2-2' }}%</div>
+                    </div>
+                    <div class="bc-stat">
+                      <div class="bc-label">Price</div>
+                      <div class="bc-val">{{ bond.price }}</div>
+                    </div>
                   </div>
                   <div class="bond-card-footer">
                     <span style="font-size:11px;color:var(--text-muted)">{{ bond.maturity }}</span>
@@ -180,15 +225,100 @@
             </div>
           }
 
-          <!-- Pagination -->
-          <div class="table-footer" style="margin-top:16px">
-            <span class="text-muted">Showing {{ filteredBonds().length }} of {{ bonds.length }} bonds</span>
-            <div class="pagination">
-              @for (p of [1,2,3,4,5]; track p) {
-                <button class="btn btn-secondary btn-sm" [class.active]="p === 1">{{ p }}</button>
+          <!-- Pagination footer -->
+          @if (!loading()) {
+            <div class="table-footer" style="margin-top:16px">
+              <span class="text-muted">
+                Showing {{ filteredBonds().length }} of {{ bonds.length }} bonds
+              </span>
+            </div>
+          }
+        </div>
+
+        <!-- Bond Detail Panel -->
+        @if (selectedBond(); as bond) {
+          <div class="bond-detail-panel card fade-in">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+              <h4 style="font-size:14px;font-weight:700">Bond Details</h4>
+              <button class="btn btn-icon" (click)="selectedBond.set(null)">
+                <span class="material-icons-round">close</span>
+              </button>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+              <span class="bond-type-label"
+                    [style.background]="bond.typeColor + '22'"
+                    [style.color]="bond.typeColor"
+                    style="font-size:11px;padding:3px 8px;border-radius:6px;font-weight:600">
+                {{ bond.type }}
+              </span>
+              <span class="rating-badge" [ngClass]="ratingClass(bond.rating)">{{ bond.rating }}</span>
+              @if (bond.shariah) {
+                <span class="badge badge-success" style="font-size:10px">Sharia</span>
               }
             </div>
+
+            <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;line-height:1.4">{{ bond.name }}</h3>
+            <p style="font-size:12px;color:var(--text-secondary);margin-bottom:20px">{{ bond.issuer }}</p>
+
+            <!-- Key metrics -->
+            <div class="detail-metrics">
+              <div class="dm-item">
+                <span class="dm-label">Current Price</span>
+                <strong class="dm-val" style="font-size:20px">{{ bond.price }}</strong>
+              </div>
+              <div class="dm-item">
+                <span class="dm-label">YTM</span>
+                <strong class="dm-val" [style.color]="ytmColor(bond.ytm)">{{ bond.ytm | number:'1.2-2' }}%</strong>
+              </div>
+              <div class="dm-item">
+                <span class="dm-label">Coupon Rate</span>
+                <strong class="dm-val text-cyan">{{ bond.coupon }}%</strong>
+              </div>
+              <div class="dm-item">
+                <span class="dm-label">Maturity</span>
+                <strong class="dm-val">{{ bond.maturity }}</strong>
+              </div>
+              <div class="dm-item">
+                <span class="dm-label">Face Value</span>
+                <strong class="dm-val">{{ bond.faceValue | number }}</strong>
+              </div>
+              <div class="dm-item">
+                <span class="dm-label">Min. Investment</span>
+                <strong class="dm-val">{{ bond.minInvest | number }}</strong>
+              </div>
+            </div>
+
+            <div class="divider" style="margin:16px 0"></div>
+
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+              <div style="display:flex;justify-content:space-between;font-size:13px">
+                <span style="color:var(--text-muted)">ISIN</span>
+                <code style="color:var(--accent-cyan)">{{ bond.isin }}</code>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:13px">
+                <span style="color:var(--text-muted)">Volume (est.)</span>
+                <span>{{ bond.volume }}</span>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <a class="btn btn-success"
+                 [routerLink]="['/trading']"
+                 [queryParams]="{ bondId: bond.id }"
+                 style="justify-content:center">
+                <span class="material-icons-round">swap_horiz</span> Trade This Bond
+              </a>
+              <button class="btn btn-secondary"
+                      [class.active]="compareList().includes(bond.isin)"
+                      (click)="toggleCompare(bond.isin)"
+                      style="justify-content:center">
+                <span class="material-icons-round">compare</span>
+                {{ compareList().includes(bond.isin) ? 'Remove from Compare' : 'Add to Compare' }}
+              </button>
+            </div>
           </div>
-        </div>
+        }
+
       </div>
     </div>
