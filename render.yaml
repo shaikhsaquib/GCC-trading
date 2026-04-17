@@ -1,0 +1,149 @@
+# render.yaml — Render.com Blueprint
+# Deploys the Node.js API Gateway on Render free tier.
+# Free databases (Neon, MongoDB Atlas, Upstash, CloudAMQP) are external —
+# set their connection strings via Render dashboard > Environment.
+#
+# Deploy steps:
+#   1. Push this repo to GitHub
+#   2. Go to render.com → New → Blueprint → connect your repo
+#   3. Fill in every `sync: false` env var in the Render dashboard
+#   4. Click Apply — Render builds and deploys automatically
+
+services:
+  # ── Node.js API Gateway ────────────────────────────────────────────────────
+  - type: web
+    name: gcc-trading-api
+    env: docker
+    dockerfilePath: ./backend/node-api/Dockerfile
+    dockerContext: ./backend/node-api
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+
+    envVars:
+      # ── Server ──────────────────────────────────────────────────────────────
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: API_VERSION
+        value: v1
+
+      # ── PostgreSQL (Neon.tech — free tier) ──────────────────────────────────
+      # Format: postgresql://user:pass@ep-xxx.us-east-2.aws.neon.tech/neondb?sslmode=require
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_POOL_MIN
+        value: 1
+      - key: DB_POOL_MAX
+        value: 5
+
+      # ── Redis (Upstash — free tier) ──────────────────────────────────────────
+      # Format: rediss://default:xxx@xxx.upstash.io:6379
+      - key: REDIS_URL
+        sync: false
+      - key: REDIS_TTL_SESSION
+        value: 604800
+      - key: REDIS_TTL_OTP
+        value: 300
+
+      # ── MongoDB (MongoDB Atlas M0 — free tier) ───────────────────────────────
+      # Format: mongodb+srv://user:pass@cluster0.xxx.mongodb.net/gcc_bond_audit
+      - key: MONGODB_URI
+        sync: false
+
+      # ── RabbitMQ (CloudAMQP Little Lemur — free tier) ───────────────────────
+      # Format: amqps://user:pass@xxx.cloudamqp.com/vhost
+      - key: RABBITMQ_URL
+        sync: false
+      - key: RABBITMQ_EXCHANGE
+        value: gcc.bond.events
+      - key: RABBITMQ_DLX
+        value: gcc.bond.dlx
+
+      # ── JWT ─────────────────────────────────────────────────────────────────
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_EXPIRES
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES
+        value: 7d
+      - key: JWT_ALGORITHM
+        value: HS256
+
+      # ── Encryption (AES-256) ────────────────────────────────────────────────
+      # ENCRYPTION_KEY: exactly 32 ASCII characters
+      # ENCRYPTION_IV:  exactly 16 ASCII characters
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: ENCRYPTION_IV
+        sync: false
+
+      # ── .NET microservices (deploy via Railway — see railway/ folder) ────────
+      # After deploying each .NET service, paste its public URL here.
+      - key: DOTNET_TRADING_URL
+        sync: false
+
+      # ── External services (optional — features degrade gracefully) ───────────
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: SENDGRID_FROM_EMAIL
+        value: noreply@gccbond.com
+      - key: SENDGRID_FROM_NAME
+        value: GCC Bond Trading
+
+      - key: UNIFONIC_APP_SID
+        sync: false
+      - key: UNIFONIC_BASE_URL
+        value: https://el.cloud.unifonic.com
+
+      - key: FCM_PROJECT_ID
+        sync: false
+      - key: FCM_PRIVATE_KEY
+        sync: false
+      - key: FCM_CLIENT_EMAIL
+        sync: false
+
+      - key: ONFIDO_API_KEY
+        sync: false
+      - key: ONFIDO_WEBHOOK_SECRET
+        sync: false
+      - key: ONFIDO_LIVENESS_THRESHOLD
+        value: 0.8
+
+      - key: HYPERPAY_URL
+        value: https://eu-test.oppwa.com
+      - key: HYPERPAY_ENTITY_ID
+        sync: false
+      - key: HYPERPAY_ACCESS_TOKEN
+        sync: false
+
+      # ── OAuth (Google / Microsoft) ───────────────────────────────────────────
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: MICROSOFT_CLIENT_ID
+        sync: false
+      - key: MICROSOFT_CLIENT_SECRET
+        sync: false
+      - key: MICROSOFT_TENANT_ID
+        value: common
+
+      # ── AML thresholds ───────────────────────────────────────────────────────
+      - key: AML_LARGE_TRANSACTION_THRESHOLD
+        value: 10000
+
+      # ── Trading hours ────────────────────────────────────────────────────────
+      - key: TRADING_HOURS_START
+        value: "09:00"
+      - key: TRADING_HOURS_END
+        value: "17:00"
+      - key: TRADING_TIMEZONE
+        value: Asia/Riyadh
+
+      # ── Rate limiting ────────────────────────────────────────────────────────
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 100
