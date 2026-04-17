@@ -1,14 +1,16 @@
 import { Router } from 'express';
-import { OrdersController } from './orders.controller';
-import { OrdersService }    from './orders.service';
-import { OrdersRepository } from './orders.repository';
-import { authenticate }     from '../../middlewares/authenticate';
-import { requireActive }    from '../../middlewares/authorize';
+import { OrdersController }  from './orders.controller';
+import { OrdersService }     from './orders.service';
+import { OrdersRepository }  from './orders.repository';
+import { WalletRepository }  from '../wallet/wallet.repository';
+import { authenticate }      from '../../middlewares/authenticate';
+import { requireActive }     from '../../middlewares/authorize';
 
 export function createOrdersRouter(): Router {
-  const repo = new OrdersRepository();
-  const svc  = new OrdersService(repo);
-  const ctrl = new OrdersController(svc);
+  const repo       = new OrdersRepository();
+  const walletRepo = new WalletRepository();
+  const svc        = new OrdersService(repo, walletRepo);
+  const ctrl       = new OrdersController(svc);
 
   const router = Router();
 

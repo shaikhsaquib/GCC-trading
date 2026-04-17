@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { PoolClient } from 'pg';
 import { db } from '../../core/database/postgres.client';
 import { Order, PlaceOrderInput, OrderBookEntry } from './orders.types';
 
@@ -56,11 +57,12 @@ export class OrdersRepository {
     return r.rows.map(this.mapRow);
   }
 
-  async cancel(orderId: string, userId: string): Promise<Order | null> {
-    const r = await db.query<Record<string, unknown>>(
+  async cancel(orderId: string, userId: string, client?: PoolClient): Promise<Order | null> {
+    const q = client ?? db;
+    const r = await q.query<Record<string, unknown>>(
       `UPDATE trading.orders
        SET status = 'Cancelled', cancel_reason = 'User requested', updated_at = NOW()
-       WHERE id = $1 AND user_id = $2 AND status IN ('Open', 'PendingValidation')
+       WHERE id = $1 AND user_id = $2 AND status IN ('Open', 'PendingValidation', 'PartiallyFilled')
        RETURNING id, user_id, bond_id, side, order_type, quantity,
                  filled_quantity, price, avg_fill_price, status, created_at`,
       [orderId, userId],
