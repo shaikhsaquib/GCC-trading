@@ -1,0 +1,169 @@
+    <div class="admin-page fade-in">
+      <div class="page-header">
+        <div class="page-title">
+          <h2>Admin Module</h2>
+          <p>Manage users, review KYC, generate reports and control system settings</p>
+        </div>
+        <div class="page-actions">
+          <span class="badge badge-node">Node.js</span>
+          <button class="btn btn-secondary"><span class="material-icons-round">file_download</span> Export Users</button>
+          <button class="btn btn-primary"><span class="material-icons-round">person_add</span> Add User</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid" style="grid-template-columns:repeat(6,1fr);margin-bottom:24px">
+        @for (s of adminStats; track s.label) {
+          <div class="stat-card" style="padding:14px">
+            <div class="stat-label">{{ s.label }}</div>
+            <div class="stat-value" style="font-size:20px" [style.color]="s.color">{{ s.value }}</div>
+          </div>
+        }
+      </div>
+
+      <!-- Tabs -->
+      <div class="tab-bar">
+        @for (tab of tabs; track tab) {
+          <div class="tab" [class.active]="activeTab() === tab" (click)="activeTab.set(tab)">{{ tab }}</div>
+        }
+      </div>
+
+      <!-- USER MANAGEMENT tab -->
+      @if (activeTab() === 'User Management') {
+        <div class="fade-in">
+          <div class="toolbar" style="margin-bottom:16px">
+            <div class="search-bar" style="flex:1">
+              <span class="material-icons-round search-icon">search</span>
+              <input class="form-control" style="width:100%;padding-left:36px" placeholder="Search by name, email, ID..." [(ngModel)]="userSearch" name="us"/>
+            </div>
+            <select class="form-control form-select" style="width:150px" [(ngModel)]="statusFilter" name="sf">
+              <option value="">All Status</option>
+              <option>Active</option>
+              <option>Pending KYC</option>
+              <option>Suspended</option>
+              <option>Blocked</option>
+            </select>
+            <select class="form-control form-select" style="width:140px" name="rf">
+              <option>All Roles</option>
+              <option>Investor</option>
+              <option>Trader</option>
+              <option>Admin</option>
+            </select>
+          </div>
+
+          <div class="card" style="padding:0;overflow:hidden">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th><input type="checkbox" style="accent-color:var(--accent-cyan)"/></th>
+                  <th>User</th>
+                  <th>Role</th>
+                  <th>KYC</th>
+                  <th>Account Type</th>
+                  <th>Portfolio Value</th>
+                  <th>Joined</th>
+                  <th>Last Login</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (u of filteredUsers(); track u.id) {
+                  <tr>
+                    <td (click)="$event.stopPropagation()">
+                      <input type="checkbox" style="accent-color:var(--accent-cyan)"/>
+                    </td>
+                    <td>
+                      <div style="display:flex;align-items:center;gap:10px">
+                        <div class="user-avatar-sm" [style.background]="u.avatarColor">{{ u.initials }}</div>
+                        <div>
+                          <div style="font-weight:600;font-size:13px">{{ u.name }}</div>
+                          <div style="font-size:11px;color:var(--text-secondary)">{{ u.email }}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td><span class="role-badge" [ngClass]="roleBadge(u.role)">{{ u.role }}</span></td>
+                    <td><span class="badge" [ngClass]="kycBadge(u.kyc)">{{ u.kyc }}</span></td>
+                    <td style="color:var(--text-secondary)">{{ u.accountType }}</td>
+                    <td style="font-weight:600">SAR {{ u.portfolio }}</td>
+                    <td style="color:var(--text-secondary)">{{ u.joined }}</td>
+                    <td style="color:var(--text-secondary)">{{ u.lastLogin }}</td>
+                    <td><span class="status-badge" [ngClass]="userStatusBadge(u.status)">{{ u.status }}</span></td>
+                    <td>
+                      <div style="display:flex;gap:6px">
+                        <button class="btn btn-secondary btn-sm" title="Edit">
+                          <span class="material-icons-round" style="font-size:14px">edit</span>
+                        </button>
+                        <button class="btn btn-secondary btn-sm" title="View">
+                          <span class="material-icons-round" style="font-size:14px">visibility</span>
+                        </button>
+                        <button class="btn btn-danger btn-sm" title="Suspend">
+                          <span class="material-icons-round" style="font-size:14px">block</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      <!-- KYC REVIEW tab -->
+      @if (activeTab() === 'KYC Review') {
+        @if (kycActionMsg()) {
+          <div class="alert alert-success" style="margin-bottom:12px">{{ kycActionMsg() }}</div>
+        }
+        <div class="kyc-review-grid fade-in">
+          @for (app of kycApplications; track app.id) {
+            <div class="kyc-card card">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+                <div class="user-avatar-sm" [style.background]="app.avatarColor">{{ app.initials }}</div>
+                <div style="flex:1">
+                  <strong>{{ app.name }}</strong>
+                  <p style="font-size:11px;color:var(--text-secondary)">{{ app.type }} · {{ app.nationality }}</p>
+                </div>
+                <span class="badge" [ngClass]="kycBadge(app.status)">{{ app.status }}</span>
+              </div>
+              <div class="kyc-docs">
+                @for (doc of app.docs; track doc) {
+                  <div class="doc-chip" [class.verified]="doc.verified">
+                    <span class="material-icons-round" style="font-size:14px">{{ doc.verified ? 'check_circle' : 'schedule' }}</span>
+                    {{ doc.label }}
+                  </div>
+                }
+              </div>
+              <div class="risk-mini">
+                <span style="font-size:11px;color:var(--text-muted)">Risk:</span>
+                <span style="font-size:12px;font-weight:700" [style.color]="app.risk === 'LOW' ? 'var(--success)' : app.risk === 'MEDIUM' ? 'var(--warning)' : 'var(--danger)'">{{ app.risk }}</span>
+                <span style="font-size:11px;color:var(--text-muted);margin-left:auto">{{ app.submitted }}</span>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px">
+                <button class="btn btn-danger btn-sm" style="flex:1;justify-content:center" (click)="rejectKyc(app.id)">Reject</button>
+                <button class="btn btn-success btn-sm" style="flex:1;justify-content:center" (click)="approveKyc(app.id)">Approve</button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- SYSTEM REPORTS tab -->
+      @if (activeTab() === 'System Reports') {
+        <div class="reports-grid fade-in">
+          @for (report of reports; track report.name) {
+            <div class="report-card card">
+              <div class="report-icon" [style.background]="report.iconBg">
+                <span class="material-icons-round" [style.color]="report.iconColor">{{ report.icon }}</span>
+              </div>
+              <h4>{{ report.name }}</h4>
+              <p>{{ report.desc }}</p>
+              <div style="display:flex;gap:8px;margin-top:auto;padding-top:14px">
+                <button class="btn btn-secondary btn-sm"><span class="material-icons-round" style="font-size:14px">visibility</span> Preview</button>
+                <button class="btn btn-primary btn-sm"><span class="material-icons-round" style="font-size:14px">file_download</span> Download</button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>

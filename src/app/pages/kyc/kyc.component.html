@@ -1,0 +1,543 @@
+<!-- ═══════════════════════════════════════════════════════════ ADMIN VIEW ══ -->
+@if (isAdmin()) {
+  <div class="kyc-page fade-in">
+
+    <div class="page-header">
+      <div class="page-title">
+        <h2>KYC & Onboarding</h2>
+        <p>Identity verification and user approval workflow</p>
+      </div>
+      <div class="page-actions">
+        <span class="badge badge-node">Node.js</span>
+        <button class="btn btn-secondary" (click)="loadQueue()">
+          <span class="material-icons-round">refresh</span> Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid stats-5col">
+      @for (s of kycStats(); track s.label) {
+        <div class="stat-card">
+          <div class="stat-label">{{ s.label }}</div>
+          <div class="stat-value" [style.color]="s.color">{{ s.value }}</div>
+        </div>
+      }
+    </div>
+
+    <div class="kyc-layout">
+
+      <!-- Left: Queue panel -->
+      <div class="queue-panel card">
+        <div class="panel-header">
+          <h4>Review Queue</h4>
+          @if (loading()) {
+            <span class="material-icons-round spin" style="font-size:16px;color:var(--text-muted)">sync</span>
+          } @else {
+            <span class="badge badge-warning">{{ totalQueue() }} total</span>
+          }
+        </div>
+
+        <div class="search-bar" style="margin-bottom:14px">
+          <span class="material-icons-round search-icon">search</span>
+          <input class="form-control" style="padding-left:36px"
+                 placeholder="Search users…"
+                 [(ngModel)]="searchTerm" name="sq"/>
+        </div>
+
+        <div class="filter-chips">
+          @for (f of filters; track f.value) {
+            <span class="chip" [class.active]="activeFilter() === f.value"
+                  (click)="applyFilter(f.value)">{{ f.label }}</span>
+          }
+        </div>
+
+        <div class="user-queue">
+          @for (item of filteredItems(); track item.id) {
+            <div class="user-row" [class.selected]="selectedItem()?.id === item.id"
+                 (click)="selectItem(item)">
+              <div class="user-avatar-sm" [style.background]="avatarColor(item)">
+                {{ initials(item) }}
+              </div>
+              <div class="user-info-sm">
+                <strong>{{ item.first_name }} {{ item.last_name }}</strong>
+                <span>{{ item.email }}</span>
+                <span class="text-muted" style="font-size:11px">
+                  Submitted {{ relativeTime(item.submitted_at) }}
+                </span>
+              </div>
+              <span class="badge" [ngClass]="statusBadge(item.status)">
+                {{ statusLabel(item.status) }}
+              </span>
+            </div>
+          }
+
+          @if (!loading() && filteredItems().length === 0) {
+            <div style="text-align:center;padding:32px;color:var(--text-muted)">
+              <span class="material-icons-round" style="font-size:32px">inbox</span>
+              <p style="margin-top:8px;font-size:13px">No submissions found</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Right: Detail panel -->
+      <div class="detail-panel">
+        @if (selectedItem(); as item) {
+          <div class="card fade-in">
+
+            <!-- User header -->
+            <div class="user-detail-header">
+              <div class="user-avatar-lg" [style.background]="avatarColor(item)">
+                {{ initials(item) }}
+              </div>
+              <div class="user-detail-info">
+                <h3>{{ item.first_name }} {{ item.last_name }}</h3>
+                <p class="text-muted">{{ item.email }}</p>
+                <p style="font-size:12px;color:var(--accent-cyan)">
+                  Attempt #{{ item.submission_count }}
+                </p>
+              </div>
+              <span class="badge" [ngClass]="statusBadge(item.status)" style="margin-left:auto;align-self:flex-start">
+                {{ statusLabel(item.status) }}
+              </span>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Info grid -->
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">Submission ID</span>
+                <span class="info-value monospace" style="font-size:11px">{{ item.id }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Submitted</span>
+                <span class="info-value">{{ formatDate(item.submitted_at) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Created</span>
+                <span class="info-value">{{ formatDate(item.created_at) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Reviewed At</span>
+                <span class="info-value">{{ formatDate(item.reviewed_at) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Liveness Score</span>
+                <span class="info-value">
+                  {{ formatScore(item.liveness_score) }}
+                </span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Onfido Check</span>
+                <span class="info-value" style="font-size:11px">
+                  {{ item.onfido_check_id ?? '—' }}
+                </span>
+              </div>
+            </div>
+
+            @if (item.risk_level) {
+              <div class="divider"></div>
+              <div class="risk-section">
+                <div class="risk-header">
+                  <h4>Risk Assessment</h4>
+                  <span class="risk-score" [style.color]="riskColor(item.risk_level)">
+                    {{ item.risk_level }}
+                  </span>
+                </div>
+                <div class="progress-bar" style="margin-top:8px">
+                  <div class="progress-fill" [style.width]="riskWidth(item.risk_level)"></div>
+                </div>
+              </div>
+            }
+
+            @if (item.review_notes) {
+              <div class="divider"></div>
+              <div class="review-notes">
+                <span class="info-label">Review Notes</span>
+                <p style="margin-top:6px;font-size:13px;color:var(--text-secondary)">
+                  {{ item.review_notes }}
+                </p>
+              </div>
+            }
+
+            <!-- Actions -->
+            @if (item.status === 'Submitted' || item.status === 'UnderReview') {
+              <div class="divider"></div>
+
+              @if (!showApproveForm() && !showRejectForm()) {
+                <div class="action-row">
+                  <button class="btn btn-danger" style="flex:1;justify-content:center"
+                          (click)="showRejectForm.set(true)">
+                    <span class="material-icons-round">close</span> Reject
+                  </button>
+                  <button class="btn btn-success" style="flex:1;justify-content:center"
+                          (click)="showApproveForm.set(true)">
+                    <span class="material-icons-round">check</span> Approve
+                  </button>
+                </div>
+              }
+
+              <!-- Approve form -->
+              @if (showApproveForm()) {
+                <div class="inline-form">
+                  <h4 style="margin-bottom:14px;color:var(--success)">
+                    <span class="material-icons-round" style="vertical-align:middle;font-size:18px">check_circle</span>
+                    Approve KYC
+                  </h4>
+                  <div class="form-group">
+                    <label class="form-label">Risk Level</label>
+                    <select class="form-control" [(ngModel)]="approveForm.riskLevel" name="riskLevel">
+                      <option value="LOW">LOW — No significant risk factors</option>
+                      <option value="MEDIUM">MEDIUM — Some risk indicators present</option>
+                      <option value="HIGH">HIGH — Elevated risk, manual monitoring required</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="margin-top:12px">
+                    <label class="form-label">Review Notes <span style="color:var(--text-muted)">(optional)</span></label>
+                    <textarea class="form-control" rows="3" [(ngModel)]="approveForm.notes"
+                              name="approveNotes" placeholder="Add any notes for the record…"></textarea>
+                  </div>
+                  <div class="form-actions">
+                    <button class="btn btn-secondary" (click)="showApproveForm.set(false)">
+                      Cancel
+                    </button>
+                    <button class="btn btn-success" (click)="confirmApprove()"
+                            [disabled]="actionLoading()">
+                      @if (actionLoading()) {
+                        <span class="material-icons-round spin" style="font-size:16px">sync</span>
+                      } @else {
+                        <span class="material-icons-round">check</span>
+                      }
+                      Confirm Approval
+                    </button>
+                  </div>
+                </div>
+              }
+
+              <!-- Reject form -->
+              @if (showRejectForm()) {
+                <div class="inline-form inline-form--danger">
+                  <h4 style="margin-bottom:14px;color:var(--danger)">
+                    <span class="material-icons-round" style="vertical-align:middle;font-size:18px">cancel</span>
+                    Reject KYC
+                  </h4>
+                  <div class="form-group">
+                    <label class="form-label">Rejection Reason <span style="color:var(--danger)">*</span></label>
+                    <textarea class="form-control" rows="3" [(ngModel)]="rejectForm.reason"
+                              name="rejectReason"
+                              placeholder="Explain why this KYC submission is being rejected…"></textarea>
+                  </div>
+                  <div class="form-actions">
+                    <button class="btn btn-secondary" (click)="showRejectForm.set(false)">
+                      Cancel
+                    </button>
+                    <button class="btn btn-danger" (click)="confirmReject()"
+                            [disabled]="actionLoading() || !rejectForm.reason.trim()">
+                      @if (actionLoading()) {
+                        <span class="material-icons-round spin" style="font-size:16px">sync</span>
+                      } @else {
+                        <span class="material-icons-round">close</span>
+                      }
+                      Confirm Rejection
+                    </button>
+                  </div>
+                </div>
+              }
+            }
+
+          </div>
+        } @else {
+          <div class="empty-state card">
+            <span class="material-icons-round empty-icon">person_search</span>
+            <h4>Select a user</h4>
+            <p>Click a user from the queue to review their KYC submission</p>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ════════════════════════════════════════════════════════ INVESTOR VIEW ══ -->
+@else {
+  <div class="investor-page fade-in">
+
+    <div class="page-header">
+      <div class="page-title">
+        <h2>Identity Verification</h2>
+        <p>Complete your KYC to start trading GCC bonds</p>
+      </div>
+    </div>
+
+    @if (investorLoading() && !submission()) {
+      <!-- Initial loading -->
+      <div class="investor-loading">
+        <span class="material-icons-round spin">sync</span>
+        <p>Loading your KYC status…</p>
+      </div>
+    }
+
+    <!-- ── No submission yet ── -->
+    @else if (!submission()) {
+      <div class="kyc-start-wrapper">
+        <div class="kyc-start-card card">
+          <div class="kyc-start-icon">
+            <span class="material-icons-round">verified_user</span>
+          </div>
+          <h3>Verify Your Identity</h3>
+          <p>
+            To comply with GCC regulatory requirements, all traders must complete
+            a one-time identity verification process before placing orders.
+          </p>
+          <div class="kyc-requirements">
+            <div class="req-item">
+              <span class="material-icons-round">badge</span>
+              <span>Government-issued ID (National ID or Passport)</span>
+            </div>
+            <div class="req-item">
+              <span class="material-icons-round">face</span>
+              <span>A clear selfie photo</span>
+            </div>
+            <div class="req-item">
+              <span class="material-icons-round">home</span>
+              <span>Optional: Proof of address or driving license</span>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-lg" (click)="startKyc()"
+                  [disabled]="investorLoading()">
+            @if (investorLoading()) {
+              <span class="material-icons-round spin">sync</span> Starting…
+            } @else {
+              <span class="material-icons-round">arrow_forward</span> Start Verification
+            }
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- ── Draft: document upload wizard ── -->
+    @else if (submission()!.status === 'Draft') {
+      <div class="upload-wizard">
+
+        <!-- Step indicator -->
+        <div class="step-indicator">
+          <div class="step completed">
+            <div class="step-circle"><span class="material-icons-round">check</span></div>
+            <span>Started</span>
+          </div>
+          <div class="step-line"></div>
+          <div class="step active">
+            <div class="step-circle">2</div>
+            <span>Upload Documents</span>
+          </div>
+          <div class="step-line"></div>
+          <div class="step" [class.completed]="canSubmit()">
+            <div class="step-circle">
+              @if (canSubmit()) {
+                <span class="material-icons-round">check</span>
+              } @else {
+                3
+              }
+            </div>
+            <span>Submit</span>
+          </div>
+        </div>
+
+        <!-- Upload progress badge -->
+        <div class="upload-progress-bar">
+          <span class="material-icons-round" [style.color]="canSubmit() ? 'var(--success)' : 'var(--warning)'">
+            {{ canSubmit() ? 'check_circle' : 'upload_file' }}
+          </span>
+          <span>
+            {{ uploadedDocs().length }} of {{ allDocTypes.length }} documents uploaded
+            @if (!canSubmit()) {
+              &nbsp;— upload at least 2 to proceed
+            }
+          </span>
+        </div>
+
+        <!-- Document cards grid -->
+        <div class="doc-upload-grid">
+          @for (docType of allDocTypes; track docType) {
+            <div class="doc-upload-card" [class.uploaded]="isDocUploaded(docType)"
+                 [class.uploading]="uploadingDoc() === docType">
+              <div class="doc-type-icon">
+                <span class="material-icons-round">{{ docMeta[docType].icon }}</span>
+              </div>
+              <div class="doc-type-info">
+                <strong>{{ docMeta[docType].label }}</strong>
+                @if (isDocUploaded(docType)) {
+                  <small class="doc-uploaded-name">{{ getUploadedDoc(docType)?.fileName }}</small>
+                  <small class="doc-uploaded-size">{{ formatBytes(getUploadedDoc(docType)?.fileSize ?? 0) }}</small>
+                } @else {
+                  <small>JPG, PNG or PDF · max 10 MB</small>
+                }
+              </div>
+              <div class="doc-type-action">
+                @if (uploadingDoc() === docType) {
+                  <span class="material-icons-round spin" style="color:var(--accent-cyan)">sync</span>
+                } @else if (isDocUploaded(docType)) {
+                  <label class="btn btn-secondary btn-sm replace-btn">
+                    <span class="material-icons-round" style="font-size:14px">edit</span>
+                    Replace
+                    <input type="file" hidden [accept]="docMeta[docType].accept"
+                           (change)="onFileSelected(docType, $event)"/>
+                  </label>
+                  <span class="doc-check material-icons-round">check_circle</span>
+                } @else {
+                  <label class="btn btn-secondary btn-sm upload-btn">
+                    <span class="material-icons-round" style="font-size:14px">upload</span>
+                    Upload
+                    <input type="file" hidden [accept]="docMeta[docType].accept"
+                           (change)="onFileSelected(docType, $event)"/>
+                  </label>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Submit button -->
+        <div class="submit-section">
+          <div class="submit-info">
+            <span class="material-icons-round" style="color:var(--text-muted)">info</span>
+            <small>
+              By submitting, you confirm that all documents are authentic and belong to you.
+              Our compliance team will review your application within 1–2 business days.
+            </small>
+          </div>
+          <button class="btn btn-primary btn-lg" [disabled]="!canSubmit() || investorLoading()"
+                  (click)="submitKyc()">
+            @if (investorLoading()) {
+              <span class="material-icons-round spin">sync</span> Submitting…
+            } @else {
+              <span class="material-icons-round">send</span>
+              Submit for Review
+            }
+          </button>
+        </div>
+
+      </div>
+    }
+
+    <!-- ── Submitted / UnderReview ── -->
+    @else if (submission()!.status === 'Submitted' || submission()!.status === 'UnderReview') {
+      <div class="kyc-status-wrapper">
+        <div class="status-card status-card--pending card">
+          <div class="status-icon status-icon--pending">
+            <span class="material-icons-round">hourglass_empty</span>
+          </div>
+          <h3>Under Review</h3>
+          <p>
+            Your identity documents have been submitted and are being reviewed by our
+            compliance team. You will receive a notification once the review is complete.
+          </p>
+          <div class="status-meta">
+            <div class="status-meta-item">
+              <span class="info-label">Status</span>
+              <span class="badge badge-info">{{ submission()!.status === 'Submitted' ? 'Pending Review' : 'Under Review' }}</span>
+            </div>
+            <div class="status-meta-item">
+              <span class="info-label">Submitted</span>
+              <span class="info-value">{{ formatDate(submission()!.submitted_at) }}</span>
+            </div>
+            <div class="status-meta-item">
+              <span class="info-label">Attempt</span>
+              <span class="info-value">#{{ submission()!.submission_count }}</span>
+            </div>
+          </div>
+          <div class="status-tip">
+            <span class="material-icons-round">schedule</span>
+            Typical review time is 1–2 business days
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ── Approved ── -->
+    @else if (submission()!.status === 'Approved') {
+      <div class="kyc-status-wrapper">
+        <div class="status-card status-card--approved card">
+          <div class="status-icon status-icon--approved">
+            <span class="material-icons-round">verified</span>
+          </div>
+          <h3>Identity Verified</h3>
+          <p>
+            Your KYC application has been approved. You now have full access to the
+            GCC Bond Trading Platform.
+          </p>
+          <div class="status-meta">
+            <div class="status-meta-item">
+              <span class="info-label">Risk Level</span>
+              <span class="risk-pill" [style.color]="riskColor(submission()!.risk_level)"
+                    [style.border-color]="riskColor(submission()!.risk_level)">
+                {{ submission()!.risk_level ?? '—' }}
+              </span>
+            </div>
+            <div class="status-meta-item">
+              <span class="info-label">Approved On</span>
+              <span class="info-value">{{ formatDate(submission()!.reviewed_at) }}</span>
+            </div>
+            @if (submission()!.review_notes) {
+              <div class="status-meta-item" style="grid-column:1/-1">
+                <span class="info-label">Notes</span>
+                <span class="info-value">{{ submission()!.review_notes }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ── Rejected ── -->
+    @else if (submission()!.status === 'Rejected') {
+      <div class="kyc-status-wrapper">
+        <div class="status-card status-card--rejected card">
+          <div class="status-icon status-icon--rejected">
+            <span class="material-icons-round">cancel</span>
+          </div>
+          <h3>Verification Unsuccessful</h3>
+          <p>
+            Unfortunately, your KYC submission did not meet our verification requirements.
+            Please review the reason below and resubmit with the correct documents.
+          </p>
+          @if (submission()!.review_notes) {
+            <div class="rejection-reason">
+              <span class="material-icons-round">error_outline</span>
+              <p>{{ submission()!.review_notes }}</p>
+            </div>
+          }
+          <div class="status-meta">
+            <div class="status-meta-item">
+              <span class="info-label">Rejected On</span>
+              <span class="info-value">{{ formatDate(submission()!.reviewed_at) }}</span>
+            </div>
+            <div class="status-meta-item">
+              <span class="info-label">Attempts Used</span>
+              <span class="info-value">{{ submission()!.submission_count }} of 3</span>
+            </div>
+          </div>
+          @if (submission()!.submission_count < 3) {
+            <button class="btn btn-primary btn-lg" (click)="restartKyc()"
+                    [disabled]="investorLoading()">
+              @if (investorLoading()) {
+                <span class="material-icons-round spin">sync</span> Starting…
+              } @else {
+                <span class="material-icons-round">refresh</span>
+                Resubmit KYC
+              }
+            </button>
+          } @else {
+            <div class="status-tip status-tip--danger">
+              <span class="material-icons-round">block</span>
+              Maximum attempts reached. Please contact support.
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+  </div>
+}

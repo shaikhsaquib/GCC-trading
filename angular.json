@@ -47,7 +47,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": { "buildTarget": "gcc-bond-trading:build:production" },
-            "development": { "buildTarget": "gcc-bond-trading:build:development" }
+            "development": {
+              "buildTarget": "gcc-bond-trading:build:development",
+              "proxyConfig": "proxy.conf.json"
+            }
           },
           "defaultConfiguration": "development"
         }

@@ -1,0 +1,475 @@
+<div class="auth-page register-page">
+  <div class="auth-bg">
+    <div class="bg-circle c1"></div>
+    <div class="bg-circle c2"></div>
+  </div>
+
+  <div class="register-container">
+
+    <!-- Header -->
+    <div class="reg-header">
+      <div class="brand-mini">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="8" fill="url(#rg1)"/>
+          <path d="M8 20V12l8-4 8 4v8l-8 4-8-4z" fill="none" stroke="white" stroke-width="1.5"/>
+          <path d="M8 12l8 4 8-4M16 16v8" stroke="white" stroke-width="1.5"/>
+          <defs>
+            <linearGradient id="rg1" x1="0" y1="0" x2="32" y2="32">
+              <stop stop-color="#00d4ff"/><stop offset="1" stop-color="#17c3b2"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <span>GCC Bond Trading</span>
+      </div>
+      <a routerLink="/auth/login" class="btn btn-secondary btn-sm">
+        <span class="material-icons-round" style="font-size:16px">login</span> Sign In
+      </a>
+    </div>
+
+    <!-- Steps bar -->
+    <div class="steps-bar">
+      @for (step of steps; track step.num; let i = $index) {
+        <div class="step-item"
+             [class.active]="currentStep() === i"
+             [class.done]="currentStep() > i">
+          <div class="step-num">
+            @if (currentStep() > i) {
+              <span class="material-icons-round" style="font-size:14px">check</span>
+            } @else {
+              {{ step.num }}
+            }
+          </div>
+          <span class="step-label">{{ step.label }}</span>
+        </div>
+        @if (i < steps.length - 1) {
+          <div class="step-connector" [class.done]="currentStep() > i"></div>
+        }
+      }
+    </div>
+
+    <div class="reg-card">
+
+      <!-- ─────────────────────────── STEP 1: Personal Info ─── -->
+      @if (currentStep() === 0) {
+        <div class="step-content fade-in">
+          <h3>Personal Information</h3>
+          <p class="step-desc">Enter your legal name and contact details</p>
+
+          <div class="form-grid">
+
+            <!-- First Name -->
+            <div class="form-group" [class.has-error]="fieldClass('firstName') === 'has-error'"
+                 [class.has-success]="fieldClass('firstName') === 'has-success'">
+              <label class="form-label">
+                First Name <span class="req">*</span>
+                @if (fieldClass('firstName') === 'has-success') {
+                  <span class="field-ok material-icons-round">check_circle</span>
+                }
+              </label>
+              <input class="form-control" type="text" placeholder="Mohammed"
+                     [(ngModel)]="form.firstName" name="fn"
+                     (blur)="touch('firstName')"
+                     autocomplete="given-name"/>
+              @if (showError('firstName')) {
+                <div class="field-error">
+                  <span class="material-icons-round">error_outline</span>
+                  {{ showError('firstName') }}
+                </div>
+              }
+            </div>
+
+            <!-- Last Name -->
+            <div class="form-group" [class.has-error]="fieldClass('lastName') === 'has-error'"
+                 [class.has-success]="fieldClass('lastName') === 'has-success'">
+              <label class="form-label">
+                Last Name <span class="req">*</span>
+                @if (fieldClass('lastName') === 'has-success') {
+                  <span class="field-ok material-icons-round">check_circle</span>
+                }
+              </label>
+              <input class="form-control" type="text" placeholder="Al-Rashid"
+                     [(ngModel)]="form.lastName" name="ln"
+                     (blur)="touch('lastName')"
+                     autocomplete="family-name"/>
+              @if (showError('lastName')) {
+                <div class="field-error">
+                  <span class="material-icons-round">error_outline</span>
+                  {{ showError('lastName') }}
+                </div>
+              }
+            </div>
+
+            <!-- Email -->
+            <div class="form-group full" [class.has-error]="fieldClass('email') === 'has-error'"
+                 [class.has-success]="fieldClass('email') === 'has-success'">
+              <label class="form-label">
+                Email Address <span class="req">*</span>
+                @if (fieldClass('email') === 'has-success') {
+                  <span class="field-ok material-icons-round">check_circle</span>
+                }
+              </label>
+              <div class="input-icon-wrap">
+                <span class="input-icon material-icons-round">email</span>
+                <input class="form-control has-icon" type="email"
+                       placeholder="mohammed@example.com"
+                       [(ngModel)]="form.email" name="em"
+                       (blur)="touch('email')"
+                       autocomplete="email"/>
+              </div>
+              @if (showError('email')) {
+                <div class="field-error">
+                  <span class="material-icons-round">error_outline</span>
+                  {{ showError('email') }}
+                </div>
+              }
+            </div>
+
+            <!-- Phone -->
+            <div class="form-group" [class.has-error]="fieldClass('phone') === 'has-error'"
+                 [class.has-success]="fieldClass('phone') === 'has-success'">
+              <label class="form-label">
+                Phone Number <span class="req">*</span>
+                @if (fieldClass('phone') === 'has-success') {
+                  <span class="field-ok material-icons-round">check_circle</span>
+                }
+              </label>
+              <div class="input-icon-wrap">
+                <span class="input-icon material-icons-round">phone</span>
+                <input class="form-control has-icon" type="tel"
+                       placeholder="+971501234567"
+                       [(ngModel)]="form.phone" name="ph"
+                       (blur)="touch('phone')"
+                       autocomplete="tel"/>
+              </div>
+              @if (showError('phone')) {
+                <div class="field-error">
+                  <span class="material-icons-round">error_outline</span>
+                  {{ showError('phone') }}
+                </div>
+              } @else {
+                <div class="field-hint">
+                  <span class="material-icons-round">info</span>
+                  Include country code, e.g. +966501234567
+                </div>
+              }
+            </div>
+
+            <!-- Date of Birth -->
+            <div class="form-group" [class.has-error]="fieldClass('dateOfBirth') === 'has-error'"
+                 [class.has-success]="fieldClass('dateOfBirth') === 'has-success'">
+              <label class="form-label">
+                Date of Birth <span class="req">*</span>
+                @if (fieldClass('dateOfBirth') === 'has-success') {
+                  <span class="field-ok material-icons-round">check_circle</span>
+                }
+              </label>
+              <div class="input-icon-wrap">
+                <span class="input-icon material-icons-round">calendar_today</span>
+                <input class="form-control has-icon" type="date"
+                       [(ngModel)]="form.dateOfBirth" name="dob"
+                       [max]="maxDOB" [min]="minDOB"
+                       (blur)="touch('dateOfBirth')"
+                       (change)="touch('dateOfBirth')"/>
+              </div>
+              @if (showError('dateOfBirth')) {
+                <div class="field-error">
+                  <span class="material-icons-round">error_outline</span>
+                  {{ showError('dateOfBirth') }}
+                </div>
+              } @else {
+                <div class="field-hint">
+                  <span class="material-icons-round">info</span>
+                  Must be 18 years or older
+                </div>
+              }
+            </div>
+
+          </div>
+        </div>
+      }
+
+      <!-- ─────────────────────────── STEP 2: Account Details ─── -->
+      @if (currentStep() === 1) {
+        <div class="step-content fade-in">
+          <h3>Account Details</h3>
+          <p class="step-desc">Configure your trading preferences</p>
+
+          <div class="form-grid">
+
+            <!-- Nationality -->
+            <div class="form-group" [class.has-error]="fieldClass('nationality') === 'has-error'"
+                 [class.has-success]="fieldClass('nationality') === 'has-success'">
+              <label class="form-label">
+                Nationality <span class="req">*</span>
+                @if (fieldClass('nationality') === 'has-success') {
+                  <span class="field-ok material-icons-round">check_circle</span>
+                }
+              </label>
+              <div class="input-icon-wrap">
+                <span class="input-icon material-icons-round">flag</span>
+                <select class="form-control form-select has-icon"
+                        [(ngModel)]="form.nationality" name="nat"
+                        (blur)="touch('nationality')"
+                        (change)="touch('nationality')">
+                  <option value="">Select nationality</option>
+                  @for (n of nationalities; track n.code) {
+                    <option [value]="n.code">{{ n.label }}</option>
+                  }
+                </select>
+              </div>
+              @if (showError('nationality')) {
+                <div class="field-error">
+                  <span class="material-icons-round">error_outline</span>
+                  {{ showError('nationality') }}
+                </div>
+              }
+            </div>
+
+            <!-- Currency -->
+            <div class="form-group" [class.has-error]="fieldClass('currency') === 'has-error'"
+                 [class.has-success]="fieldClass('currency') === 'has-success'">
+              <label class="form-label">
+                Preferred Currency <span class="req">*</span>
+                @if (fieldClass('currency') === 'has-success') {
+                  <span class="field-ok material-icons-round">check_circle</span>
+                }
+              </label>
+              <div class="input-icon-wrap">
+                <span class="input-icon material-icons-round">payments</span>
+                <select class="form-control form-select has-icon"
+                        [(ngModel)]="form.currency" name="cur"
+                        (blur)="touch('currency')"
+                        (change)="touch('currency')">
+                  @for (c of currencies; track c.value) {
+                    <option [value]="c.value">{{ c.label }}</option>
+                  }
+                </select>
+              </div>
+              @if (showError('currency')) {
+                <div class="field-error">
+                  <span class="material-icons-round">error_outline</span>
+                  {{ showError('currency') }}
+                </div>
+              }
+            </div>
+
+            <!-- Account Type (optional, not sent to API) -->
+            <div class="form-group full">
+              <label class="form-label">
+                Account Type
+                <span class="optional-badge">optional</span>
+              </label>
+              <div class="acc-type-grid">
+                @for (type of accountTypes; track type.value) {
+                  <div class="acc-type-card"
+                       [class.selected]="form.accountType === type.value"
+                       (click)="form.accountType = type.value">
+                    <span class="material-icons-round" style="font-size:24px;color:var(--accent-cyan)">
+                      {{ type.icon }}
+                    </span>
+                    <strong>{{ type.label }}</strong>
+                    <small>{{ type.desc }}</small>
+                    @if (form.accountType === type.value) {
+                      <span class="acc-type-check material-icons-round">check_circle</span>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+          </div>
+        </div>
+      }
+
+      <!-- ─────────────────────────── STEP 3: Security ─── -->
+      @if (currentStep() === 2) {
+        <div class="step-content fade-in">
+          <h3>Security</h3>
+          <p class="step-desc">Create a strong password for your account</p>
+
+          <div class="form-grid">
+
+            <!-- Password -->
+            <div class="form-group full"
+                 [class.has-error]="fieldClass('password') === 'has-error'"
+                 [class.has-success]="fieldClass('password') === 'has-success'">
+              <label class="form-label">
+                Password <span class="req">*</span>
+                @if (fieldClass('password') === 'has-success') {
+                  <span class="field-ok material-icons-round">check_circle</span>
+                }
+              </label>
+              <div class="input-pw-wrap">
+                <div class="input-icon-wrap">
+                  <span class="input-icon material-icons-round">lock</span>
+                  <input class="form-control has-icon"
+                         [type]="showPassword() ? 'text' : 'password'"
+                         placeholder="Min. 8 chars · uppercase · number · symbol"
+                         [(ngModel)]="form.password" name="pw"
+                         (blur)="touch('password')"
+                         (input)="touch('confirmPassword')"
+                         autocomplete="new-password"/>
+                </div>
+                <button type="button" class="eye-btn" (click)="showPassword.set(!showPassword())"
+                        [title]="showPassword() ? 'Hide password' : 'Show password'">
+                  <span class="material-icons-round">{{ showPassword() ? 'visibility_off' : 'visibility' }}</span>
+                </button>
+              </div>
+
+              <!-- Strength bar -->
+              @if (form.password) {
+                <div class="strength-row">
+                  <div class="strength-bar">
+                    @for (_ of [1,2,3,4]; track $index; let i = $index) {
+                      <div class="strength-seg"
+                           [style.background]="(i + 1) <= pwStrength ? pwStrengthColor : 'var(--bg-input)'"></div>
+                    }
+                  </div>
+                  <span class="strength-text" [style.color]="pwStrengthColor">
+                    {{ pwStrengthLabel }}
+                  </span>
+                </div>
+              }
+
+              <!-- Password requirements -->
+              <div class="pw-reqs">
+                <div class="pw-req" [class.met]="pwReqs.length">
+                  <span class="material-icons-round">{{ pwReqs.length ? 'check_circle' : 'radio_button_unchecked' }}</span>
+                  At least 8 characters
+                </div>
+                <div class="pw-req" [class.met]="pwReqs.uppercase">
+                  <span class="material-icons-round">{{ pwReqs.uppercase ? 'check_circle' : 'radio_button_unchecked' }}</span>
+                  One uppercase letter (A–Z)
+                </div>
+                <div class="pw-req" [class.met]="pwReqs.number">
+                  <span class="material-icons-round">{{ pwReqs.number ? 'check_circle' : 'radio_button_unchecked' }}</span>
+                  One number (0–9)
+                </div>
+                <div class="pw-req" [class.met]="pwReqs.special">
+                  <span class="material-icons-round">{{ pwReqs.special ? 'check_circle' : 'radio_button_unchecked' }}</span>
+                  One special character (!&#64;#$%...)
+                </div>
+              </div>
+
+              @if (showError('password')) {
+                <div class="field-error">
+                  <span class="material-icons-round">error_outline</span>
+                  {{ showError('password') }}
+                </div>
+              }
+            </div>
+
+            <!-- Confirm Password -->
+            <div class="form-group full"
+                 [class.has-error]="fieldClass('confirmPassword') === 'has-error'"
+                 [class.has-success]="fieldClass('confirmPassword') === 'has-success'">
+              <label class="form-label">
+                Confirm Password <span class="req">*</span>
+                @if (fieldClass('confirmPassword') === 'has-success') {
+                  <span class="field-ok material-icons-round">check_circle</span>
+                }
+              </label>
+              <div class="input-pw-wrap">
+                <div class="input-icon-wrap">
+                  <span class="input-icon material-icons-round">lock_clock</span>
+                  <input class="form-control has-icon"
+                         [type]="showConfirm() ? 'text' : 'password'"
+                         placeholder="Repeat your password"
+                         [(ngModel)]="form.confirmPassword" name="cpw"
+                         (blur)="touch('confirmPassword')"
+                         autocomplete="new-password"/>
+                </div>
+                <button type="button" class="eye-btn" (click)="showConfirm.set(!showConfirm())"
+                        [title]="showConfirm() ? 'Hide password' : 'Show password'">
+                  <span class="material-icons-round">{{ showConfirm() ? 'visibility_off' : 'visibility' }}</span>
+                </button>
+              </div>
+              @if (showError('confirmPassword')) {
+                <div class="field-error">
+                  <span class="material-icons-round">error_outline</span>
+                  {{ showError('confirmPassword') }}
+                </div>
+              }
+            </div>
+
+          </div>
+        </div>
+      }
+
+      <!-- ─────────────────────────── STEP 4: Agreement ─── -->
+      @if (currentStep() === 3) {
+        <div class="step-content fade-in">
+          <h3>Terms & Agreements</h3>
+          <p class="step-desc">Review and accept all terms to create your account</p>
+
+          <div class="agreement-list">
+            @for (agree of agreements; track agree.id) {
+              <label class="agree-item" [class.checked]="agree.checked">
+                <div class="agree-checkbox">
+                  <input type="checkbox" [(ngModel)]="agree.checked"
+                         [name]="'agree' + agree.id"/>
+                  <span class="check-visual material-icons-round">
+                    {{ agree.checked ? 'check_box' : 'check_box_outline_blank' }}
+                  </span>
+                </div>
+                <div class="agree-content">
+                  <strong>{{ agree.title }}</strong>
+                  <p>{{ agree.desc }}</p>
+                </div>
+              </label>
+            }
+          </div>
+
+          @if (!allAgreed()) {
+            <div class="agree-warning">
+              <span class="material-icons-round">warning</span>
+              Please accept all terms to create your account
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Server error -->
+      @if (serverError()) {
+        <div class="server-error">
+          <span class="material-icons-round">error</span>
+          {{ serverError() }}
+        </div>
+      }
+
+      <!-- Navigation -->
+      <div class="step-nav">
+        @if (currentStep() > 0) {
+          <button class="btn btn-secondary" (click)="prev()" [disabled]="submitting()">
+            <span class="material-icons-round">chevron_left</span> Back
+          </button>
+        } @else {
+          <div></div>
+        }
+
+        @if (currentStep() < steps.length - 1) {
+          <button class="btn btn-primary" (click)="next()">
+            Continue <span class="material-icons-round">chevron_right</span>
+          </button>
+        } @else {
+          <button class="btn btn-primary" (click)="submit()"
+                  [disabled]="submitting() || !allAgreed()">
+            @if (submitting()) {
+              <span class="material-icons-round spin">sync</span> Creating Account…
+            } @else {
+              <span class="material-icons-round">check</span> Create Account
+            }
+          </button>
+        }
+      </div>
+
+    </div>
+
+    <!-- Sign-in link -->
+    <p class="signin-link">
+      Already have an account?
+      <a routerLink="/auth/login">Sign in</a>
+    </p>
+
+  </div>
+</div>

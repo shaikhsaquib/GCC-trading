@@ -1,0 +1,72 @@
+    <aside class="sidebar" [class.collapsed]="collapsed()" [class.mobile-open]="layout.mobileSidebarOpen()">
+
+      <!-- Brand -->
+      <div class="brand">
+        <div class="brand-logo">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="8" fill="url(#brandGrad)"/>
+            <path d="M8 20V12l8-4 8 4v8l-8 4-8-4z" fill="none" stroke="white" stroke-width="1.5"/>
+            <path d="M8 12l8 4 8-4" stroke="white" stroke-width="1.5"/>
+            <path d="M16 16v8" stroke="white" stroke-width="1.5"/>
+            <defs>
+              <linearGradient id="brandGrad" x1="0" y1="0" x2="32" y2="32">
+                <stop stop-color="#00d4ff"/>
+                <stop offset="1" stop-color="#17c3b2"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        @if (!collapsed()) {
+          <div class="brand-text">
+            <span class="brand-name">GCC Bond</span>
+            <span class="brand-sub">Trading Platform</span>
+          </div>
+        }
+        <button class="collapse-btn" (click)="collapsed.set(!collapsed())">
+          <span class="material-icons-round">{{ collapsed() ? 'chevron_right' : 'chevron_left' }}</span>
+        </button>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="nav">
+        @for (group of navGroups; track group.title) {
+          @if (!collapsed()) {
+            <div class="nav-group-title">{{ group.title }}</div>
+          }
+          @for (item of group.items; track item.route) {
+            <a
+              class="nav-item"
+              [routerLink]="item.route"
+              routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: item.route === '/' || item.route === '' }"
+              [title]="collapsed() ? item.label : ''"
+              (click)="onNavClick()"
+            >
+              <span class="nav-icon material-icons-round">{{ item.icon }}</span>
+              @if (!collapsed()) {
+                <span class="nav-label">{{ item.label }}</span>
+                @if (item.badge) {
+                  <span class="nav-badge" [ngClass]="item.badgeClass || ''">{{ item.badge }}</span>
+                }
+              }
+            </a>
+          }
+        }
+      </nav>
+
+      <!-- Footer -->
+      <div class="sidebar-footer">
+        <div class="user-info" [class.compact]="collapsed()">
+          <div class="user-avatar">{{ userInitials() }}</div>
+          @if (!collapsed()) {
+            <div class="user-details">
+              <span class="user-name">{{ userName() }}</span>
+              <span class="user-role">{{ userRole() }}</span>
+            </div>
+            <button class="btn btn-icon" title="Logout" (click)="logout()">
+              <span class="material-icons-round" style="font-size:18px;color:var(--text-secondary)">logout</span>
+            </button>
+          }
+        </div>
+      </div>
+    </aside>

@@ -1,0 +1,35 @@
+    .portfolio-layout { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
+
+    .side-panel { display: flex; flex-direction: column; }
+
+    .donut-chart-wrapper { display: flex; justify-content: center; margin-bottom: 16px; }
+
+    .allocation-legend { display: flex; flex-direction: column; gap: 8px; }
+
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .legend-label { flex: 1; color: var(--text-secondary); }
+    .legend-pct { font-weight: 700; color: var(--text-primary); }
+
+    .coupon-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .coupon-item { display: flex; align-items: center; gap: 12px; }
+
+    .coupon-date-box { width: 44px; background: var(--bg-input); border-radius: var(--radius-sm); text-align: center; padding: 6px; }
+    .coupon-month { display: block; font-size: 9px; font-weight: 600; color: var(--accent-cyan); text-transform: uppercase; }
+    .coupon-day { display: block; font-size: 18px; font-weight: 800; color: var(--text-primary); }
+
+    .coupon-info { flex: 1; strong { display: block; font-size: 12px; } small { font-size: 11px; color: var(--text-secondary); } }
+
+    .coupon-amount { font-size: 13px; font-weight: 700; white-space: nowrap; }
+
+    .pnl-bar-row { display: flex; gap: 14px; margin-bottom: 16px; }
+
+    .pnl-card { padding: 16px; }
+
+    .type-tag { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+
+    .chip { cursor: pointer; }
+    .chip.active { background: rgba(0,212,255,0.1); color: var(--accent-cyan); border-color: var(--accent-cyan); }
+
+    @keyframes spin { to { transform: rotate(360deg); } }

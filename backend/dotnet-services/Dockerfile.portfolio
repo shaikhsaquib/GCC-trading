@@ -1,0 +1,20 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+COPY GccBond.sln ./
+COPY src/GccBond.Shared/GccBond.Shared.csproj       src/GccBond.Shared/
+COPY src/GccBond.Portfolio/GccBond.Portfolio.csproj src/GccBond.Portfolio/
+RUN dotnet restore src/GccBond.Portfolio/GccBond.Portfolio.csproj
+
+COPY src/GccBond.Shared/    src/GccBond.Shared/
+COPY src/GccBond.Portfolio/ src/GccBond.Portfolio/
+RUN dotnet publish src/GccBond.Portfolio/GccBond.Portfolio.csproj \
+    -c Release -o /app/publish --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+RUN useradd -u 1001 -ms /bin/bash appuser
+COPY --from=build /app/publish .
+USER appuser
+EXPOSE 5004
+ENTRYPOINT ["dotnet", "GccBond.Portfolio.dll"]

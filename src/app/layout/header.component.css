@@ -1,0 +1,187 @@
+    .header {
+      height: var(--header-height);
+      background: var(--bg-dark);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      gap: 20px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .ticker-bar {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      overflow: hidden;
+    }
+
+    .ticker-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .ticker-symbol {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      letter-spacing: 0.5px;
+    }
+
+    .ticker-price {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .ticker-change {
+      font-size: 11px;
+      font-weight: 600;
+      &.up   { color: var(--success); }
+      &.down { color: var(--danger); }
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .header-search {
+      position: relative;
+      display: flex;
+      align-items: center;
+
+      .search-ic {
+        position: absolute;
+        left: 10px;
+        font-size: 18px;
+        color: var(--text-muted);
+      }
+
+      input {
+        background: var(--bg-input);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 7px 60px 7px 36px;
+        color: var(--text-primary);
+        font-size: 13px;
+        font-family: inherit;
+        width: 260px;
+        outline: none;
+        transition: border-color 0.2s;
+
+        &::placeholder { color: var(--text-muted); }
+        &:focus { border-color: var(--accent-cyan); }
+      }
+
+      kbd {
+        position: absolute;
+        right: 10px;
+        font-size: 10px;
+        color: var(--text-muted);
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 2px 5px;
+      }
+    }
+
+    .market-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--success);
+      background: rgba(46, 213, 115, 0.08);
+      border: 1px solid rgba(46, 213, 115, 0.2);
+      padding: 5px 12px;
+      border-radius: 20px;
+    }
+
+    .icon-btn {
+      position: relative;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 8px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      transition: all 0.2s;
+
+      &:hover {
+        background: var(--bg-card);
+        color: var(--text-primary);
+      }
+
+      .material-icons-round { font-size: 20px; }
+    }
+
+    .notif-badge {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 16px;
+      height: 16px;
+      background: var(--danger);
+      color: white;
+      border-radius: 50%;
+      font-size: 9px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .header-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-teal));
+      color: var(--bg-darkest);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: var(--radius-sm);
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      &:hover { color: var(--accent-cyan); }
+      .material-icons-round { font-size: 22px; }
+    }
+
+    /* ── Responsive ─────────────────────────────────────────────────────────── */
+
+    @media (max-width: 768px) {
+      .header { padding: 0 12px; gap: 10px; }
+      .hamburger { display: flex; }
+      .ticker-bar { display: none; }
+      .market-status { display: none; }
+      .header-search input { width: 150px; }
+    }
+
+    @media (max-width: 480px) {
+      .header-search { display: none; }
+    }

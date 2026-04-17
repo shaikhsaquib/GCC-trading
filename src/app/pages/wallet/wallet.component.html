@@ -1,0 +1,284 @@
+    <div class="wallet-page fade-in">
+      <div class="page-header">
+        <div class="page-title">
+          <h2>Wallet & Payments</h2>
+          <p>Manage your funds — deposit, withdraw and track transactions</p>
+        </div>
+        <div class="page-actions">
+          <span class="badge badge-node">Node.js</span>
+          <button class="btn btn-secondary"><span class="material-icons-round">history</span> History</button>
+          <button class="btn btn-primary" (click)="activeAction.set('deposit')">
+            <span class="material-icons-round">add</span> Add Funds
+          </button>
+        </div>
+      </div>
+
+      @if (apiError()) {
+        <div class="alert-box alert-danger" style="margin-bottom:16px">
+          <span class="material-icons-round">error</span>{{ apiError() }}
+        </div>
+      }
+
+      <!-- Balance Cards -->
+      <div class="balance-cards">
+        <div class="balance-card primary">
+          <div class="balance-label">Total Balance</div>
+          <div class="balance-amount">
+            @if (loading()) { <span style="color:rgba(255,255,255,0.4)">—</span> }
+            @else { {{ balanceCurrency() }} {{ totalBalance() | number:'1.2-2' }} }
+          </div>
+          <div class="balance-sub">
+            @if (!loading() && !apiError()) {
+              <span [style.color]="monthChangeAmt >= 0 ? 'var(--success)' : 'var(--danger)'">
+                {{ monthChangeAmt >= 0 ? '▲' : '▼' }}
+                {{ Math.abs(monthChangePct) | number:'1.2-2' }}%
+                ({{ balanceCurrency() }} {{ Math.abs(monthChangeAmt) | number:'1.0-0' }}) this month
+              </span>
+            }
+          </div>
+          <div class="balance-actions">
+            <button class="btn btn-primary btn-sm" (click)="activeAction.set('deposit')">
+              <span class="material-icons-round">add_circle</span> Deposit
+            </button>
+            <button class="btn btn-secondary btn-sm" (click)="activeAction.set('withdraw')">
+              <span class="material-icons-round">remove_circle</span> Withdraw
+            </button>
+          </div>
+        </div>
+
+        <div class="balance-sub-grid">
+          @for (b of subBalances; track b.label) {
+            <div class="balance-sub-card">
+              <div class="sub-icon" [style.background]="b.iconBg">
+                <span class="material-icons-round" [style.color]="b.iconColor">{{ b.icon }}</span>
+              </div>
+              <div>
+                <div class="sub-label">{{ b.label }}</div>
+                <div class="sub-amount">
+                  @if (loading()) { <span style="color:var(--text-muted)">—</span> }
+                  @else { {{ b.amount }} }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="wallet-layout">
+
+        <!-- Left: Action Panel -->
+        <div class="action-panel">
+
+          <!-- Deposit -->
+          @if (activeAction() === 'deposit') {
+            <div class="card fade-in">
+              <h4 style="margin-bottom:20px">Deposit Funds</h4>
+              <div class="form-group">
+                <label>Payment Method</label>
+                <div class="method-list">
+                  @for (m of paymentMethods; track m.id) {
+                    <div class="method-item" [class.selected]="selectedMethod() === m.id" (click)="selectedMethod.set(m.id)">
+                      <span class="material-icons-round" [style.color]="m.color">{{ m.icon }}</span>
+                      <div>
+                        <strong>{{ m.label }}</strong>
+                        <small>{{ m.desc }}</small>
+                      </div>
+                      @if (selectedMethod() === m.id) {
+                        <span class="material-icons-round" style="color:var(--accent-cyan);margin-left:auto">radio_button_checked</span>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Amount ({{ balanceCurrency() }})</label>
+                <div class="amount-input-wrapper">
+                  <span class="currency-symbol">{{ balanceCurrency() }}</span>
+                  <input class="form-control" type="number" placeholder="0.00"
+                         style="padding-left:54px;font-size:18px;font-weight:700"
+                         [(ngModel)]="depositAmount" name="da"/>
+                </div>
+                <div class="quick-amounts">
+                  @for (qa of [10000, 50000, 100000, 500000]; track qa) {
+                    <button class="chip" (click)="depositAmount = qa">{{ balanceCurrency() }} {{ qa | number }}</button>
+                  }
+                </div>
+              </div>
+              @if (error()) {
+                <div class="alert-box alert-danger"><span class="material-icons-round">error</span>{{ error() }}</div>
+              }
+              @if (success()) {
+                <div class="alert-box alert-success"><span class="material-icons-round">check_circle</span>{{ success() }}</div>
+              }
+              <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center"
+                [disabled]="submitting()" (click)="submitDeposit()">
+                @if (submitting()) {
+                  <span class="material-icons-round" style="animation:spin 1s linear infinite">sync</span> Processing...
+                } @else {
+                  <span class="material-icons-round">add_circle</span>
+                  Deposit {{ balanceCurrency() }} {{ depositAmount | number }}
+                }
+              </button>
+            </div>
+          }
+
+          <!-- Withdraw -->
+          @if (activeAction() === 'withdraw') {
+            <div class="card fade-in">
+              <h4 style="margin-bottom:20px">Withdraw Funds</h4>
+              <div class="form-group">
+                <label>Bank Account</label>
+                <select class="form-control form-select" name="ba" [(ngModel)]="selectedBankIdx">
+                  @for (b of banks; track b.iban; let i = $index) {
+                    <option [value]="i">{{ b.name }} — {{ b.iban }}</option>
+                  }
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Amount ({{ balanceCurrency() }})</label>
+                <div class="amount-input-wrapper">
+                  <span class="currency-symbol">{{ balanceCurrency() }}</span>
+                  <input class="form-control" type="number" placeholder="0.00"
+                         style="padding-left:54px;font-size:18px;font-weight:700"
+                         [(ngModel)]="withdrawAmount" name="wa"/>
+                </div>
+              </div>
+              <div class="withdraw-info">
+                <div class="info-row"><span>Available Balance</span><span>{{ balanceCurrency() }} {{ availableBalance() | number:'1.2-2' }}</span></div>
+                <div class="info-row"><span>Processing Time</span><span>1–2 business days</span></div>
+                <div class="info-row"><span>Fee</span><span style="color:var(--success)">Free</span></div>
+              </div>
+              @if (error()) {
+                <div class="alert-box alert-danger"><span class="material-icons-round">error</span>{{ error() }}</div>
+              }
+              @if (success()) {
+                <div class="alert-box alert-success"><span class="material-icons-round">check_circle</span>{{ success() }}</div>
+              }
+              <button class="btn btn-danger btn-lg" style="width:100%;justify-content:center"
+                [disabled]="submitting()" (click)="submitWithdraw()">
+                @if (submitting()) {
+                  <span class="material-icons-round" style="animation:spin 1s linear infinite">sync</span> Processing...
+                } @else {
+                  <span class="material-icons-round">remove_circle</span>
+                  Withdraw {{ balanceCurrency() }} {{ withdrawAmount | number }}
+                }
+              </button>
+            </div>
+          }
+
+          <!-- Balance Trend Chart (generated from tx history) -->
+          <div class="card mini-chart-card">
+            <h4 style="margin-bottom:16px">Balance Trend (30 days)</h4>
+            @if (txLoading()) {
+              <div style="height:100px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)">
+                <span class="material-icons-round" style="animation:spin 1s linear infinite">sync</span>
+              </div>
+            } @else {
+              <svg width="100%" height="100" viewBox="0 0 300 100" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="var(--accent-cyan)" stop-opacity="0.3"/>
+                    <stop offset="100%" stop-color="var(--accent-cyan)" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <path [attr.d]="chartPath" fill="url(#chartFill)"/>
+                <path [attr.d]="chartLine" fill="none" stroke="var(--accent-cyan)" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <div class="chart-labels">
+                @for (lbl of chartDateLabels; track lbl) { <span>{{ lbl }}</span> }
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Right: Transaction History -->
+        <div class="card transactions-panel">
+          <div class="panel-header">
+            <h4>Transaction History</h4>
+            <div class="header-filters">
+              @for (tf of txFilters; track tf) {
+                <span class="chip" [class.active]="txFilter() === tf"
+                      (click)="txFilter.set(tf); onFilterChange()">{{ tf }}</span>
+              }
+            </div>
+          </div>
+
+          <div class="search-bar" style="margin-bottom:16px">
+            <span class="material-icons-round search-icon">search</span>
+            <input class="form-control" style="width:100%;padding-left:36px"
+                   placeholder="Search by description or reference..."
+                   [(ngModel)]="searchTerm" (ngModelChange)="onFilterChange()" name="ts"/>
+          </div>
+
+          @if (txLoading()) {
+            <div style="padding:40px;text-align:center;color:var(--text-muted)">
+              <span class="material-icons-round" style="font-size:32px;animation:spin 1s linear infinite;display:block;margin-bottom:12px">sync</span>
+              Loading transactions...
+            </div>
+          } @else {
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Description</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th style="text-align:right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (transactions.length === 0) {
+                  <tr>
+                    <td colspan="5" style="text-align:center;padding:40px;color:var(--text-muted)">
+                      <span class="material-icons-round" style="font-size:28px;display:block;margin-bottom:6px">search_off</span>
+                      No transactions match your filter
+                    </td>
+                  </tr>
+                }
+                @for (tx of transactions; track tx.id) {
+                  <tr>
+                    <td>
+                      <div class="tx-type-icon" [style.background]="tx.iconBg">
+                        <span class="material-icons-round" [style.color]="tx.iconColor" style="font-size:16px">{{ tx.icon }}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="tx-desc">
+                        <strong>{{ tx.desc }}</strong>
+                        <small>{{ tx.ref }}</small>
+                      </div>
+                    </td>
+                    <td style="color:var(--text-secondary)">{{ tx.date }}</td>
+                    <td><span class="badge" [ngClass]="txStatusBadge(tx.status)">{{ tx.status }}</span></td>
+                    <td style="text-align:right;font-weight:700"
+                        [style.color]="tx.amount > 0 ? 'var(--success)' : 'var(--danger)'">
+                      {{ tx.amount > 0 ? '+' : '' }}{{ balanceCurrency() }} {{ Math.abs(tx.amount) | number:'1.2-2' }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+
+            <div class="table-footer">
+              <span class="text-muted">
+                Showing {{ Math.min(page() * pageSize, filteredTx.length) }} of {{ filteredTx.length }} transactions
+              </span>
+              <div class="pagination">
+                <button class="btn btn-secondary btn-sm"
+                        [disabled]="page() === 1"
+                        (click)="goToPage(page() - 1)">Previous</button>
+                @for (n of [].constructor(totalPages); track $index) {
+                  <button class="btn btn-secondary btn-sm"
+                          [class.active]="page() === $index + 1"
+                          (click)="goToPage($index + 1)">{{ $index + 1 }}</button>
+                }
+                <button class="btn btn-secondary btn-sm"
+                        [disabled]="page() === totalPages"
+                        (click)="goToPage(page() + 1)">Next</button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>

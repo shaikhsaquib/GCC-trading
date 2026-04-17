@@ -1,0 +1,450 @@
+<!-- ══════════════════════════════════════════════════════════ ADMIN VIEW ══ -->
+@if (isAdmin()) {
+
+  <div class="dashboard fade-in">
+
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="page-title">
+        <h2>Platform Overview</h2>
+        <p>GCC Bond Trading System — All modules at a glance</p>
+      </div>
+      <div class="page-actions">
+        <span class="badge" [ngClass]="healthBadge.cls">
+          <span class="status-dot"
+                [class.active]="healthBadge.cls === 'badge-success'"
+                [class.pending]="healthBadge.cls === 'badge-warning'"
+                [class.error]="healthBadge.cls === 'badge-danger'">
+          </span>
+          {{ healthBadge.label }}
+        </span>
+        <button class="btn btn-secondary btn-sm" (click)="refresh()" [disabled]="adminLoading()">
+          <span class="material-icons-round" [class.spin]="adminLoading()">refresh</span>
+          Refresh
+        </button>
+        <a class="btn btn-primary" routerLink="/trading">
+          <span class="material-icons-round">add</span> New Trade
+        </a>
+      </div>
+    </div>
+
+    <!-- Error Banner -->
+    @if (adminError()) {
+      <div class="error-banner">
+        <span class="material-icons-round">error_outline</span>
+        <div class="error-text">
+          <strong>Failed to load dashboard data</strong>
+          <span>Check your connection or API server status.</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" (click)="refresh()">
+          <span class="material-icons-round">refresh</span> Retry
+        </button>
+      </div>
+    }
+
+    <!-- KPI Skeleton -->
+    @if (adminLoading()) {
+      <div class="stats-grid">
+        @for (i of [1,2,3,4,5,6]; track i) {
+          <div class="stat-card skeleton-card">
+            <div class="skeleton sk-icon"></div>
+            <div class="skeleton sk-label"></div>
+            <div class="skeleton sk-value"></div>
+            <div class="skeleton sk-change"></div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- KPI Cards (live) -->
+    @if (!adminLoading() && !adminError()) {
+      <div class="stats-grid">
+        @for (stat of kpis; track stat.label) {
+          <div class="stat-card">
+            <div class="stat-icon" [style.background]="stat.iconBg">
+              <span class="material-icons-round" [style.color]="stat.iconColor">{{ stat.icon }}</span>
+            </div>
+            <div class="stat-label">{{ stat.label }}</div>
+            <div class="stat-value">{{ stat.value }}</div>
+            @if (stat.change) {
+              <div class="stat-change" [class.up]="stat.up" [class.down]="!stat.up">
+                {{ stat.up ? '▲' : '▼' }} {{ stat.change }} vs yesterday
+              </div>
+            } @else {
+              <div class="stat-change neutral">—</div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Module Grid -->
+    <div class="section-header">
+      <h3>System Modules</h3>
+      <p class="text-muted">Click any module to navigate &middot; Green&nbsp;=&nbsp;active &middot; Yellow&nbsp;=&nbsp;idle &middot; Red&nbsp;=&nbsp;attention needed</p>
+    </div>
+
+    <div class="modules-grid">
+      @for (mod of modules; track mod.title) {
+        <a class="module-card" [routerLink]="mod.route" [style.--accent]="mod.color">
+          <div class="module-header">
+            <div class="module-icon" [style.background]="'rgba(' + mod.color + ',0.12)'">
+              <span class="material-icons-round" [style.color]="'rgb(' + mod.color + ')'">{{ mod.icon }}</span>
+            </div>
+            <div class="module-status">
+              <span class="status-dot"
+                    [class.active]="moduleStatus(mod) === 'active'"
+                    [class.pending]="moduleStatus(mod) === 'idle'"
+                    [class.error]="moduleStatus(mod) === 'warning'">
+              </span>
+            </div>
+          </div>
+          <h4 class="module-title">{{ mod.title }}</h4>
+          <p class="module-desc">{{ mod.desc }}</p>
+          <div class="module-footer">
+            <span class="badge" [class]="'badge-' + mod.techClass">{{ mod.tech }}</span>
+            <span class="material-icons-round arrow-icon">arrow_forward</span>
+          </div>
+        </a>
+      }
+    </div>
+
+    <!-- Chart + Pending Actions row -->
+    <div class="chart-row">
+
+      <!-- 30-Day Volume Chart -->
+      <div class="card chart-card">
+        <div class="card-header">
+          <div>
+            <h4>30-Day Trading Volume</h4>
+            @if (chartData().length) {
+              <p class="chart-meta">
+                {{ chartTotalTrades().toLocaleString() }} trades &middot;
+                SAR {{ chartTotalVolume().toLocaleString(undefined, { maximumFractionDigits: 0 }) }} total
+              </p>
+            }
+          </div>
+          <span class="badge badge-secondary">Last 30 Days</span>
+        </div>
+
+        @if (adminLoading()) {
+          <div class="skeleton" style="height:120px; border-radius:6px"></div>
+        } @else if (chartData().length) {
+          <div class="chart-area">
+            <svg viewBox="0 0 600 100" preserveAspectRatio="none" class="volume-chart">
+              <!-- Baseline -->
+              <line x1="0" y1="100" x2="600" y2="100" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+              @for (bar of chartBars(); track bar.date) {
+                <rect
+                  [attr.x]="bar.x"
+                  [attr.y]="bar.y"
+                  [attr.width]="bar.width"
+                  [attr.height]="bar.height"
+                  class="chart-bar"
+                  rx="2"
+                />
+              }
+            </svg>
+            <div class="chart-x-labels">
+              <span>30d ago</span>
+              <span>15d ago</span>
+              <span>Today</span>
+            </div>
+          </div>
+        } @else {
+          <div class="chart-empty">
+            <span class="material-icons-round">bar_chart</span>
+            <p>No trade data in the last 30 days</p>
+          </div>
+        }
+      </div>
+
+      <!-- Pending Actions + Quick Links -->
+      <div class="card pending-card">
+        <div class="card-header">
+          <h4>Pending Actions</h4>
+          <a routerLink="/admin" class="btn btn-secondary btn-sm">Admin Panel</a>
+        </div>
+
+        @if (adminLoading()) {
+          <div class="pending-list">
+            @for (i of [1,2,3,4]; track i) {
+              <div class="pending-item">
+                <div class="skeleton" style="width:36px;height:36px;border-radius:8px;flex-shrink:0"></div>
+                <div style="flex:1">
+                  <div class="skeleton sk-label" style="margin-bottom:6px"></div>
+                  <div class="skeleton sk-change"></div>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="pending-list">
+            @for (action of pendingActions(); track action.label) {
+              <a class="pending-item" [routerLink]="action.route">
+                <div class="pending-icon" [style.background]="action.iconBg">
+                  <span class="material-icons-round" [style.color]="action.iconColor">{{ action.icon }}</span>
+                </div>
+                <div class="pending-text">
+                  <span class="pending-label">{{ action.label }}</span>
+                  <span class="pending-val"
+                        [style.color]="action.value > 0 ? action.iconColor : 'var(--text-muted)'">
+                    {{ action.value }}
+                  </span>
+                </div>
+                <span class="material-icons-round" style="color:var(--text-muted);font-size:18px">chevron_right</span>
+              </a>
+            }
+          </div>
+        }
+
+        <div class="admin-shortcuts">
+          <p class="shortcuts-label">Quick Links</p>
+          <div class="shortcuts-grid">
+            <a routerLink="/audit"       class="shortcut-btn"><span class="material-icons-round">storage</span> Audit Trail</a>
+            <a routerLink="/scheduler"   class="shortcut-btn"><span class="material-icons-round">schedule</span> Scheduler</a>
+            <a routerLink="/aml"         class="shortcut-btn"><span class="material-icons-round">security</span> AML</a>
+            <a routerLink="/settlement"  class="shortcut-btn"><span class="material-icons-round">task_alt</span> Settlement</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom Row: Activity + Health -->
+    <div class="bottom-row">
+
+      <div class="card activity-card">
+        <div class="card-header">
+          <h4>Recent Activity</h4>
+          <a routerLink="/audit" class="btn btn-secondary btn-sm">View All</a>
+        </div>
+        <div class="activity-list">
+          @if (recentActivity.length === 0 && !adminLoading()) {
+            <div class="empty-state">
+              <span class="material-icons-round">history</span>
+              <p>No recent activity</p>
+            </div>
+          }
+          @for (act of recentActivity; track act.id) {
+            <div class="activity-item">
+              <div class="activity-icon" [style.background]="act.iconBg">
+                <span class="material-icons-round" [style.color]="act.iconColor" style="font-size:16px">{{ act.icon }}</span>
+              </div>
+              <div class="activity-content">
+                <p class="activity-title">{{ act.title }}</p>
+                <p class="activity-meta">{{ act.meta }}</p>
+              </div>
+              <span class="activity-time">{{ act.time }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="card health-card">
+        <div class="card-header">
+          <h4>System Health</h4>
+          <span class="badge" [ngClass]="healthBadge.cls" style="font-size:11px">
+            {{ services.length ? (healthBadge.cls === 'badge-success' ? 'Healthy' : 'Degraded') : '…' }}
+          </span>
+        </div>
+        <div class="health-list">
+          @if (!services.length) {
+            @for (i of [1,2,3,4,5,6]; track i) {
+              <div class="health-item">
+                <div class="skeleton" style="height:11px;border-radius:3px;margin-bottom:7px"></div>
+                <div class="skeleton" style="height:7px;border-radius:3px"></div>
+              </div>
+            }
+          }
+          @for (svc of services; track svc.name) {
+            <div class="health-item">
+              <div class="health-name">
+                <span class="status-dot" [class.active]="svc.up" [class.error]="!svc.up"></span>
+                {{ svc.name }}
+              </div>
+              <div class="health-bar">
+                <div class="progress-bar" style="flex:1">
+                  <div class="progress-fill"
+                       [style.width]="(svc.up ? 100 : 0) + '%'"
+                       [class.fill-down]="!svc.up">
+                  </div>
+                </div>
+                <span class="health-val" [class.val-down]="!svc.up">
+                  {{ svc.up ? '100%' : 'Down' }}
+                </span>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+}
+
+<!-- ══════════════════════════════════════════════════ INVESTOR VIEW ══ -->
+@else {
+
+  <div class="dashboard fade-in">
+
+    <div class="page-header">
+      <div class="page-title">
+        <h2>Welcome back, {{ auth.user()?.firstName }}</h2>
+        <p>Your GCC Bond trading summary</p>
+      </div>
+      <div class="page-actions">
+        @if (isActive()) {
+          <a class="btn btn-primary" routerLink="/marketplace">
+            <span class="material-icons-round">public</span> Browse Bonds
+          </a>
+        } @else {
+          <a class="btn btn-primary" routerLink="/kyc">
+            <span class="material-icons-round">verified_user</span> Complete KYC
+          </a>
+        }
+      </div>
+    </div>
+
+    <!-- KYC Status Banner -->
+    @if (kyc(); as k) {
+      @if (k.status !== 'Approved') {
+        <div class="kyc-banner"
+             [class.kyc-banner--pending]="k.status === 'Submitted' || k.status === 'UnderReview'"
+             [class.kyc-banner--rejected]="k.status === 'Rejected'"
+             [class.kyc-banner--draft]="k.status === 'Draft'">
+          <span class="material-icons-round">
+            {{ k.status === 'Rejected' ? 'cancel' : 'pending_actions' }}
+          </span>
+          <div class="kyc-banner-content">
+            <strong>
+              @if (k.status === 'Draft') { Complete your identity verification to start trading }
+              @else if (k.status === 'Submitted' || k.status === 'UnderReview') { Your KYC is under review — we'll notify you when done }
+              @else if (k.status === 'Rejected') { Your KYC was rejected — please resubmit }
+            </strong>
+            <span class="badge" [ngClass]="kycBadgeClass(k.status)" style="margin-left:8px">{{ k.status }}</span>
+          </div>
+          <a class="btn btn-secondary btn-sm" routerLink="/kyc">
+            {{ k.status === 'Draft' ? 'Continue KYC' : k.status === 'Rejected' ? 'Resubmit' : 'View Status' }}
+          </a>
+        </div>
+      }
+    } @else if (!investorLoading()) {
+      <div class="kyc-banner kyc-banner--draft">
+        <span class="material-icons-round">verified_user</span>
+        <div class="kyc-banner-content">
+          <strong>Start your identity verification to unlock trading</strong>
+        </div>
+        <a class="btn btn-primary btn-sm" routerLink="/kyc">Start KYC</a>
+      </div>
+    }
+
+    <!-- Investor KPIs -->
+    <div class="stats-grid">
+      @for (kpi of investorKpis(); track kpi.label) {
+        <div class="stat-card">
+          <div class="stat-icon" [style.background]="kpi.iconBg">
+            <span class="material-icons-round" [style.color]="kpi.iconColor">{{ kpi.icon }}</span>
+          </div>
+          <div class="stat-label">{{ kpi.label }}</div>
+          <div class="stat-value">{{ kpi.value }}</div>
+          <div class="stat-change" style="color:var(--text-muted)">{{ kpi.sub }}</div>
+        </div>
+      }
+    </div>
+
+    <!-- Bottom Row -->
+    <div class="bottom-row">
+
+      <div class="card activity-card">
+        <div class="card-header">
+          <h4>Recent Transactions</h4>
+          <a class="btn btn-secondary btn-sm" routerLink="/wallet">View All</a>
+        </div>
+        <div class="activity-list">
+          @if (recentTxns().length === 0) {
+            <div class="empty-state">
+              <span class="material-icons-round">receipt_long</span>
+              <p>No transactions yet</p>
+            </div>
+          }
+          @for (txn of recentTxns(); track txn.id) {
+            <div class="activity-item">
+              <div class="activity-icon" [style.background]="txnIcon(txn.type).bg">
+                <span class="material-icons-round" [style.color]="txnIcon(txn.type).color" style="font-size:16px">
+                  {{ txnIcon(txn.type).icon }}
+                </span>
+              </div>
+              <div class="activity-content">
+                <p class="activity-title">{{ txn.description || txn.type }}</p>
+                <p class="activity-meta">{{ txn.currency }} {{ txn.amount }} &middot; {{ txn.status }}</p>
+              </div>
+              <span class="activity-time">{{ formatDate(txn.created_at) }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="card health-card">
+        <div class="card-header">
+          <h4>Quick Actions</h4>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;padding:4px 0">
+          <a routerLink="/marketplace" class="quick-action-btn">
+            <div class="qa-icon" style="background:rgba(124,77,255,0.12)">
+              <span class="material-icons-round" style="color:#7c4dff">public</span>
+            </div>
+            <div class="qa-text">
+              <strong>Bond Marketplace</strong>
+              <span>Browse and invest in GCC bonds</span>
+            </div>
+            <span class="material-icons-round" style="color:var(--text-muted);font-size:18px">chevron_right</span>
+          </a>
+          <a routerLink="/portfolio" class="quick-action-btn">
+            <div class="qa-icon" style="background:rgba(23,195,178,0.12)">
+              <span class="material-icons-round" style="color:var(--accent-teal)">trending_up</span>
+            </div>
+            <div class="qa-text">
+              <strong>My Portfolio</strong>
+              <span>Track your holdings and P&L</span>
+            </div>
+            <span class="material-icons-round" style="color:var(--text-muted);font-size:18px">chevron_right</span>
+          </a>
+          <a routerLink="/wallet" class="quick-action-btn">
+            <div class="qa-icon" style="background:rgba(0,212,255,0.12)">
+              <span class="material-icons-round" style="color:var(--accent-cyan)">account_balance_wallet</span>
+            </div>
+            <div class="qa-text">
+              <strong>Wallet & Payments</strong>
+              <span>Deposit, withdraw, view history</span>
+            </div>
+            <span class="material-icons-round" style="color:var(--text-muted);font-size:18px">chevron_right</span>
+          </a>
+          <a routerLink="/kyc" class="quick-action-btn">
+            <div class="qa-icon" style="background:rgba(0,230,118,0.12)">
+              <span class="material-icons-round" style="color:#00e676">verified_user</span>
+            </div>
+            <div class="qa-text">
+              <strong>Identity & KYC</strong>
+              <span>Manage your verification status</span>
+            </div>
+            <span class="material-icons-round" style="color:var(--text-muted);font-size:18px">chevron_right</span>
+          </a>
+          <a routerLink="/notifications" class="quick-action-btn">
+            <div class="qa-icon" style="background:rgba(255,193,7,0.12)">
+              <span class="material-icons-round" style="color:#ffc107">notifications</span>
+            </div>
+            <div class="qa-text">
+              <strong>Notifications</strong>
+              <span>View alerts and messages</span>
+            </div>
+            <span class="material-icons-round" style="color:var(--text-muted);font-size:18px">chevron_right</span>
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+}

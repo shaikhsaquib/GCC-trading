@@ -1,11 +1,12 @@
-import { Component, signal } from '@angular/core';
-import { NgClass } from '@angular/common';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { NgClass, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { SettlementService, Settlement } from '../../services/settlement.service';
 
 @Component({
   selector: 'app-settlement',
   standalone: true,
-  imports: [NgClass, FormsModule],
+  imports: [NgClass, FormsModule, DecimalPipe],
   template: `
     <div class="settlement-page fade-in">
       <div class="page-header">
@@ -203,37 +204,88 @@ import { FormsModule } from '@angular/forms';
     .ts-content { strong { display: block; font-size: 13px; } small { font-size: 11px; color: var(--text-secondary); } }
   `],
 })
-export class SettlementComponent {
+export class SettlementComponent implements OnInit {
+  private readonly settlSvc = inject(SettlementService);
+
   activeTab = signal('Pending T+1');
   selectedSettlement = signal<any>(null);
+  loading = signal(true);
+  error = signal<string | null>(null);
 
   tabs = ['Pending T+1', 'In Progress', 'Settled', 'Failed', 'All'];
 
   settlStats = [
-    { label: 'Pending T+1', value: '34', icon: 'pending', iconBg: 'rgba(255,193,7,0.1)', iconColor: 'var(--warning)', color: 'var(--warning)' },
-    { label: 'In Progress', value: '12', icon: 'sync', iconBg: 'rgba(0,212,255,0.1)', iconColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' },
-    { label: 'Settled Today', value: '89', icon: 'task_alt', iconBg: 'rgba(46,213,115,0.1)', iconColor: 'var(--success)', color: 'var(--success)' },
-    { label: 'Failed', value: '2', icon: 'error', iconBg: 'rgba(255,71,87,0.1)', iconColor: 'var(--danger)', color: 'var(--danger)' },
-    { label: 'Total Value', value: 'SAR 1.4B', icon: 'payments', iconBg: 'rgba(124,77,255,0.1)', iconColor: 'var(--accent-purple)', color: 'var(--text-primary)' },
+    { label: 'Pending T+1', value: '—', icon: 'pending', iconBg: 'rgba(255,193,7,0.1)', iconColor: 'var(--warning)', color: 'var(--warning)' },
+    { label: 'In Progress', value: '—', icon: 'sync', iconBg: 'rgba(0,212,255,0.1)', iconColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' },
+    { label: 'Settled Today', value: '—', icon: 'task_alt', iconBg: 'rgba(46,213,115,0.1)', iconColor: 'var(--success)', color: 'var(--success)' },
+    { label: 'Failed', value: '—', icon: 'error', iconBg: 'rgba(255,71,87,0.1)', iconColor: 'var(--danger)', color: 'var(--danger)' },
+    { label: 'Total Value', value: '—', icon: 'payments', iconBg: 'rgba(124,77,255,0.1)', iconColor: 'var(--accent-purple)', color: 'var(--text-primary)' },
   ];
 
-  settlements = [
-    { id: 'TRD-20240415-001', bond: 'Saudi Govt. Bond 2029', issuer: 'Ministry of Finance', isin: 'SA1230001234', side: 'BUY', qty: 5000, price: '101.45', value: 507250, counterparty: 'Riyad Capital', tradeDate: 'Apr 15, 2024', settlementDate: 'Apr 16, 2024', status: 'Pending' },
-    { id: 'TRD-20240415-002', bond: 'Saudi Aramco Sukuk', issuer: 'Saudi Aramco', isin: 'SA2340015678', side: 'SELL', qty: 2000, price: '99.82', value: 199640, counterparty: 'Al Rajhi Capital', tradeDate: 'Apr 15, 2024', settlementDate: 'Apr 16, 2024', status: 'Pending' },
-    { id: 'TRD-20240415-003', bond: 'SABIC Corporate Bond', issuer: 'SABIC', isin: 'SA3450029012', side: 'BUY', qty: 3000, price: '100.75', value: 302250, counterparty: 'NCB Capital', tradeDate: 'Apr 15, 2024', settlementDate: 'Apr 16, 2024', status: 'Processing' },
-    { id: 'TRD-20240414-021', bond: 'Abu Dhabi Govt. Bond', issuer: 'Emirate of Abu Dhabi', isin: 'AE0040012345', side: 'BUY', qty: 8000, price: '98.60', value: 788800, counterparty: 'Emirates NBD Sec.', tradeDate: 'Apr 14, 2024', settlementDate: 'Apr 15, 2024', status: 'Settled' },
-    { id: 'TRD-20240414-019', bond: 'Qatar National Bank Bond', issuer: 'QNB Group', isin: 'QA0060034567', side: 'SELL', qty: 1500, price: '101.25', value: 151875, counterparty: 'QInvest', tradeDate: 'Apr 14, 2024', settlementDate: 'Apr 15, 2024', status: 'Settled' },
-    { id: 'TRD-20240413-014', bond: 'NCB Capital Sukuk', issuer: 'NCB Capital', isin: 'SA0070045678', side: 'BUY', qty: 4000, price: '99.95', value: 399800, counterparty: 'Aljazira Capital', tradeDate: 'Apr 13, 2024', settlementDate: 'Apr 14, 2024', status: 'Failed' },
-  ];
+  settlements: any[] = [];
 
-  settlSteps = [
-    { label: 'Trade Executed', time: 'Apr 15, 2024 · 10:32:07', done: true, active: false },
-    { label: 'Trade Confirmed', time: 'Apr 15, 2024 · 10:33:15', done: true, active: false },
-    { label: 'CSD Notification Sent', time: 'Apr 15, 2024 · 10:35:00', done: true, active: false },
-    { label: 'Counterparty Confirmation', time: 'Waiting...', done: false, active: true },
-    { label: 'Securities Delivery (T+1)', time: 'Apr 16, 2024', done: false, active: false },
-    { label: 'Cash Settlement', time: 'Apr 16, 2024', done: false, active: false },
-  ];
+  ngOnInit() {
+    this.settlSvc.getAll().subscribe({
+      next: (res) => {
+        const items = res.data.items;
+        const stats = res.data.stats;
+
+        this.settlements = items.map((s: Settlement) => ({
+          id:             s.id,
+          bond:           s.bondName,
+          issuer:         s.buyerId,
+          isin:           s.isin,
+          side:           s.side.toUpperCase(),
+          qty:            s.quantity,
+          price:          s.price.toFixed(2),
+          value:          s.value,
+          counterparty:   s.side.toLowerCase() === 'buy' ? s.sellerId : s.buyerId,
+          tradeDate:      s.tradeDate,
+          settlementDate: s.settlementDate,
+          status:         s.status.charAt(0).toUpperCase() + s.status.slice(1).toLowerCase(),
+        }));
+
+        this.settlStats[0].value = String(stats.pending);
+        this.settlStats[1].value = String(stats.processing);
+        this.settlStats[2].value = String(stats.completed);
+        this.settlStats[3].value = String(stats.failed);
+        this.settlStats[4].value = 'SAR ' + (stats.totalValue >= 1e9
+          ? (stats.totalValue / 1e9).toFixed(1) + 'B'
+          : stats.totalValue >= 1e6
+            ? (stats.totalValue / 1e6).toFixed(0) + 'M'
+            : stats.totalValue.toLocaleString());
+
+        this.loading.set(false);
+      },
+      error: (err) => {
+        this.error.set('Failed to load settlements');
+        this.loading.set(false);
+      },
+    });
+  }
+
+  get settlSteps() {
+    const s = this.selectedSettlement();
+    if (!s) return [];
+    const tradeDate  = s.tradeDate      ? new Date(s.tradeDate)      : null;
+    const settlDate  = s.settlementDate ? new Date(s.settlementDate) : null;
+    const fmtDate    = (d: Date | null) => d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+    const fmtTs      = (d: Date | null) => d ? `${fmtDate(d)} · ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : '—';
+    const confirmed  = s.status !== 'Pending';
+    const csdSent    = confirmed;
+    const cpConfirm  = s.status === 'Settled' || s.status === 'Processing';
+    const delivered  = s.status === 'Settled';
+    const cashSettled = s.status === 'Settled';
+    const failed     = s.status === 'Failed';
+    return [
+      { label: 'Trade Executed',             time: fmtTs(tradeDate),  done: true,       active: false },
+      { label: 'Trade Confirmed',            time: fmtTs(tradeDate),  done: confirmed,  active: !confirmed && !failed },
+      { label: 'CSD Notification Sent',      time: fmtDate(tradeDate),done: csdSent,    active: confirmed && !cpConfirm && !failed },
+      { label: 'Counterparty Confirmation',  time: cpConfirm ? fmtDate(settlDate) : (failed ? 'Failed' : 'Waiting...'), done: cpConfirm, active: csdSent && !cpConfirm && !failed },
+      { label: 'Securities Delivery (T+1)',  time: fmtDate(settlDate), done: delivered, active: cpConfirm && !delivered && !failed },
+      { label: 'Cash Settlement',            time: fmtDate(settlDate), done: cashSettled,active: delivered && !cashSettled },
+    ];
+  }
 
   filteredSettlements() {
     const tab = this.activeTab();

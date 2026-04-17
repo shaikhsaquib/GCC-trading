@@ -1,0 +1,51 @@
+    <header class="header">
+      <!-- Hamburger (mobile only) -->
+      <button class="hamburger" (click)="layout.toggle()" title="Menu">
+        <span class="material-icons-round">menu</span>
+      </button>
+
+      <!-- Left: market ticker -->
+      <div class="ticker-bar">
+        @for (ticker of tickers; track ticker.symbol) {
+          <div class="ticker-item">
+            <span class="ticker-symbol">{{ ticker.symbol }}</span>
+            <span class="ticker-price">{{ ticker.price }}</span>
+            <span class="ticker-change" [ngClass]="ticker.up ? 'up' : 'down'">
+              {{ ticker.up ? '▲' : '▼' }} {{ ticker.change }}
+            </span>
+          </div>
+        }
+      </div>
+
+      <!-- Right: actions -->
+      <div class="header-actions">
+        <!-- Search -->
+        <div class="header-search">
+          <span class="material-icons-round search-ic">search</span>
+          <input type="text" placeholder="Search bonds, ISIN, issuer..." />
+          <kbd>⌘K</kbd>
+        </div>
+
+        <!-- Market status -->
+        <div class="market-status">
+          <span class="status-dot active"></span>
+          <span>Market Open</span>
+        </div>
+
+        <!-- Notifications -->
+        <button class="icon-btn" title="Notifications">
+          <span class="material-icons-round">notifications</span>
+          <span class="notif-badge">5</span>
+        </button>
+
+        <!-- Settings -->
+        <button class="icon-btn" title="Settings">
+          <span class="material-icons-round">settings</span>
+        </button>
+
+        <!-- Avatar -->
+        <div class="header-avatar" title="Logout" (click)="auth.logout()" style="cursor:pointer">
+          {{ userInitials() }}
+        </div>
+      </div>
+    </header>

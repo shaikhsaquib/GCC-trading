@@ -1,0 +1,465 @@
+/* ── Page shell ──────────────────────────────────────────────────────────────── */
+
+.auth-page {
+  min-height: 100vh;
+  background: var(--bg-darkest);
+  overflow-y: auto;
+  position: relative;
+}
+
+.auth-bg {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 0;
+}
+
+.bg-circle {
+  position: absolute; border-radius: 50%;
+  filter: blur(80px); opacity: 0.06;
+  &.c1 { width: 600px; height: 600px; background: var(--accent-cyan);   top: -200px;  left: -200px; }
+  &.c2 { width: 400px; height: 400px; background: var(--accent-purple); bottom: -100px; right: -100px; }
+}
+
+/* ── Container ───────────────────────────────────────────────────────────────── */
+
+.register-container {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 24px 60px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────────── */
+
+.reg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 36px;
+}
+
+.brand-mini {
+  display: flex; align-items: center; gap: 10px;
+  span { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+}
+
+/* ── Steps bar ───────────────────────────────────────────────────────────────── */
+
+.steps-bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 28px;
+}
+
+.step-item {
+  display: flex; align-items: center; gap: 8px;
+
+  &.active .step-num  { background: var(--accent-cyan); color: var(--bg-darkest); }
+  &.done   .step-num  { background: var(--success);     color: var(--bg-darkest); }
+  &.active .step-label { color: var(--accent-cyan); }
+  &.done   .step-label { color: var(--success); }
+}
+
+.step-num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--bg-surface); color: var(--text-secondary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; flex-shrink: 0;
+  transition: background 0.3s, color 0.3s;
+}
+
+.step-label {
+  font-size: 13px; font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.step-connector {
+  flex: 1; height: 1px;
+  background: var(--border);
+  margin: 0 10px;
+  transition: background 0.3s;
+  &.done { background: var(--success); }
+}
+
+/* ── Card ────────────────────────────────────────────────────────────────────── */
+
+.reg-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 36px;
+}
+
+.step-content h3 {
+  font-size: 20px; font-weight: 700; margin-bottom: 4px;
+}
+
+.step-desc {
+  font-size: 13px; color: var(--text-secondary); margin-bottom: 28px;
+}
+
+/* ── Form grid ───────────────────────────────────────────────────────────────── */
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.form-group.full { grid-column: 1 / -1; }
+
+/* ── Form group validation states ────────────────────────────────────────────── */
+
+.form-group { display: flex; flex-direction: column; gap: 0; }
+
+.form-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 7px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.req { color: var(--danger); font-size: 13px; }
+
+.optional-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1px 7px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.field-ok {
+  font-size: 14px;
+  color: var(--success);
+}
+
+/* Error / Success border states */
+.form-group.has-error .form-control {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 2px rgba(255, 71, 87, 0.12);
+}
+
+.form-group.has-success .form-control {
+  border-color: var(--success) !important;
+  box-shadow: 0 0 0 2px rgba(46, 213, 115, 0.1);
+}
+
+/* ── Input icon wrapper ───────────────────────────────────────────────────────── */
+
+.input-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 17px;
+  color: var(--text-muted);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.form-control.has-icon { padding-left: 40px; }
+
+/* ── Password eye toggle ──────────────────────────────────────────────────────── */
+
+.input-pw-wrap {
+  display: flex;
+  gap: 0;
+  align-items: stretch;
+}
+
+.input-pw-wrap .input-icon-wrap { flex: 1; }
+
+.input-pw-wrap .form-control {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.eye-btn {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s, background 0.2s;
+  flex-shrink: 0;
+
+  &:hover { color: var(--accent-cyan); background: var(--bg-card-hover); }
+
+  .material-icons-round { font-size: 18px; }
+}
+
+.form-group.has-error .eye-btn   { border-color: var(--danger); }
+.form-group.has-success .eye-btn { border-color: var(--success); }
+
+/* ── Field messages ───────────────────────────────────────────────────────────── */
+
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--danger);
+  margin-top: 5px;
+  .material-icons-round { font-size: 13px; flex-shrink: 0; }
+}
+
+.field-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 5px;
+  .material-icons-round { font-size: 12px; flex-shrink: 0; }
+}
+
+/* ── Password strength ────────────────────────────────────────────────────────── */
+
+.strength-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.strength-bar {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.strength-seg {
+  height: 4px;
+  flex: 1;
+  border-radius: 2px;
+  transition: background 0.3s;
+}
+
+.strength-text {
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 40px;
+  text-align: right;
+  transition: color 0.3s;
+}
+
+/* ── Password requirements ────────────────────────────────────────────────────── */
+
+.pw-reqs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 16px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.pw-req {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: color 0.2s;
+
+  .material-icons-round { font-size: 14px; color: var(--border); transition: color 0.2s; }
+
+  &.met {
+    color: var(--success);
+    .material-icons-round { color: var(--success); }
+  }
+}
+
+/* ── Account type cards ───────────────────────────────────────────────────────── */
+
+.acc-type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.acc-type-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  position: relative;
+
+  strong { font-size: 13px; }
+  small  { font-size: 11px; color: var(--text-secondary); }
+
+  &.selected {
+    border-color: var(--accent-cyan);
+    background: rgba(0, 212, 255, 0.06);
+  }
+
+  &:hover:not(.selected) {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: var(--bg-card-hover);
+  }
+}
+
+.acc-type-check {
+  position: absolute;
+  top: 8px; right: 8px;
+  font-size: 16px;
+  color: var(--accent-cyan);
+}
+
+/* ── Agreements ───────────────────────────────────────────────────────────────── */
+
+.agreement-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.agree-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+
+  &.checked {
+    border-color: rgba(0, 212, 255, 0.3);
+    background: rgba(0, 212, 255, 0.04);
+  }
+
+  &:hover:not(.checked) { border-color: rgba(255, 255, 255, 0.15); }
+}
+
+.agree-checkbox {
+  flex-shrink: 0;
+  margin-top: 1px;
+  input[type="checkbox"] { display: none; }
+}
+
+.check-visual {
+  font-size: 20px;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+
+.agree-item.checked .check-visual { color: var(--accent-cyan); }
+
+.agree-content {
+  flex: 1;
+  strong { font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px; }
+  p      { font-size: 12px; color: var(--text-secondary); margin: 0; line-height: 1.5; }
+}
+
+.agree-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(255, 165, 2, 0.08);
+  border: 1px solid rgba(255, 165, 2, 0.25);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--warning);
+  .material-icons-round { font-size: 16px; }
+}
+
+/* ── Server error ─────────────────────────────────────────────────────────────── */
+
+.server-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(255, 71, 87, 0.08);
+  border: 1px solid rgba(255, 71, 87, 0.3);
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  font-size: 13px;
+  margin-top: 16px;
+  .material-icons-round { font-size: 18px; flex-shrink: 0; }
+}
+
+/* ── Step navigation ──────────────────────────────────────────────────────────── */
+
+.step-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.spin {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Sign-in link ─────────────────────────────────────────────────────────────── */
+
+.signin-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--text-muted);
+  a { color: var(--accent-cyan); text-decoration: none; &:hover { text-decoration: underline; } }
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .register-container { padding: 20px 16px 48px; }
+
+  .reg-card { padding: 24px 18px; }
+
+  .form-grid { grid-template-columns: 1fr; }
+
+  .form-group.full { grid-column: 1; }
+
+  .acc-type-grid { grid-template-columns: 1fr; }
+
+  .pw-reqs { grid-template-columns: 1fr; }
+
+  .step-label { display: none; }
+
+  .step-connector { margin: 0 6px; }
+}
+
+@media (max-width: 400px) {
+  .steps-bar { gap: 0; }
+
+  .step-item { gap: 4px; }
+}

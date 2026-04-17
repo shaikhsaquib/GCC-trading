@@ -1,0 +1,204 @@
+    <div class="scheduler-page fade-in">
+      <div class="page-header">
+        <div class="page-title">
+          <h2>Scheduler</h2>
+          <p>Manage cron jobs — expired order cleanup, price snapshots, and maturity alerts</p>
+        </div>
+        <div class="page-actions">
+          <span class="badge badge-cron">Node-cron</span>
+          <button class="btn btn-secondary"><span class="material-icons-round">history</span> Run History</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px">
+        @for (s of schedulerStats(); track s.label) {
+          <div class="stat-card" style="padding:14px">
+            <div class="stat-icon" [style.background]="s.iconBg" style="width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;margin-bottom:8px">
+              <span class="material-icons-round" [style.color]="s.iconColor" style="font-size:16px">{{ s.icon }}</span>
+            </div>
+            <div class="stat-label">{{ s.label }}</div>
+            <div class="stat-value" style="font-size:18px" [style.color]="s.color">{{ s.value }}</div>
+          </div>
+        }
+      </div>
+
+      @if (loading()) {
+        <div style="padding:60px;text-align:center;color:var(--text-muted)">
+          <span class="material-icons-round" style="font-size:40px;display:block;margin-bottom:12px;animation:spin 1s linear infinite">sync</span>
+          Loading scheduler status...
+        </div>
+      } @else {
+        <div class="scheduler-layout">
+
+          <!-- Job List -->
+          <div class="jobs-col">
+            <div class="card" style="padding:0;overflow:hidden">
+              <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+                <h4 style="font-size:14px;font-weight:700">Cron Jobs ({{ filteredJobs().length }})</h4>
+                <div style="display:flex;gap:8px">
+                  @for (f of jobFilters; track f) {
+                    <span class="chip" [class.active]="jobFilter() === f" (click)="jobFilter.set(f)">{{ f }}</span>
+                  }
+                </div>
+              </div>
+              <div class="jobs-list">
+                @for (job of filteredJobs(); track job.id) {
+                  <div class="job-row" [class.selected]="selectedJob()?.id === job.id" (click)="selectedJob.set(job)">
+                    <div class="job-status-indicator" [ngClass]="'ind-' + job.status.toLowerCase()"></div>
+
+                    <div class="job-icon" [style.background]="job.iconBg">
+                      <span class="material-icons-round" [style.color]="job.iconColor">{{ job.icon }}</span>
+                    </div>
+
+                    <div class="job-info">
+                      <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+                        <strong>{{ job.name }}</strong>
+                        <span class="badge" [ngClass]="jobStatusBadge(job.status)">{{ job.status }}</span>
+                      </div>
+                      <div style="font-size:11px;color:var(--text-secondary)">{{ job.desc }}</div>
+                      <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+                        <div class="cron-expr">
+                          <span class="material-icons-round" style="font-size:12px">schedule</span>
+                          <code>{{ job.cron }}</code>
+                        </div>
+                        <span style="font-size:11px;color:var(--text-muted)">{{ job.humanCron }}</span>
+                      </div>
+                    </div>
+
+                    <div class="job-timing">
+                      <div class="timing-item">
+                        <span>Last Run</span>
+                        <strong [style.color]="job.lastStatus === 'Success' ? 'var(--success)' : job.lastStatus === 'Failed' ? 'var(--danger)' : 'var(--text-secondary)'">{{ job.lastRun }}</strong>
+                      </div>
+                      <div class="timing-item">
+                        <span>Runs Today</span>
+                        <strong class="text-cyan">{{ job.runsToday }}</strong>
+                      </div>
+                      <div class="timing-item">
+                        <span>Duration</span>
+                        <strong>{{ job.avgDuration }}</strong>
+                      </div>
+                    </div>
+
+                    <div class="job-actions" (click)="$event.stopPropagation()">
+                      <button class="btn btn-success btn-sm" title="Run Now" (click)="runJob(job)">
+                        <span class="material-icons-round" style="font-size:14px">play_arrow</span>
+                      </button>
+                      <button class="btn btn-secondary btn-sm" title="Edit">
+                        <span class="material-icons-round" style="font-size:14px">edit</span>
+                      </button>
+                    </div>
+                  </div>
+                }
+                @if (filteredJobs().length === 0) {
+                  <div style="padding:40px;text-align:center;color:var(--text-muted)">
+                    <span class="material-icons-round" style="font-size:28px;display:block;margin-bottom:8px">search_off</span>
+                    No jobs match this filter
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Job Detail + Recent Runs -->
+          <div class="detail-col">
+            @if (selectedJob()) {
+              <div class="card job-detail fade-in">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+                  <div class="job-icon" [style.background]="selectedJob()!.iconBg">
+                    <span class="material-icons-round" [style.color]="selectedJob()!.iconColor" style="font-size:22px">{{ selectedJob()!.icon }}</span>
+                  </div>
+                  <div>
+                    <h3 style="font-size:16px">{{ selectedJob()!.name }}</h3>
+                    <p style="font-size:12px;color:var(--text-secondary)">{{ selectedJob()!.desc }}</p>
+                  </div>
+                  <span class="badge" style="margin-left:auto" [ngClass]="jobStatusBadge(selectedJob()!.status)">{{ selectedJob()!.status }}</span>
+                </div>
+
+                <div class="detail-fields">
+                  <div class="df-item">
+                    <span>Cron Expression</span>
+                    <code style="color:var(--accent-cyan);font-size:14px">{{ selectedJob()!.cron }}</code>
+                  </div>
+                  <div class="df-item">
+                    <span>Schedule</span>
+                    <strong>{{ selectedJob()!.humanCron }}</strong>
+                  </div>
+                  <div class="df-item">
+                    <span>Last Run</span>
+                    <strong [style.color]="selectedJob()!.lastStatus === 'Success' ? 'var(--success)' : 'var(--danger)'">{{ selectedJob()!.lastRun }}</strong>
+                  </div>
+                  <div class="df-item">
+                    <span>Runs Today</span>
+                    <strong class="text-cyan">{{ selectedJob()!.runsToday }}</strong>
+                  </div>
+                  <div class="df-item">
+                    <span>Last Duration</span>
+                    <strong>{{ selectedJob()!.avgDuration }}</strong>
+                  </div>
+                  <div class="df-item">
+                    <span>Owner</span>
+                    <strong>{{ selectedJob()!.owner }}</strong>
+                  </div>
+                </div>
+
+                @if (selectedJob()!.runHistory.length > 0) {
+                  <div class="divider"></div>
+                  <h4 style="font-size:13px;margin-bottom:12px">Recent Execution History</h4>
+                  <table class="data-table">
+                    <thead><tr><th>Run #</th><th>Started</th><th>Duration</th><th>Status</th></tr></thead>
+                    <tbody>
+                      @for (run of selectedJob()!.runHistory; track run.id) {
+                        <tr>
+                          <td style="color:var(--text-muted)">#{{ run.id }}</td>
+                          <td style="color:var(--text-secondary)">{{ run.started }}</td>
+                          <td>{{ run.duration }}</td>
+                          <td><span class="badge" [ngClass]="run.status === 'Success' ? 'badge-success' : 'badge-danger'">{{ run.status }}</span></td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+
+                <div class="divider"></div>
+
+                <div style="display:flex;gap:10px">
+                  <button class="btn btn-success" style="flex:1;justify-content:center" (click)="runJob(selectedJob()!)">
+                    <span class="material-icons-round">play_arrow</span> Run Now
+                  </button>
+                  <button class="btn btn-secondary" style="flex:1;justify-content:center">
+                    <span class="material-icons-round">edit</span> Edit Schedule
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <div class="card empty-state">
+                <span class="material-icons-round empty-icon">schedule</span>
+                <h4>Select a job</h4>
+                <p>Click a cron job to view details and execution history</p>
+              </div>
+            }
+
+            <!-- Today's Timeline -->
+            @if (todayTimeline.length > 0) {
+              <div class="card timeline-card">
+                <h4 style="margin-bottom:14px;font-size:14px">Today's Execution Timeline</h4>
+                <div class="timeline-list">
+                  @for (ev of todayTimeline; track ev.time) {
+                    <div class="tl-item">
+                      <span class="tl-time">{{ ev.time }}</span>
+                      <span class="tl-dot" [style.background]="ev.success ? 'var(--success)' : 'var(--danger)'"></span>
+                      <div class="tl-info">
+                        <strong>{{ ev.job }}</strong>
+                        <small [style.color]="ev.success ? 'var(--success)' : 'var(--danger)'">{{ ev.result }}</small>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>

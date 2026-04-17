@@ -1,44 +1,17 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { NgClass } from '@angular/common';
 import { SidebarComponent } from './sidebar.component';
 import { HeaderComponent } from './header.component';
+import { LayoutService } from './layout.service';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet, SidebarComponent, HeaderComponent],
-  template: `
-    <div class="layout">
-      <app-sidebar />
-      <div class="layout-main">
-        <app-header />
-        <main class="layout-content">
-          <router-outlet />
-        </main>
-      </div>
-    </div>
-  `,
-  styles: [`
-    .layout {
-      display: flex;
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    .layout-main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      min-width: 0;
-    }
-
-    .layout-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 28px;
-      background: var(--bg-darkest);
-    }
-  `],
+  imports: [RouterOutlet, SidebarComponent, HeaderComponent, NgClass],
+  templateUrl: './main-layout.component.html',
+  styleUrl: './main-layout.component.css',
 })
-export class MainLayoutComponent {}
+export class MainLayoutComponent {
+  readonly layout = inject(LayoutService);
+}

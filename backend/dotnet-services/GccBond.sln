@@ -1,0 +1,24 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GccBond.Shared", "src\GccBond.Shared\GccBond.Shared.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GccBond.Marketplace", "src\GccBond.Marketplace\GccBond.Marketplace.csproj", "{B1C2D3E4-F5A6-7890-BCDE-F12345678901}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GccBond.Trading", "src\GccBond.Trading\GccBond.Trading.csproj", "{C1D2E3F4-A5B6-7890-CDEF-123456789012}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GccBond.Settlement", "src\GccBond.Settlement\GccBond.Settlement.csproj", "{D1E2F3A4-B5C6-7890-DEF0-234567890123}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GccBond.Portfolio", "src\GccBond.Portfolio\GccBond.Portfolio.csproj", "{E1F2A3B4-C5D6-7890-EF01-345678901234}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GccBond.AML", "src\GccBond.AML\GccBond.AML.csproj", "{F1A2B3C4-D5E6-7890-F012-456789012345}"
+EndProject
+
+Global
+  GlobalSection(SolutionConfigurationPlatforms) = preSolution
+    Debug|Any CPU = Debug|Any CPU
+    Release|Any CPU = Release|Any CPU
+  EndGlobalSection
+EndGlobal
