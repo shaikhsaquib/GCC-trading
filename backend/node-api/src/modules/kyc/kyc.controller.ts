@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { KycService } from './kyc.service';
+import { KycStatus } from './kyc.types';
 import { sendSuccess, sendCreated } from '../../middlewares/error-handler';
 
 export class KycController {
@@ -48,7 +49,7 @@ export class KycController {
   getQueue = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const result = await this.service.getQueue({
-        status: req.query.status as string | undefined,
+        status: req.query.status as KycStatus | undefined,
         limit:  Number(req.query.limit)  || 20,
         offset: Number(req.query.offset) || 0,
       });

@@ -1,7 +1,9 @@
 import crypto from 'crypto';
-import { PoolClient } from 'pg';
+import { PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { db } from '../../core/database/postgres.client';
 import { Order, PlaceOrderInput, OrderBookEntry } from './orders.types';
+
+type Queryable = { query<T extends QueryResultRow = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<QueryResult<T>> };
 
 export class OrdersRepository {
   async create(userId: string, input: PlaceOrderInput): Promise<Order> {
@@ -58,7 +60,7 @@ export class OrdersRepository {
   }
 
   async cancel(orderId: string, userId: string, client?: PoolClient): Promise<Order | null> {
-    const q = client ?? db;
+    const q: Queryable = client ?? db;
     const r = await q.query<Record<string, unknown>>(
       `UPDATE trading.orders
        SET status = 'Cancelled', cancel_reason = 'User requested', updated_at = NOW()
