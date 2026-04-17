@@ -8,6 +8,13 @@ export interface PortfolioHolding {
   currentValue:        number;
   unrealizedPnl:       number;
   totalCouponReceived: number;
+  issuerName:          string;
+  issuerType:          string;
+  couponRate:          number;
+  maturityDate:        string;
+  currentPrice:        number;
+  creditRating:        string;
+  isShariaCompliant:   boolean;
 }
 
 export interface PortfolioSummary {

@@ -6,13 +6,20 @@ export class PortfolioRepository {
     const r = await db.query<Record<string, unknown>>(
       `SELECT h.id,
               h.bond_id,
-              b.name              AS bond_name,
+              b.name                AS bond_name,
               b.isin,
               h.quantity,
               h.avg_buy_price,
               h.current_value,
               h.unrealized_pnl,
-              h.total_coupon_received
+              h.total_coupon_received,
+              b.issuer_name,
+              b.issuer_type,
+              b.coupon_rate,
+              b.maturity_date,
+              b.current_price,
+              b.credit_rating,
+              b.is_sharia_compliant
        FROM portfolio.holdings h
        JOIN bonds.listings b ON b.id = h.bond_id
        WHERE h.user_id = $1
@@ -51,6 +58,10 @@ export class PortfolioRepository {
   }
 
   private mapHoldingRow(row: Record<string, unknown>): PortfolioHolding {
+    const maturity = row['maturity_date'];
+    const maturityStr = maturity instanceof Date
+      ? maturity.toISOString().split('T')[0]
+      : String(maturity ?? '');
     return {
       id:                  String(row['id'] ?? ''),
       bondId:              String(row['bond_id'] ?? ''),
@@ -61,6 +72,13 @@ export class PortfolioRepository {
       currentValue:        parseFloat(String(row['current_value'] ?? 0)),
       unrealizedPnl:       parseFloat(String(row['unrealized_pnl'] ?? 0)),
       totalCouponReceived: parseFloat(String(row['total_coupon_received'] ?? 0)),
+      issuerName:          String(row['issuer_name'] ?? ''),
+      issuerType:          String(row['issuer_type'] ?? ''),
+      couponRate:          parseFloat(String(row['coupon_rate'] ?? 0)),
+      maturityDate:        maturityStr,
+      currentPrice:        parseFloat(String(row['current_price'] ?? 0)),
+      creditRating:        String(row['credit_rating'] ?? ''),
+      isShariaCompliant:   Boolean(row['is_sharia_compliant']),
     };
   }
 }

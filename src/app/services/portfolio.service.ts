@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import { PortfolioSummary, PortfolioHolding, ApiResponse } from '../core/models/api.models';
+import { PortfolioSummary, PortfolioHolding, CouponEvent, ApiResponse } from '../core/models/api.models';
 
 @Injectable({ providedIn: 'root' })
 export class PortfolioService {
@@ -17,6 +17,6 @@ export class PortfolioService {
   }
 
   getCouponCalendar() {
-    return this.http.get<ApiResponse<unknown[]>>(`${this.base}/coupon-calendar`);
+    return this.http.get<ApiResponse<CouponEvent[]>>(`${this.base}/coupon-calendar`);
   }
 }
