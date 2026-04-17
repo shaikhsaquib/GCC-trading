@@ -1,10 +1,12 @@
-import { PoolClient } from 'pg';
+import { PoolClient, QueryResult } from 'pg';
 import { db } from '../../core/database/postgres.client';
 import { WalletRow, TransactionRow, WithdrawalRow, Currency } from './wallet.types';
 
+type Queryable = { query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<QueryResult<T>> };
+
 export class WalletRepository {
   async findByUserId(userId: string, client?: PoolClient): Promise<WalletRow | null> {
-    const q = client ?? db;
+    const q: Queryable = client ?? db;
     const r = await q.query<WalletRow>(
       'SELECT * FROM wallet.wallets WHERE user_id = $1',
       [userId],
@@ -46,7 +48,7 @@ export class WalletRepository {
   }
 
   async freezeBalance(userId: string, amount: number, client?: PoolClient): Promise<boolean> {
-    const q = client ?? db;
+    const q: Queryable = client ?? db;
     const r = await q.query(
       `UPDATE wallet.wallets
        SET available_balance = available_balance - $1,
@@ -59,7 +61,7 @@ export class WalletRepository {
   }
 
   async unfreezeBalance(userId: string, amount: number, client?: PoolClient): Promise<void> {
-    const q = client ?? db;
+    const q: Queryable = client ?? db;
     await q.query(
       `UPDATE wallet.wallets
        SET available_balance = available_balance + $1,
@@ -82,7 +84,7 @@ export class WalletRepository {
     idempotencyKey: string;
     metadata?:      Record<string, unknown>;
   }, client?: PoolClient): Promise<TransactionRow> {
-    const q = client ?? db;
+    const q: Queryable = client ?? db;
     const r = await q.query<TransactionRow>(
       `INSERT INTO wallet.transactions
          (wallet_id, type, amount, currency, status, reference_id,
@@ -107,7 +109,7 @@ export class WalletRepository {
   }
 
   async updateTransactionStatus(id: string, status: string, client?: PoolClient): Promise<void> {
-    const q = client ?? db;
+    const q: Queryable = client ?? db;
     await q.query(
       'UPDATE wallet.transactions SET status = $1, updated_at = NOW() WHERE id = $2',
       [status, id],
@@ -140,7 +142,7 @@ export class WalletRepository {
     fee:         number,
     client?:     PoolClient,
   ): Promise<void> {
-    const q = client ?? db;
+    const q: Queryable = client ?? db;
     await q.query(
       `UPDATE wallet.wallets
        SET frozen_balance    = frozen_balance    - $1,
@@ -162,7 +164,7 @@ export class WalletRepository {
     netAmount: number,
     client?:   PoolClient,
   ): Promise<void> {
-    const q = client ?? db;
+    const q: Queryable = client ?? db;
     await q.query(
       `UPDATE wallet.wallets
        SET available_balance = available_balance + $1,
@@ -174,7 +176,7 @@ export class WalletRepository {
   }
 
   async debitBalance(userId: string, amount: number, client?: PoolClient): Promise<boolean> {
-    const q = client ?? db;
+    const q: Queryable = client ?? db;
     const r = await q.query(
       `UPDATE wallet.wallets
        SET balance           = balance           - $1,

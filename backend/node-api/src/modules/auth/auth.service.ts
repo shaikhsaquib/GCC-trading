@@ -123,7 +123,7 @@ export class AuthService {
       const tempToken = jwt.sign(
         { sub: user.id, type: 'temp_2fa' },
         config.jwt.secret,
-        { expiresIn: '5m' },
+        { expiresIn: '5m' as any },
       );
       return { requires2FA: true, tempToken };
     }
@@ -413,13 +413,13 @@ export class AuthService {
     const accessToken = jwt.sign(
       { sub: user.id, email: user.email, role: user.role, status: user.status, jti: jtiAccess },
       config.jwt.secret,
-      { expiresIn: config.jwt.expiresIn },
+      { expiresIn: config.jwt.expiresIn as any },
     );
 
     const refreshToken = jwt.sign(
       { sub: user.id, jti: jtiRefresh, type: 'refresh' },
       config.jwt.refreshSecret,
-      { expiresIn: config.jwt.refreshExpires },
+      { expiresIn: config.jwt.refreshExpires as any },
     );
 
     return { accessToken, refreshToken };
