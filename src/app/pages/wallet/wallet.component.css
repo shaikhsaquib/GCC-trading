@@ -73,4 +73,8 @@
 
     .btn.active { background: rgba(0,212,255,0.1); color: var(--accent-cyan); border-color: var(--accent-cyan); }
 
+    .alert-box { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; .material-icons-round { font-size: 16px; } }
+    .alert-danger  { background: rgba(255,71,87,0.1);  color: var(--danger); }
+    .alert-success { background: rgba(46,213,115,0.1); color: var(--success); }
+
     @keyframes spin { to { transform: rotate(360deg); } }

@@ -14,12 +14,20 @@ import { WalletBalance, WalletTransaction } from '../../core/models/api.models';
 export class WalletComponent implements OnInit {
   private readonly walletSvc = inject(WalletService);
 
-  activeAction   = signal('deposit');
-  selectedMethod = signal('bank');
-  txFilter       = signal('All');
-  depositAmount  = 0;
-  withdrawAmount = 0;
-  selectedBankIdx = 0;
+  activeAction      = signal('deposit');
+  selectedMethod    = signal('bank');
+  txFilter          = signal('All');
+  page              = signal(1);
+  readonly pageSize = 10;
+
+  depositAmount     = 0;
+  withdrawAmount    = 0;
+  transferRecipient = '';
+  transferAmount    = 0;
+  transferNote      = '';
+  searchTerm        = '';
+  selectedBankIdx   = 0;
+
   Math = Math;
 
   loading    = signal(true);
@@ -29,126 +37,260 @@ export class WalletComponent implements OnInit {
   submitting = signal(false);
 
   availableBalance = signal(0);
+  totalBalance     = signal(0);
+  frozenBalance    = signal(0);
   balanceCurrency  = signal('SAR');
 
   banks = [
-    { name: 'Al Rajhi Bank',  iban: 'SA0380000000608010167519' },
-    { name: 'Riyad Bank',     iban: 'SA4620000001234567891234' },
+    { name: 'Al Rajhi Bank', iban: 'SA0380000000608010167519' },
+    { name: 'Riyad Bank',    iban: 'SA4620000001234567891234' },
   ];
-
-  private _rawTx = signal<WalletTransaction[]>([]);
 
   txFilters = ['All', 'Deposits', 'Withdrawals', 'Trades', 'Coupons'];
 
   paymentMethods = [
-    { id: 'bank', icon: 'account_balance', label: 'Bank Transfer (SADAD)', desc: 'Instant · Free',    color: 'var(--accent-cyan)' },
-    { id: 'mada', icon: 'credit_card',     label: 'Mada Card',              desc: 'Instant · 0.5% fee', color: 'var(--accent-teal)' },
-    { id: 'stc',  icon: 'phone_android',   label: 'STC Pay',                desc: 'Instant · Free',    color: 'var(--accent-purple)' },
+    { id: 'bank', icon: 'account_balance', label: 'Bank Transfer (SADAD)', desc: 'Instant · Free',     color: 'var(--accent-cyan)'   },
+    { id: 'mada', icon: 'credit_card',     label: 'Mada Card',             desc: 'Instant · 0.5% fee', color: 'var(--accent-teal)'   },
+    { id: 'stc',  icon: 'phone_android',   label: 'STC Pay',               desc: 'Instant · Free',     color: 'var(--accent-purple)' },
   ];
 
   subBalances = [
-    { label: 'Available Cash',   amount: '—', icon: 'account_balance_wallet', iconBg: 'rgba(0,212,255,0.1)',  iconColor: 'var(--accent-cyan)' },
-    { label: 'Total Balance',    amount: '—', icon: 'trending_up',            iconBg: 'rgba(23,195,178,0.1)', iconColor: 'var(--accent-teal)' },
-    { label: 'Frozen / Pending', amount: '—', icon: 'pending',                iconBg: 'rgba(255,193,7,0.1)',  iconColor: 'var(--warning)' },
-    { label: 'Coupon Income',    amount: '—', icon: 'payments',               iconBg: 'rgba(46,213,115,0.1)', iconColor: 'var(--success)' },
+    { label: 'Available Cash',   amount: '—', icon: 'account_balance_wallet', iconBg: 'rgba(0,212,255,0.1)',  iconColor: 'var(--accent-cyan)'   },
+    { label: 'Total Balance',    amount: '—', icon: 'trending_up',            iconBg: 'rgba(23,195,178,0.1)', iconColor: 'var(--accent-teal)'   },
+    { label: 'Frozen / Pending', amount: '—', icon: 'pending',                iconBg: 'rgba(255,193,7,0.1)',  iconColor: 'var(--warning)'       },
+    { label: 'Coupon Income',    amount: '—', icon: 'payments',               iconBg: 'rgba(46,213,115,0.1)', iconColor: 'var(--success)'       },
   ];
 
-  chartPath = 'M0,80 C20,75 40,65 60,60 S90,45 120,40 S150,30 180,25 S210,20 240,22 S270,18 300,15 L300,100 L0,100 Z';
-  chartLine = 'M0,80 C20,75 40,65 60,60 S90,45 120,40 S150,30 180,25 S210,20 240,22 S270,18 300,15';
+  chartPath       = '';
+  chartLine       = '';
+  chartDateLabels: string[] = [];
+  monthChangeAmt  = 0;
+  monthChangePct  = 0;
 
-  // Reactive getter — re-evaluates whenever txFilter() or _rawTx() change
-  get transactions() {
-    const filter = this.txFilter();
+  private _rawTx = signal<WalletTransaction[]>([]);
+
+  // ── Computed ─────────────────────────────────────────────────────────────────
+
+  get filteredTx(): WalletTransaction[] {
+    const f = this.txFilter();
+    const s = this.searchTerm.toLowerCase();
     return this._rawTx()
-      .filter(tx => this.matchesFilter(tx, filter))
-      .map(tx => this.mapTx(tx));
+      .filter(tx => this.matchesFilter(tx, f))
+      .filter(tx => !s ||
+        tx.description.toLowerCase().includes(s) ||
+        (tx.reference_id ?? '').toLowerCase().includes(s));
   }
 
+  get transactions() {
+    const start = (this.page() - 1) * this.pageSize;
+    return this.filteredTx.slice(start, start + this.pageSize).map(tx => this.mapTx(tx));
+  }
+
+  get totalPages(): number {
+    return Math.max(1, Math.ceil(this.filteredTx.length / this.pageSize));
+  }
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────────
+
   ngOnInit() {
+    this.initChartLabels();
     this.loadBalance();
     this.loadTransactions();
   }
+
+  // ── Loading ───────────────────────────────────────────────────────────────────
 
   private loadBalance() {
     this.walletSvc.getBalance().subscribe({
       next: (b: WalletBalance) => {
         this.loading.set(false);
         this.availableBalance.set(b.availableBalance);
+        this.totalBalance.set(b.balance);
+        this.frozenBalance.set(b.frozenBalance);
         this.balanceCurrency.set(b.currency);
-        const fmt = (n: number) => `${b.currency} ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        this.subBalances = [
-          { label: 'Available Cash',   amount: fmt(b.availableBalance), icon: 'account_balance_wallet', iconBg: 'rgba(0,212,255,0.1)',  iconColor: 'var(--accent-cyan)' },
-          { label: 'Total Balance',    amount: fmt(b.balance),          icon: 'trending_up',            iconBg: 'rgba(23,195,178,0.1)', iconColor: 'var(--accent-teal)' },
-          { label: 'Frozen / Pending', amount: fmt(b.frozenBalance),    icon: 'pending',                iconBg: 'rgba(255,193,7,0.1)',  iconColor: 'var(--warning)' },
-          { label: 'Currency',         amount: b.currency,              icon: 'payments',               iconBg: 'rgba(46,213,115,0.1)', iconColor: 'var(--success)' },
-        ];
+        this.syncSubBalances(b);
       },
       error: () => this.loading.set(false),
     });
   }
 
   private loadTransactions() {
-    this.walletSvc.getTransactions().subscribe({
+    this.walletSvc.getTransactions(50, 0).subscribe({
       next: res => {
         this._rawTx.set(res?.data ?? []);
         this.txLoading.set(false);
+        this.generateChart(res?.data ?? []);
+        this.computeMonthChange(res?.data ?? []);
       },
       error: () => this.txLoading.set(false),
     });
   }
 
-  submitDeposit() {
-    if (this.depositAmount <= 0) {
-      this.error.set('Please enter a deposit amount greater than 0.');
-      return;
+  private syncSubBalances(b: WalletBalance) {
+    const c   = b.currency;
+    const fmt = (n: number) =>
+      `${c} ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const couponIncome = this._rawTx()
+      .filter(t => t.type === 'COUPON' && t.status === 'COMPLETED')
+      .reduce((s, t) => s + parseFloat(t.amount), 0);
+    this.subBalances = [
+      { label: 'Available Cash',   amount: fmt(b.availableBalance), icon: 'account_balance_wallet', iconBg: 'rgba(0,212,255,0.1)',  iconColor: 'var(--accent-cyan)'   },
+      { label: 'Total Balance',    amount: fmt(b.balance),          icon: 'trending_up',            iconBg: 'rgba(23,195,178,0.1)', iconColor: 'var(--accent-teal)'   },
+      { label: 'Frozen / Pending', amount: fmt(b.frozenBalance),    icon: 'pending',                iconBg: 'rgba(255,193,7,0.1)',  iconColor: 'var(--warning)'       },
+      { label: 'Coupon Income',    amount: fmt(couponIncome),       icon: 'payments',               iconBg: 'rgba(46,213,115,0.1)', iconColor: 'var(--success)'       },
+    ];
+  }
+
+  private initChartLabels() {
+    this.chartDateLabels = Array.from({ length: 5 }, (_, i) => {
+      const d = new Date(Date.now() - (4 - i) * 7 * 86_400_000);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
+  }
+
+  private generateChart(txs: WalletTransaction[]) {
+    const days = 30;
+    const now  = Date.now();
+    let   bal  = this.availableBalance();
+    const pts  = new Array<number>(days).fill(0);
+    pts[days - 1] = bal;
+
+    for (let i = days - 2; i >= 0; i--) {
+      const dayStart = now - (days - 1 - i) * 86_400_000;
+      const dayEnd   = dayStart + 86_400_000;
+      for (const tx of txs) {
+        const ms = new Date(tx.created_at).getTime();
+        if (ms >= dayStart && ms < dayEnd) {
+          const amt  = parseFloat(tx.amount);
+          const isIn = tx.type === 'CREDIT' || tx.type === 'SETTLEMENT_CREDIT'
+                    || tx.type === 'COUPON'  || tx.type === 'UNFREEZE';
+          bal = isIn ? bal - amt : bal + amt;
+        }
+      }
+      pts[i] = Math.max(0, bal);
     }
-    this.submitting.set(true);
-    this.error.set(null);
-    this.success.set(null);
+
+    const maxVal = Math.max(...pts, 1);
+    const W = 300; const H = 80;
+    const coords = pts.map((v, i) => {
+      const x = ((i / (days - 1)) * W).toFixed(1);
+      const y = (H - (v / maxVal) * (H - 6)).toFixed(1);
+      return `${x},${y}`;
+    });
+    this.chartLine = `M ${coords.join(' L ')}`;
+    this.chartPath = `${this.chartLine} L ${W},${H} L 0,${H} Z`;
+  }
+
+  private computeMonthChange(txs: WalletTransaction[]) {
+    const cutoff = Date.now() - 30 * 86_400_000;
+    const net = txs
+      .filter(tx => new Date(tx.created_at).getTime() > cutoff && tx.status !== 'FAILED')
+      .reduce((sum, tx) => {
+        const amt  = parseFloat(tx.amount);
+        const isIn = tx.type === 'CREDIT' || tx.type === 'SETTLEMENT_CREDIT' || tx.type === 'COUPON';
+        return sum + (isIn ? amt : -amt);
+      }, 0);
+    const base = this.totalBalance() - net;
+    this.monthChangeAmt = net;
+    this.monthChangePct = base > 0 ? (net / base) * 100 : 0;
+  }
+
+  // ── Actions ───────────────────────────────────────────────────────────────────
+
+  submitDeposit() {
+    if (this.depositAmount <= 0) { this.error.set('Enter an amount greater than 0.'); return; }
+    this.submitting.set(true); this.error.set(null); this.success.set(null);
     this.walletSvc.deposit(this.depositAmount, this.balanceCurrency(), this.selectedMethod()).subscribe({
       next: () => {
         this.submitting.set(false);
+        const label = this.paymentMethods.find(m => m.id === this.selectedMethod())?.label ?? 'Bank';
         this.success.set(`Deposit of ${this.balanceCurrency()} ${this.depositAmount.toLocaleString()} initiated successfully.`);
+        this.addLocalTx('CREDIT', this.depositAmount, `Deposit via ${label}`);
+        this.availableBalance.update(b => b + this.depositAmount);
+        this.totalBalance.update(b => b + this.depositAmount);
         this.depositAmount = 0;
-        this.loadBalance();
-        this.loadTransactions();
         setTimeout(() => this.success.set(null), 5000);
       },
       error: err => {
         this.submitting.set(false);
-        this.error.set(err?.error?.error?.message ?? err?.error?.message ?? 'Deposit failed. Please try again.');
+        this.error.set(err?.error?.error?.message ?? 'Deposit failed. Please try again.');
       },
     });
   }
 
   submitWithdraw() {
-    if (this.withdrawAmount <= 0) {
-      this.error.set('Please enter a withdrawal amount greater than 0.');
-      return;
-    }
-    if (this.withdrawAmount > this.availableBalance()) {
-      this.error.set('Withdrawal amount exceeds available balance.');
-      return;
-    }
+    if (this.withdrawAmount <= 0) { this.error.set('Enter an amount greater than 0.'); return; }
+    if (this.withdrawAmount > this.availableBalance()) { this.error.set('Amount exceeds available balance.'); return; }
     const bank = this.banks[this.selectedBankIdx];
-    this.submitting.set(true);
-    this.error.set(null);
-    this.success.set(null);
+    this.submitting.set(true); this.error.set(null); this.success.set(null);
     this.walletSvc.withdraw(this.withdrawAmount, this.balanceCurrency(), bank.name, bank.iban).subscribe({
       next: () => {
         this.submitting.set(false);
-        this.success.set(`Withdrawal of ${this.balanceCurrency()} ${this.withdrawAmount.toLocaleString()} submitted. Pending approval.`);
+        this.success.set(`Withdrawal of ${this.balanceCurrency()} ${this.withdrawAmount.toLocaleString()} submitted. Processing in 1-2 business days.`);
+        this.addLocalTx('DEBIT', this.withdrawAmount, `Withdrawal — ${bank.name}`, 'PROCESSING');
+        this.availableBalance.update(b => b - this.withdrawAmount);
         this.withdrawAmount = 0;
-        this.loadBalance();
-        this.loadTransactions();
         setTimeout(() => this.success.set(null), 5000);
       },
       error: err => {
         this.submitting.set(false);
-        this.error.set(err?.error?.error?.message ?? err?.error?.message ?? 'Withdrawal failed. Please try again.');
+        this.error.set(err?.error?.error?.message ?? 'Withdrawal failed. Please try again.');
       },
     });
   }
+
+  submitTransfer() {
+    if (!this.transferRecipient.trim()) { this.error.set('Enter a recipient ID or email.'); return; }
+    if (this.transferAmount <= 0)       { this.error.set('Enter an amount greater than 0.'); return; }
+    if (this.transferAmount > this.availableBalance()) { this.error.set('Amount exceeds available balance.'); return; }
+    this.submitting.set(true); this.error.set(null); this.success.set(null);
+    this.walletSvc.transfer(this.transferRecipient, this.transferAmount, this.transferNote).subscribe({
+      next: () => {
+        this.submitting.set(false);
+        this.success.set(`Transfer of ${this.balanceCurrency()} ${this.transferAmount.toLocaleString()} sent to ${this.transferRecipient}.`);
+        this.addLocalTx('DEBIT', this.transferAmount, `Internal Transfer → ${this.transferRecipient}`);
+        this.availableBalance.update(b => b - this.transferAmount);
+        this.transferRecipient = ''; this.transferAmount = 0; this.transferNote = '';
+        setTimeout(() => this.success.set(null), 5000);
+      },
+      error: err => {
+        this.submitting.set(false);
+        this.error.set(err?.error?.error?.message ?? 'Transfer failed. Please try again.');
+      },
+    });
+  }
+
+  private addLocalTx(
+    type: WalletTransaction['type'],
+    amount: number,
+    description: string,
+    status: WalletTransaction['status'] = 'COMPLETED',
+  ) {
+    const prefix = type === 'CREDIT' ? 'DEP' : 'WDR';
+    const tx: WalletTransaction = {
+      id:              Date.now().toString(),
+      type,
+      amount:          amount.toString(),
+      currency:        this.balanceCurrency(),
+      status,
+      description,
+      reference_id:    `${prefix}-${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
+      idempotency_key: Math.random().toString(36).slice(2),
+      created_at:      new Date().toISOString(),
+    };
+    this._rawTx.update(list => [tx, ...list]);
+    this.page.set(1);
+  }
+
+  // ── Pagination ────────────────────────────────────────────────────────────────
+
+  goToPage(n: number) {
+    if (n >= 1 && n <= this.totalPages) this.page.set(n);
+  }
+
+  onFilterChange() { this.page.set(1); }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────────
 
   private matchesFilter(tx: WalletTransaction, filter: string): boolean {
     if (filter === 'All')         return true;
@@ -160,16 +302,16 @@ export class WalletComponent implements OnInit {
   }
 
   private mapTx(tx: WalletTransaction) {
-    const amount = parseFloat(tx.amount);
+    const amount  = parseFloat(tx.amount);
     const isDebit = tx.type === 'DEBIT' || tx.type === 'SETTLEMENT_DEBIT' || tx.type === 'FREEZE';
     const styleMap: Record<string, { icon: string; bg: string; color: string }> = {
-      CREDIT:            { icon: 'add_circle',    bg: 'rgba(46,213,115,0.12)',  color: 'var(--success)' },
-      DEBIT:             { icon: 'remove_circle', bg: 'rgba(255,71,87,0.12)',   color: 'var(--danger)' },
-      COUPON:            { icon: 'payments',      bg: 'rgba(0,212,255,0.12)',   color: 'var(--accent-cyan)' },
-      SETTLEMENT_CREDIT: { icon: 'task_alt',      bg: 'rgba(46,213,115,0.12)', color: 'var(--success)' },
-      SETTLEMENT_DEBIT:  { icon: 'swap_horiz',    bg: 'rgba(124,77,255,0.12)', color: 'var(--accent-purple)' },
-      FREEZE:            { icon: 'lock',          bg: 'rgba(255,193,7,0.12)',   color: 'var(--warning)' },
-      UNFREEZE:          { icon: 'lock_open',     bg: 'rgba(23,195,178,0.12)', color: 'var(--accent-teal)' },
+      CREDIT:            { icon: 'add_circle',    bg: 'rgba(46,213,115,0.12)',  color: 'var(--success)'        },
+      DEBIT:             { icon: 'remove_circle', bg: 'rgba(255,71,87,0.12)',   color: 'var(--danger)'         },
+      COUPON:            { icon: 'payments',      bg: 'rgba(0,212,255,0.12)',   color: 'var(--accent-cyan)'    },
+      SETTLEMENT_CREDIT: { icon: 'task_alt',      bg: 'rgba(46,213,115,0.12)', color: 'var(--success)'        },
+      SETTLEMENT_DEBIT:  { icon: 'swap_horiz',    bg: 'rgba(124,77,255,0.12)', color: 'var(--accent-purple)'  },
+      FREEZE:            { icon: 'lock',          bg: 'rgba(255,193,7,0.12)',   color: 'var(--warning)'        },
+      UNFREEZE:          { icon: 'lock_open',     bg: 'rgba(23,195,178,0.12)', color: 'var(--accent-teal)'    },
     };
     const style = styleMap[tx.type] ?? { icon: 'receipt', bg: 'rgba(0,212,255,0.12)', color: 'var(--accent-cyan)' };
     return {
