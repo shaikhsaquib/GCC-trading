@@ -75,7 +75,7 @@ export class WalletComponent implements OnInit {
     return this._rawTx()
       .filter(tx => this.matchesFilter(tx, f))
       .filter(tx => !s ||
-        tx.description.toLowerCase().includes(s) ||
+        (tx.description ?? '').toLowerCase().includes(s) ||
         (tx.reference_id ?? '').toLowerCase().includes(s));
   }
 
@@ -302,8 +302,8 @@ export class WalletComponent implements OnInit {
       icon:      style.icon,
       iconBg:    style.bg,
       iconColor: style.color,
-      desc:      tx.description,
-      ref:       tx.reference_id ?? tx.idempotency_key,
+      desc:      tx.description ?? tx.type,
+      ref:       tx.reference_id ?? tx.idempotency_key ?? '',
       date:      new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       status:    this.mapStatus(tx.status),
       amount:    isDebit ? -Math.abs(amount) : Math.abs(amount),

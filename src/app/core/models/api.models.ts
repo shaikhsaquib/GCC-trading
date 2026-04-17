@@ -36,15 +36,15 @@ export interface WalletBalance {
 }
 
 export interface WalletTransaction {
-  id:            string;
-  type:          'CREDIT' | 'DEBIT' | 'FREEZE' | 'UNFREEZE' | 'COUPON' | 'SETTLEMENT_CREDIT' | 'SETTLEMENT_DEBIT';
-  amount:        string;
-  currency:      string;
-  status:        'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'REVERSED';
-  description:   string;
-  reference_id:  string;
-  idempotency_key: string;
-  created_at:    string;
+  id:              string;
+  type:            'CREDIT' | 'DEBIT' | 'FREEZE' | 'UNFREEZE' | 'COUPON' | 'SETTLEMENT_CREDIT' | 'SETTLEMENT_DEBIT';
+  amount:          string;
+  currency:        string;
+  status:          'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'REVERSED';
+  description:     string | null;
+  reference_id:    string | null;
+  idempotency_key: string | null;
+  created_at:      string;
 }
 
 export interface Paginated<T> {

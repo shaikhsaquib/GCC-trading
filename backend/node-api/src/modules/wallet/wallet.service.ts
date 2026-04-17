@@ -47,7 +47,37 @@ export class WalletService {
 
     const idempotencyKey = uuidv4();
 
-    // Record pending transaction
+    // No payment gateway configured — complete deposit immediately (dev/demo)
+    if (!config.hyperpay.apiKey) {
+      await db.transaction(async (client) => {
+        const fresh = await this.repo.findByUserId(userId, client);
+        if (!fresh) throw new NotFoundError('Wallet');
+
+        const credited = await this.repo.creditWithVersion(fresh.id, dto.amount, fresh.version, client);
+        if (!credited) throw new Error('Optimistic lock conflict — please retry');
+
+        await this.repo.insertTransaction({
+          walletId:       fresh.id,
+          type:           'CREDIT',
+          amount:         dto.amount,
+          currency:       dto.currency,
+          status:         'COMPLETED',
+          description:    `Direct Deposit (${dto.method ?? 'bank'})`,
+          referenceId:    `DEP-${Date.now()}`,
+          idempotencyKey,
+        }, client);
+      });
+
+      await this.eventBus.publish(EventRoutes.WALLET_FUNDED, {
+        user_id:  userId,
+        amount:   dto.amount,
+        currency: dto.currency,
+      });
+
+      return { checkoutUrl: '', transactionId: idempotencyKey };
+    }
+
+    // Payment gateway flow — record pending transaction
     const tx = await this.repo.insertTransaction({
       walletId:       wallet.id,
       type:           'CREDIT',
@@ -58,25 +88,22 @@ export class WalletService {
       idempotencyKey,
     });
 
-    // Create HyperPay checkout session
     let checkoutUrl = `https://payment-staging.gccbond.com/pay/${tx.id}`;
-    if (config.hyperpay.apiKey) {
-      try {
-        const res = await axios.post(
-          'https://eu-test.oppwa.com/v1/checkouts',
-          new URLSearchParams({
-            'entityId':               config.hyperpay.entityId,
-            'amount':                 dto.amount.toFixed(2),
-            'currency':               dto.currency,
-            'paymentType':            'DB',
-            'merchantTransactionId':  tx.id,
-          }),
-          { headers: { Authorization: `Bearer ${config.hyperpay.apiKey}` } },
-        );
-        checkoutUrl = `https://eu-test.oppwa.com/v1/paymentWidgets.js?checkoutId=${res.data.id}`;
-      } catch {
-        // Non-fatal — return placeholder for dev
-      }
+    try {
+      const res = await axios.post(
+        'https://eu-test.oppwa.com/v1/checkouts',
+        new URLSearchParams({
+          'entityId':               config.hyperpay.entityId,
+          'amount':                 dto.amount.toFixed(2),
+          'currency':               dto.currency,
+          'paymentType':            'DB',
+          'merchantTransactionId':  tx.id,
+        }),
+        { headers: { Authorization: `Bearer ${config.hyperpay.apiKey}` } },
+      );
+      checkoutUrl = `https://eu-test.oppwa.com/v1/paymentWidgets.js?checkoutId=${res.data.id}`;
+    } catch {
+      // Non-fatal — return placeholder
     }
 
     return { checkoutUrl, transactionId: tx.id };
@@ -138,16 +165,35 @@ export class WalletService {
     const requiresApproval = dto.amount > MAKER_CHECKER_THRESHOLD;
     const idempotencyKey   = uuidv4();
 
-    const request = await this.repo.createWithdrawalRequest({
-      userId,
-      amount:         dto.amount,
-      currency:       dto.currency,
-      bankName:       dto.bankName,
-      iban:           dto.iban,
-      idempotencyKey,
+    // Create withdrawal request + debit balance + record transaction atomically
+    let requestId = '';
+    await db.transaction(async (client) => {
+      const debited = await this.repo.debitBalance(userId, dto.amount, client);
+      if (!debited) throw new ValidationError('Insufficient available balance');
+
+      const request = await this.repo.createWithdrawalRequest({
+        userId,
+        amount:         dto.amount,
+        currency:       dto.currency,
+        bankName:       dto.bankName,
+        iban:           dto.iban,
+        idempotencyKey,
+      });
+      requestId = request.id;
+
+      await this.repo.insertTransaction({
+        walletId:       wallet.id,
+        type:           'DEBIT',
+        amount:         dto.amount,
+        currency:       dto.currency,
+        status:         'PROCESSING',
+        description:    `Withdrawal — ${dto.bankName}`,
+        referenceId:    `WDR-${request.id.slice(0, 8).toUpperCase()}`,
+        idempotencyKey: `wdr-${idempotencyKey}`,
+      }, client);
     });
 
-    return { requestId: request.id, requiresApproval };
+    return { requestId, requiresApproval };
   }
 
   async getTransactions(userId: string, query: PaginationQuery): Promise<{ data: unknown[]; total: number }> {

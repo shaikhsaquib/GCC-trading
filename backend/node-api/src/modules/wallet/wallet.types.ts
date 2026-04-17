@@ -45,6 +45,7 @@ export interface WithdrawalRow {
 export interface DepositDto {
   amount:   number;
   currency: Currency;
+  method?:  string;
 }
 
 export interface WithdrawDto {

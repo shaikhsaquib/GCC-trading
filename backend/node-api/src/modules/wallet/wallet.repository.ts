@@ -128,6 +128,20 @@ export class WalletRepository {
     return { rows: rows.rows, total: parseInt(count.rows[0].count, 10) };
   }
 
+  async debitBalance(userId: string, amount: number, client?: PoolClient): Promise<boolean> {
+    const q = client ?? db;
+    const r = await q.query(
+      `UPDATE wallet.wallets
+       SET balance           = balance           - $1,
+           available_balance = available_balance - $1,
+           version           = version + 1,
+           updated_at        = NOW()
+       WHERE user_id = $2 AND available_balance >= $1`,
+      [amount, userId],
+    );
+    return (r.rowCount ?? 0) > 0;
+  }
+
   async createWithdrawalRequest(params: {
     userId:         string;
     amount:         number;
