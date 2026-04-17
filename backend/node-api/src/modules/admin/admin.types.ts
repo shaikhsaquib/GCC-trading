@@ -6,6 +6,11 @@ export interface DashboardStats {
   openOrders:       number;
   tradesToday:      number;
   tradeVolumeToday: number;
+  // Extended fields
+  totalAum:         number;
+  newUsersToday:    number;
+  suspendedUsers:   number;
+  volumeYesterday:  number;
 }
 
 export interface UserListFilter {

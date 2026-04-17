@@ -28,13 +28,26 @@ export interface ServiceHealth {
   services:  { postgresql: boolean; redis: boolean; mongodb: boolean };
 }
 
+export interface DailyReportRow {
+  trade_date:     string;
+  trade_count:    string;
+  trade_volume:   string;
+  total_fees:     string;
+  unique_buyers:  string;
+  unique_sellers: string;
+}
+
+type Wrapped<T> = { success: boolean; data: T };
+
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/admin`;
 
   getDashboard() {
-    return this.http.get<AdminStats>(`${this.base}/dashboard`);
+    return this.http
+      .get<Wrapped<AdminStats>>(`${this.base}/dashboard`)
+      .pipe(map(res => res.data));
   }
 
   listUsers(filter: UserListFilter = {}) {
@@ -44,7 +57,9 @@ export class AdminService {
     if (filter.search) params = params.set('search', filter.search);
     if (filter.limit)  params = params.set('limit',  filter.limit);
     if (filter.offset) params = params.set('offset', filter.offset);
-    return this.http.get<Paginated<AdminUser>>(`${this.base}/users`, { params });
+    return this.http
+      .get<Wrapped<Paginated<AdminUser>>>(`${this.base}/users`, { params })
+      .pipe(map(res => res.data));
   }
 
   suspendUser(id: string) {
@@ -65,7 +80,9 @@ export class AdminService {
   }
 
   getDailyReport() {
-    return this.http.get<unknown[]>(`${this.base}/reports/daily`);
+    return this.http
+      .get<Wrapped<DailyReportRow[]>>(`${this.base}/reports/daily`)
+      .pipe(map(res => res.data));
   }
 
   getSchedulerJobs() {

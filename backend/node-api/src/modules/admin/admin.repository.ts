@@ -3,7 +3,7 @@ import { DashboardStats, UserListFilter } from './admin.types';
 
 export class AdminRepository {
   async getDashboardStats(): Promise<DashboardStats> {
-    const [users, kyc, bonds, orders, trades] = await Promise.all([
+    const [users, kyc, bonds, orders, trades, aum, newToday, suspended, yesterday] = await Promise.all([
       db.query<{ total: string; active: string }>(`
         SELECT COUNT(*) AS total,
                COUNT(*) FILTER (WHERE status = 'ACTIVE') AS active
@@ -17,6 +17,17 @@ export class AdminRepository {
       db.query<{ count: string; volume: string }>(`
         SELECT COUNT(*) AS count, COALESCE(SUM(quantity * price), 0) AS volume
         FROM trading.trades WHERE executed_at >= NOW()::date`),
+      db.query<{ total_aum: string }>(`
+        SELECT COALESCE(SUM(balance), 0) AS total_aum FROM wallet.wallets`),
+      db.query<{ count: string }>(`
+        SELECT COUNT(*) AS count FROM app_auth.users WHERE created_at >= NOW()::date`),
+      db.query<{ count: string }>(`
+        SELECT COUNT(*) AS count FROM app_auth.users WHERE status = 'SUSPENDED'`),
+      db.query<{ volume: string }>(`
+        SELECT COALESCE(SUM(quantity * price), 0) AS volume
+        FROM trading.trades
+        WHERE executed_at >= NOW()::date - INTERVAL '1 day'
+          AND executed_at <  NOW()::date`),
     ]);
 
     return {
@@ -25,8 +36,12 @@ export class AdminRepository {
       pendingKyc:       parseInt(kyc.rows[0].pending,  10),
       totalBonds:       parseInt(bonds.rows[0].total,  10),
       openOrders:       parseInt(orders.rows[0].open,  10),
-      tradesToday:      parseInt(trades.rows[0].count,  10),
+      tradesToday:      parseInt(trades.rows[0].count,   10),
       tradeVolumeToday: parseFloat(trades.rows[0].volume),
+      totalAum:         parseFloat(aum.rows[0].total_aum),
+      newUsersToday:    parseInt(newToday.rows[0].count,  10),
+      suspendedUsers:   parseInt(suspended.rows[0].count, 10),
+      volumeYesterday:  parseFloat(yesterday.rows[0].volume),
     };
   }
 

@@ -162,6 +162,10 @@ export interface AdminStats {
   openOrders:       number;
   tradesToday:      number;
   tradeVolumeToday: number;
+  totalAum:         number;
+  newUsersToday:    number;
+  suspendedUsers:   number;
+  volumeYesterday:  number;
 }
 
 export interface AdminUser {
