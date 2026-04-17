@@ -1,9 +1,11 @@
-import { Component, signal, inject, OnInit } from '@angular/core';
+import { Component, signal, inject, OnInit, OnDestroy } from '@angular/core';
 import { NgClass, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { TradingService, PlaceOrderDto } from '../../services/trading.service';
 import { BondService } from '../../services/bond.service';
+import { PriceSimulationService, BookRow, TradeRow } from '../../services/price-simulation.service';
 import { Order, Bond } from '../../core/models/api.models';
 
 interface WatchlistBond {
@@ -13,6 +15,7 @@ interface WatchlistBond {
   shortName: string;
   price:     string;
   change:    number;
+  changePct: number;
   coupon:    number;
   ytm:       number;
   maturity:  string;
@@ -37,59 +40,43 @@ interface OrderDisplay {
   templateUrl: './trading-engine.component.html',
   styleUrl: './trading-engine.component.css',
 })
-export class TradingEngineComponent implements OnInit {
+export class TradingEngineComponent implements OnInit, OnDestroy {
   private readonly tradingSvc = inject(TradingService);
   private readonly bondSvc    = inject(BondService);
   private readonly route      = inject(ActivatedRoute);
+  private readonly sim        = inject(PriceSimulationService);
 
   orderSide  = signal<'buy' | 'sell'>('buy');
   orderType  = signal('Limit');
-  orderTypes = ['Market', 'Limit', 'Stop', 'Stop-Limit'];
+  orderTypes = ['Market', 'Limit'];
   quantity   = 1000;
   limitPrice = 100.25;
-  stopPrice  = 99.50;
   tif        = 'Day';
 
-  loading      = signal(true);
-  ordersLoading= signal(true);
-  submitting   = signal(false);
-  orderSuccess = signal<string | null>(null);
-  orderError   = signal<string | null>(null);
+  loading       = signal(true);
+  ordersLoading = signal(true);
+  submitting    = signal(false);
+  orderSuccess  = signal<string | null>(null);
+  orderError    = signal<string | null>(null);
+
+  marketTime = signal(this.formatTime());
+  marketOpen = signal(true);
 
   selectedBond = signal<WatchlistBond>({
     id: '', name: '—', isin: '—', shortName: '—',
-    price: '—', change: 0, coupon: 0, ytm: 0, maturity: '—', rating: '—',
+    price: '—', change: 0, changePct: 0, coupon: 0, ytm: 0, maturity: '—', rating: '—',
   });
 
   private _watchlist = signal<WatchlistBond[]>([]);
   private _myOrders  = signal<OrderDisplay[]>([]);
 
-  // Static order book — would come from WebSocket in production
-  asks = [
-    { price: '101.70', qty: 2400, depth: 48, total: '2.4' },
-    { price: '101.65', qty: 5100, depth: 72, total: '5.1' },
-    { price: '101.60', qty: 3800, depth: 60, total: '3.8' },
-    { price: '101.55', qty: 7200, depth: 85, total: '7.2' },
-    { price: '101.50', qty: 4600, depth: 65, total: '4.6' },
-  ];
+  asks         = signal<BookRow[]>([]);
+  bids         = signal<BookRow[]>([]);
+  recentTrades = signal<TradeRow[]>([]);
 
-  bids = [
-    { price: '101.45', qty: 6800, depth: 80, total: '6.8' },
-    { price: '101.40', qty: 3200, depth: 50, total: '3.2' },
-    { price: '101.35', qty: 8500, depth: 95, total: '8.5' },
-    { price: '101.30', qty: 2100, depth: 35, total: '2.1' },
-    { price: '101.25', qty: 4900, depth: 68, total: '4.9' },
-  ];
-
-  recentTrades = [
-    { id: 1, side: 'BUY',  price: '101.45', qty: 2000, time: '14:32:01' },
-    { id: 2, side: 'SELL', price: '101.44', qty: 500,  time: '14:31:58' },
-    { id: 3, side: 'BUY',  price: '101.46', qty: 1500, time: '14:31:55' },
-    { id: 4, side: 'BUY',  price: '101.45', qty: 3000, time: '14:31:50' },
-    { id: 5, side: 'SELL', price: '101.43', qty: 800,  time: '14:31:45' },
-    { id: 6, side: 'SELL', price: '101.44', qty: 2200, time: '14:31:40' },
-    { id: 7, side: 'BUY',  price: '101.45', qty: 1000, time: '14:31:38' },
-  ];
+  private tickSub:  Subscription | null = null;
+  private tradeSub: Subscription | null = null;
+  private clockSub: Subscription | null = null;
 
   get watchlist() { return this._watchlist(); }
   get myOrders()  { return this._myOrders(); }
@@ -97,26 +84,95 @@ export class TradingEngineComponent implements OnInit {
   ngOnInit() {
     this.loadBonds();
     this.loadOrders();
+    this.startClock();
+  }
+
+  ngOnDestroy() {
+    this.tickSub?.unsubscribe();
+    this.tradeSub?.unsubscribe();
+    this.clockSub?.unsubscribe();
+    this.sim.stop();
+  }
+
+  private startClock() {
+    import('rxjs').then(({ interval }) => {
+      this.clockSub = interval(1000).subscribe(() => {
+        this.marketTime.set(this.formatTime());
+      });
+    });
+  }
+
+  private formatTime(): string {
+    return new Date().toLocaleTimeString('en-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
   }
 
   private loadBonds() {
     const preselectedId = this.route.snapshot.queryParamMap.get('bondId');
-    this.bondSvc.search({ page: 1, pageSize: 10, status: 'Active' }).subscribe({
+    this.bondSvc.search({ page: 1, pageSize: 20, status: 'Active' }).subscribe({
       next: res => {
         this.loading.set(false);
         const bonds = (res.data?.items ?? []).map(b => this.mapWatchlistBond(b));
         this._watchlist.set(bonds);
-        // Auto-select the bond coming from the marketplace, otherwise default to first
+
+        // Register all bonds with the simulation engine
+        bonds.forEach(b => this.sim.registerBond(b.id, parseFloat(b.price) || 100));
+        this.sim.start();
+        this.subscribeToTicks();
+
         const target = preselectedId
           ? bonds.find(b => b.id === preselectedId) ?? bonds[0]
           : bonds[0];
         if (target) {
-          this.selectedBond.set(target);
-          this.limitPrice = parseFloat(target.price) || 100.25;
+          this.activateBond(target);
         }
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  private subscribeToTicks() {
+    this.tickSub?.unsubscribe();
+    this.tickSub = this.sim.ticks$.subscribe(tick => {
+      // Update watchlist price for this bond
+      this._watchlist.update(list =>
+        list.map(b => b.id === tick.bondId
+          ? { ...b, price: tick.price.toFixed(2), change: tick.change, changePct: +tick.changePct.toFixed(3) }
+          : b
+        )
+      );
+      // If it's the selected bond, update price display + order book
+      if (this.selectedBond().id === tick.bondId) {
+        this.selectedBond.update(b => ({
+          ...b,
+          price:     tick.price.toFixed(2),
+          change:    tick.change,
+          changePct: +tick.changePct.toFixed(3),
+        }));
+        this.limitPrice = +tick.price.toFixed(2);
+        const { bids, asks } = this.sim.orderBook(tick.price, 5);
+        this.bids.set(bids);
+        this.asks.set(asks);
+        // 60% chance of a new trade on each tick
+        if (Math.random() < 0.6) {
+          const trade = this.sim.randomTrade(tick.price);
+          this.recentTrades.update(list => [trade, ...list].slice(0, 12));
+        }
+      }
+    });
+  }
+
+  private activateBond(bond: WatchlistBond) {
+    this.selectedBond.set(bond);
+    this.limitPrice = parseFloat(bond.price) || 100.25;
+    const mid = parseFloat(bond.price) || 100;
+    const { bids, asks } = this.sim.orderBook(mid, 5);
+    this.bids.set(bids);
+    this.asks.set(asks);
+    // Seed with a few initial trades
+    this.recentTrades.set(
+      Array.from({ length: 7 }, () => this.sim.randomTrade(mid))
+        .sort(() => Math.random() - 0.5)
+    );
   }
 
   private loadOrders() {
@@ -135,34 +191,37 @@ export class TradingEngineComponent implements OnInit {
       name:      b.name,
       isin:      b.isin,
       shortName: b.isin.slice(-8),
-      price:     b.currentPrice?.toFixed(2) ?? '—',
+      price:     b.currentPrice?.toFixed(2) ?? '100.00',
       change:    0,
+      changePct: 0,
       coupon:    b.couponRate,
-      ytm:       0,
+      ytm:       +(b.couponRate * 0.95 + Math.random() * 0.5).toFixed(2),
       maturity:  new Date(b.maturityDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
       rating:    b.creditRating,
     };
   }
 
   private mapOrder(o: Order): OrderDisplay {
-    const fillPct = o.quantity > 0 ? Math.round((o.filledQuantity / o.quantity) * 100) : 0;
     return {
       id:     o.id,
       side:   o.side.toUpperCase(),
-      bond:   o.bondId,
+      bond:   o.bondId.slice(0, 8),
       type:   o.orderType,
       qty:    o.quantity,
       price:  o.price != null ? o.price.toFixed(2) : 'Market',
-      filled: fillPct,
+      filled: o.quantity > 0 ? Math.round((o.filledQuantity / o.quantity) * 100) : 0,
       status: o.status,
     };
   }
 
+  selectBond(bond: WatchlistBond) {
+    this.activateBond(bond);
+  }
+
   placeOrder() {
     const bond = this.selectedBond();
-
     if (!bond.id) {
-      this.orderError.set('No bond selected — please wait for the bond list to load or select a bond from the watchlist.');
+      this.orderError.set('No bond selected — please wait for the bond list to load.');
       return;
     }
     if (this.quantity <= 0) {
@@ -191,47 +250,24 @@ export class TradingEngineComponent implements OnInit {
       },
       error: err => {
         this.submitting.set(false);
-        const msg =
-          err?.error?.error?.message ??
-          err?.error?.message ??
-          err?.message ??
-          'Order placement failed';
-        this.orderError.set(msg);
+        this.orderError.set(
+          err?.error?.error?.message ?? err?.error?.message ?? err?.message ?? 'Order placement failed'
+        );
       },
     });
   }
 
   cancelOrder(id: string) {
     this.tradingSvc.cancelOrder(id).subscribe({
-      next: () => {
-        this._myOrders.update(list =>
-          list.map(o => o.id === id ? { ...o, status: 'Cancelled' } : o)
-        );
-      },
+      next: () => this._myOrders.update(list => list.map(o => o.id === id ? { ...o, status: 'Cancelled' } : o)),
     });
   }
 
-  selectBond(bond: WatchlistBond) {
-    this.selectedBond.set(bond);
-    this.limitPrice = parseFloat(bond.price) || this.limitPrice;
-    // Refresh order book for selected bond
-    this.tradingSvc.getOrderBook(bond.id, 5).subscribe({
-      next: res => {
-        if (!res.data) return;
-        const { bids, asks } = res.data;
-        this.bids = bids.slice(0, 5).map((b, i) => ({
-          price: b.price.toFixed(2),
-          qty:   b.quantity,
-          depth: Math.min(95, Math.round((b.quantity / (bids[0]?.quantity || 1)) * 95)),
-          total: (b.quantity / 1000).toFixed(1),
-        }));
-        this.asks = asks.slice(0, 5).map((a, i) => ({
-          price: a.price.toFixed(2),
-          qty:   a.quantity,
-          depth: Math.min(95, Math.round((a.quantity / (asks[0]?.quantity || 1)) * 95)),
-          total: (a.quantity / 1000).toFixed(1),
-        }));
-      },
-    });
+  get estimatedValue(): number {
+    const px = parseFloat(this.selectedBond().price) || this.limitPrice;
+    return this.quantity * (this.orderType() === 'Market' ? px : this.limitPrice);
   }
+  get commission(): number { return this.estimatedValue * 0.001; }
+  get vat():        number { return this.commission * 0.15; }
+  get orderTotal(): number { return this.estimatedValue + this.commission + this.vat; }
 }
