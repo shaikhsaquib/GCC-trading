@@ -7,6 +7,7 @@ import {
   registerSchema, loginSchema, verify2FASchema,
   enable2FASchema, refreshSchema,
   resetRequestSchema, resetPasswordSchema,
+  oauthCodeSchema,
 } from './auth.validator';
 
 export function createAuthRouter(controller: AuthController): Router {
@@ -46,6 +47,10 @@ export function createAuthRouter(controller: AuthController): Router {
     validate(resetPasswordSchema),
     controller.resetPassword,
   );
+
+  // OAuth social login routes
+  router.post('/oauth/google',    authRateLimit, validate(oauthCodeSchema), controller.oauthGoogle);
+  router.post('/oauth/microsoft', authRateLimit, validate(oauthCodeSchema), controller.oauthMicrosoft);
 
   // Authenticated routes
   router.get('/2fa/setup',   authenticate, controller.setup2FA);

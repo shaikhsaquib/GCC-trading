@@ -36,6 +36,12 @@ export interface ResetPasswordDto {
   newPassword: string;
 }
 
+export interface OAuthCodeDto {
+  code:         string;
+  codeVerifier: string;
+  redirectUri:  string;
+}
+
 // ── Responses ────────────────────────────────────────────────────────────────
 
 export interface TokenPair {

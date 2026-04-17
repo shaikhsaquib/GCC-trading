@@ -4,6 +4,7 @@ import speakeasy from 'speakeasy';
 import qrcode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
+import axios from 'axios';
 
 import { config } from '../../config';
 import { db }    from '../../core/database/postgres.client';
@@ -21,8 +22,20 @@ import { AuditService }   from '../audit/audit.service';
 import {
   RegisterDto, LoginDto, Verify2FADto, Enable2FADto,
   TokenPair, LoginResponse, Require2FAResponse, SafeUser,
-  Setup2FAResponse, ResetPasswordDto, UserRow,
+  Setup2FAResponse, ResetPasswordDto, OAuthCodeDto, UserRow,
 } from './auth.types';
+
+// Provider API response shapes
+interface GoogleTokenResponse { access_token: string; id_token: string; }
+interface GoogleUserInfo {
+  sub: string; email: string; email_verified: boolean;
+  given_name: string; family_name: string;
+}
+interface MicrosoftTokenResponse { access_token: string; id_token: string; }
+interface MicrosoftUserInfo {
+  id: string; givenName: string; surname: string;
+  mail: string | null; userPrincipalName: string;
+}
 
 const BCRYPT_ROUNDS = 12;
 const MAX_FAILED    = 5;
@@ -250,6 +263,145 @@ export class AuthService {
 
     // Revoke all existing sessions for security
     await redis.deleteSession(record.user_id);
+  }
+
+  // ── Google OAuth ───────────────────────────────────────────────────────────
+
+  async loginWithGoogle(dto: OAuthCodeDto): Promise<LoginResponse> {
+    if (!config.google.clientId) throw new ValidationError('Google OAuth is not configured');
+
+    const params = new URLSearchParams({
+      grant_type:    'authorization_code',
+      code:          dto.code,
+      client_id:     config.google.clientId,
+      client_secret: config.google.clientSecret,
+      redirect_uri:  dto.redirectUri,
+      code_verifier: dto.codeVerifier,
+    });
+
+    let accessToken: string;
+    try {
+      const tokenRes = await axios.post<GoogleTokenResponse>(
+        'https://oauth2.googleapis.com/token',
+        params.toString(),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+      );
+      accessToken = tokenRes.data.access_token;
+    } catch {
+      throw new UnauthorizedError('Google authentication failed — invalid or expired code');
+    }
+
+    const { data: info } = await axios.get<GoogleUserInfo>(
+      'https://www.googleapis.com/oauth2/v3/userinfo',
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+
+    if (!info.email) throw new UnauthorizedError('Google account has no verified email');
+    return this.findOrCreateOAuthUser({
+      email:          info.email,
+      firstName:      info.given_name  ?? 'User',
+      lastName:       info.family_name ?? '',
+      provider:       'google',
+      providerUserId: info.sub,
+    });
+  }
+
+  // ── Microsoft OAuth ────────────────────────────────────────────────────────
+
+  async loginWithMicrosoft(dto: OAuthCodeDto): Promise<LoginResponse> {
+    if (!config.microsoft.clientId) throw new ValidationError('Microsoft OAuth is not configured');
+
+    const params = new URLSearchParams({
+      grant_type:    'authorization_code',
+      code:          dto.code,
+      client_id:     config.microsoft.clientId,
+      client_secret: config.microsoft.clientSecret,
+      redirect_uri:  dto.redirectUri,
+      code_verifier: dto.codeVerifier,
+      scope:         'openid profile email User.Read',
+    });
+
+    let msAccessToken: string;
+    try {
+      const tokenRes = await axios.post<MicrosoftTokenResponse>(
+        `https://login.microsoftonline.com/${config.microsoft.tenantId}/oauth2/v2.0/token`,
+        params.toString(),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+      );
+      msAccessToken = tokenRes.data.access_token;
+    } catch {
+      throw new UnauthorizedError('Microsoft authentication failed — invalid or expired code');
+    }
+
+    const { data: info } = await axios.get<MicrosoftUserInfo>(
+      'https://graph.microsoft.com/v1.0/me',
+      { headers: { Authorization: `Bearer ${msAccessToken}` } },
+    );
+
+    const email = info.mail ?? info.userPrincipalName;
+    if (!email) throw new UnauthorizedError('Microsoft account has no email');
+
+    return this.findOrCreateOAuthUser({
+      email,
+      firstName:      info.givenName ?? 'User',
+      lastName:       info.surname   ?? '',
+      provider:       'microsoft',
+      providerUserId: info.id,
+    });
+  }
+
+  // ── OAuth shared: find or provision user ───────────────────────────────────
+
+  private async findOrCreateOAuthUser(params: {
+    email:          string;
+    firstName:      string;
+    lastName:       string;
+    provider:       string;
+    providerUserId: string;
+  }): Promise<LoginResponse> {
+    const emailHash = hashForLookup(params.email);
+    let user = await this.repo.findByEmailHash(emailHash);
+
+    if (!user) {
+      const [encryptedEmail, encryptedPhone, passwordHash] = await Promise.all([
+        Promise.resolve(encrypt(params.email)),
+        Promise.resolve(encrypt('+000000000')),
+        bcrypt.hash(uuidv4(), 4),
+      ]);
+
+      user = await this.repo.create({
+        email:             encryptedEmail,
+        emailHash,
+        phone:             encryptedPhone,
+        passwordHash,
+        firstName:         params.firstName,
+        lastName:          params.lastName || params.firstName,
+        nationality:       'XX',
+        dateOfBirth:       '2000-01-01',
+        preferredCurrency: 'AED',
+      });
+
+      this.eventBus.publish(EventRoutes.USER_REGISTERED, {
+        user_id:    user.id,
+        email:      params.email,
+        first_name: params.firstName,
+      }).catch(() => {});
+    }
+
+    if (user.status === 'SUSPENDED')   throw new ForbiddenError('Account suspended');
+    if (user.status === 'DEACTIVATED') throw new ForbiddenError('Account deactivated');
+
+    await this.repo.updateLastLogin(user.id);
+    this.audit?.log({
+      event_type:  'OAUTH_LOGIN',
+      action:      'login',
+      actor_id:    user.id,
+      target_id:   user.id,
+      target_type: 'USER',
+      metadata:    { provider: params.provider },
+    }).catch(() => {});
+
+    return { ...this.issueTokenPair(user), user: this.toSafeUser(user) };
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────

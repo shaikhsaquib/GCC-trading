@@ -44,3 +44,9 @@ export const resetPasswordSchema = z.object({
   token:       z.string().min(1),
   newPassword: passwordSchema,
 });
+
+export const oauthCodeSchema = z.object({
+  code:         z.string().min(1, 'Authorization code is required'),
+  codeVerifier: z.string().min(43).max(128),
+  redirectUri:  z.string().url('Invalid redirect URI'),
+});

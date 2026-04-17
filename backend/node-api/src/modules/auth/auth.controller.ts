@@ -73,4 +73,18 @@ export class AuthController {
       sendSuccess(res, { message: 'Password updated successfully' });
     } catch (err) { next(err); }
   };
+
+  oauthGoogle = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const result = await this.service.loginWithGoogle(req.body);
+      sendSuccess(res, result);
+    } catch (err) { next(err); }
+  };
+
+  oauthMicrosoft = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const result = await this.service.loginWithMicrosoft(req.body);
+      sendSuccess(res, result);
+    } catch (err) { next(err); }
+  };
 }

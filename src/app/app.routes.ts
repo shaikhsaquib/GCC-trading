@@ -32,6 +32,11 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/auth/reset-password.component').then(m => m.ResetPasswordComponent),
       },
+      {
+        path: 'oauth/callback',
+        loadComponent: () =>
+          import('./pages/auth/oauth-callback.component').then(m => m.OAuthCallbackComponent),
+      },
       { path: '', redirectTo: 'login', pathMatch: 'full' },
     ],
   },

@@ -45,6 +45,13 @@ const envSchema = z.object({
   DOTNET_TRADING_URL: z.string().url().default('http://localhost:5001'),
   DOTNET_AML_URL:     z.string().url().default('http://localhost:5005'),
 
+  // OAuth (optional — leave empty to disable social login)
+  GOOGLE_CLIENT_ID:         z.string().default(''),
+  GOOGLE_CLIENT_SECRET:     z.string().default(''),
+  MICROSOFT_CLIENT_ID:      z.string().default(''),
+  MICROSOFT_CLIENT_SECRET:  z.string().default(''),
+  MICROSOFT_TENANT_ID:      z.string().default('common'),
+
   // Third-party integrations (optional in dev)
   SENDGRID_API_KEY:        z.string().default(''),
   SENDGRID_FROM_EMAIL:     z.string().email().default('noreply@gccbond.com'),
@@ -142,6 +149,17 @@ export const config = {
     apiKey:        env.HYPERPAY_API_KEY,
     entityId:      env.HYPERPAY_ENTITY_ID,
     webhookSecret: env.HYPERPAY_WEBHOOK_SECRET,
+  },
+
+  google: {
+    clientId:     env.GOOGLE_CLIENT_ID,
+    clientSecret: env.GOOGLE_CLIENT_SECRET,
+  },
+
+  microsoft: {
+    clientId:     env.MICROSOFT_CLIENT_ID,
+    clientSecret: env.MICROSOFT_CLIENT_SECRET,
+    tenantId:     env.MICROSOFT_TENANT_ID,
   },
 
   isDev:  env.NODE_ENV === 'development',

@@ -117,6 +117,28 @@ export class AuthService {
     ).pipe(map(res => res.data));
   }
 
+  // ── OAuth ────────────────────────────────────────────────────────────────────
+
+  oauthLogin(
+    provider: 'google' | 'microsoft',
+    dto: { code: string; codeVerifier: string; redirectUri: string },
+  ) {
+    this._loading.set(true);
+    return this.http
+      .post<Wrapped<LoginResponse>>(`${environment.apiUrl}/auth/oauth/${provider}`, dto)
+      .pipe(
+        map(res => res.data),
+        tap(res => {
+          this.storeSession(res);
+          this._loading.set(false);
+        }),
+        catchError(err => {
+          this._loading.set(false);
+          return throwError(() => err);
+        }),
+      );
+  }
+
   getAccessToken(): string | null {
     return localStorage.getItem(KEYS.access);
   }
