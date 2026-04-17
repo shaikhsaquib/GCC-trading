@@ -22,13 +22,6 @@ interface UserDisplay {
 
 const AVATAR_COLORS = ['#7c4dff', '#00d4ff', '#17c3b2', '#ff4757', '#ffc107', '#00e676'];
 
-@Component({
-  selector: 'app-admin',
-  standalone: true,
-  imports: [NgClass, FormsModule],
-  templateUrl: './admin.component.html',
-  styleUrl: './admin.component.css',
-})
 interface KycDisplay {
   id:          string;
   name:        string;
@@ -42,6 +35,13 @@ interface KycDisplay {
   docs:        Array<{ label: string; verified: boolean }>;
 }
 
+@Component({
+  selector: 'app-admin',
+  standalone: true,
+  imports: [NgClass, FormsModule],
+  templateUrl: './admin.component.html',
+  styleUrl: './admin.component.css',
+})
 export class AdminComponent implements OnInit {
   private readonly adminSvc = inject(AdminService);
   private readonly kycSvc   = inject(KycService);
@@ -225,17 +225,6 @@ export class AdminComponent implements OnInit {
       SUSPENDED: 'Suspended', DEACTIVATED: 'Suspended',
     };
     return map[status] ?? status;
-  }
-
-  private relativeTime(iso: string): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1)   return 'just now';
-    if (mins < 60)  return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24)   return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    return days === 1 ? 'Yesterday' : `${days} days ago`;
   }
 
   suspendUser(id: string) {
