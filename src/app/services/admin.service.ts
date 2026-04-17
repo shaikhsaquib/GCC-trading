@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import { AdminStats, AdminUser, Paginated } from '../core/models/api.models';
+import { AdminStats, AdminUser, Paginated, AuditEntry, ApiResponse } from '../core/models/api.models';
 
 export interface UserListFilter {
   status?: string;
@@ -36,6 +36,14 @@ export class AdminService {
 
   activateUser(id: string) {
     return this.http.patch<void>(`${this.base}/users/${id}/activate`, {});
+  }
+
+  getAuditTrail(filter: { eventType?: string; limit?: number; offset?: number } = {}) {
+    let params = new HttpParams()
+      .set('limit',  String(filter.limit  ?? 50))
+      .set('offset', String(filter.offset ?? 0));
+    if (filter.eventType) params = params.set('eventType', filter.eventType);
+    return this.http.get<ApiResponse<{ data: AuditEntry[]; total: number }>>(`${this.base}/audit`, { params });
   }
 
   getDailyReport() {

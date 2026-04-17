@@ -2,7 +2,8 @@ import { Component, signal, inject, OnInit } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../services/admin.service';
-import { AdminStats, AdminUser } from '../../core/models/api.models';
+import { KycService } from '../../services/kyc.service';
+import { AdminStats, AdminUser, KycQueueItem } from '../../core/models/api.models';
 
 interface UserDisplay {
   id:          string;
@@ -28,8 +29,22 @@ const AVATAR_COLORS = ['#7c4dff', '#00d4ff', '#17c3b2', '#ff4757', '#ffc107', '#
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.css',
 })
+interface KycDisplay {
+  id:          string;
+  name:        string;
+  initials:    string;
+  avatarColor: string;
+  type:        string;
+  nationality: string;
+  status:      string;
+  risk:        string;
+  submitted:   string;
+  docs:        Array<{ label: string; verified: boolean }>;
+}
+
 export class AdminComponent implements OnInit {
   private readonly adminSvc = inject(AdminService);
+  private readonly kycSvc   = inject(KycService);
 
   activeTab    = signal('User Management');
   userSearch   = '';
@@ -49,14 +64,10 @@ export class AdminComponent implements OnInit {
     { label: 'Admins',         value: '—', color: 'var(--accent-purple)' },
   ];
 
-  private _users = signal<UserDisplay[]>([]);
-
-  // Static data (would need dedicated APIs to make fully dynamic)
-  kycApplications = [
-    { id: 1, name: 'Mohammed Al-Rashid', initials: 'MR', avatarColor: '#7c4dff', type: 'Individual', nationality: 'Saudi', status: 'Pending',   risk: 'LOW',    submitted: '2h ago', docs: [{ label: 'National ID', verified: false }, { label: 'Selfie', verified: true  }, { label: 'Bank Stmt', verified: false }] },
-    { id: 2, name: 'Fatima Al-Zahrani',  initials: 'FZ', avatarColor: '#00d4ff', type: 'Individual', nationality: 'Saudi', status: 'In Review', risk: 'LOW',    submitted: '5h ago', docs: [{ label: 'National ID', verified: true  }, { label: 'Selfie', verified: true  }, { label: 'Bank Stmt', verified: false }] },
-    { id: 3, name: 'Hind Al-Qahtani',    initials: 'HQ', avatarColor: '#17c3b2', type: 'Corporate',  nationality: 'Saudi', status: 'Pending',   risk: 'MEDIUM', submitted: '1d ago', docs: [{ label: 'CR', verified: false }, { label: 'MOA', verified: false }, { label: 'UBO Docs', verified: false }] },
-  ];
+  private _users    = signal<UserDisplay[]>([]);
+  kycQueue          = signal<KycDisplay[]>([]);
+  kycLoading        = signal(true);
+  kycActionMsg      = signal<string | null>(null);
 
   reports = [
     { name: 'User Activity Report',      desc: 'Login sessions, trades and wallet activity per user',       icon: 'person',          iconBg: 'rgba(0,212,255,0.1)',  iconColor: 'var(--accent-cyan)' },
@@ -72,6 +83,7 @@ export class AdminComponent implements OnInit {
   ngOnInit() {
     this.loadStats();
     this.loadUsers();
+    this.loadKycQueue();
   }
 
   private loadStats() {
@@ -89,6 +101,77 @@ export class AdminComponent implements OnInit {
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  private loadKycQueue() {
+    this.kycSvc.getQueue(undefined, 50, 0).subscribe({
+      next: res => {
+        this.kycLoading.set(false);
+        this.kycQueue.set((res.data ?? []).map((k, i) => this.mapKycItem(k, i)));
+      },
+      error: () => this.kycLoading.set(false),
+    });
+  }
+
+  private mapKycItem(k: KycQueueItem, idx: number): KycDisplay {
+    const COLORS = ['#7c4dff', '#00d4ff', '#17c3b2', '#ff4757', '#ffc107', '#00e676'];
+    const name   = `${k.first_name} ${k.last_name}`.trim();
+    const initials = `${k.first_name?.[0] ?? ''}${k.last_name?.[0] ?? ''}`.toUpperCase();
+    const statusMap: Record<string, string> = {
+      Submitted: 'Pending', UnderReview: 'In Review', Approved: 'Approved', Rejected: 'Rejected', Draft: 'Draft',
+    };
+    const submittedAt = k.submitted_at
+      ? this.relativeTime(k.submitted_at)
+      : this.relativeTime(k.created_at);
+    return {
+      id:          k.id,
+      name,
+      initials,
+      avatarColor: COLORS[idx % COLORS.length],
+      type:        'Individual',
+      nationality: (k as any).nationality ?? '—',
+      status:      statusMap[k.status] ?? k.status,
+      risk:        k.risk_level ?? '—',
+      submitted:   submittedAt,
+      docs: [
+        { label: 'National ID', verified: false },
+        { label: 'Selfie',      verified: false },
+        { label: 'Bank Stmt',   verified: false },
+      ],
+    };
+  }
+
+  get kycApplications() { return this.kycQueue(); }
+
+  approveKyc(id: string) {
+    this.kycSvc.approve(id, 'LOW').subscribe({
+      next: () => {
+        this.kycQueue.update(q => q.filter(k => k.id !== id));
+        this.kycActionMsg.set('KYC approved successfully');
+        setTimeout(() => this.kycActionMsg.set(null), 4000);
+      },
+    });
+  }
+
+  rejectKyc(id: string) {
+    this.kycSvc.reject(id, 'Rejected by admin').subscribe({
+      next: () => {
+        this.kycQueue.update(q => q.map(k => k.id === id ? { ...k, status: 'Rejected' } : k));
+        this.kycActionMsg.set('KYC rejected');
+        setTimeout(() => this.kycActionMsg.set(null), 4000);
+      },
+    });
+  }
+
+  private relativeTime(iso: string): string {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1)  return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24)  return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return days === 1 ? 'Yesterday' : `${days} days ago`;
   }
 
   private loadUsers() {

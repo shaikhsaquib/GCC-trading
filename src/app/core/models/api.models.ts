@@ -226,3 +226,17 @@ export interface ApiResponse<T> {
   data:    T;
   error?:  string;
 }
+
+// ── Audit ─────────────────────────────────────────────────────────────────────
+
+export interface AuditEntry {
+  _id:          string;
+  event_type:   string;
+  action:       string;
+  actor_id?:    string;
+  target_id?:   string;
+  target_type?: string;
+  metadata?:    Record<string, unknown>;
+  ip_address?:  string;
+  created_at:   string;
+}

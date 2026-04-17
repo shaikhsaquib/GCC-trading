@@ -118,7 +118,7 @@
         </table>
 
         <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-          <span class="text-muted">Showing {{ filteredLogs().length }} of 128,472 total log entries</span>
+          <span class="text-muted">Showing {{ filteredLogs().length }} of {{ total() }} total log entries</span>
           <div class="pagination" style="display:flex;gap:6px">
             @for (p of [1,2,3,'...',127]; track p) {
               <button class="btn btn-secondary btn-sm" [class.active]="p === 1">{{ p }}</button>

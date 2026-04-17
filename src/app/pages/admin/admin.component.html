@@ -112,6 +112,9 @@
 
       <!-- KYC REVIEW tab -->
       @if (activeTab() === 'KYC Review') {
+        @if (kycActionMsg()) {
+          <div class="alert alert-success" style="margin-bottom:12px">{{ kycActionMsg() }}</div>
+        }
         <div class="kyc-review-grid fade-in">
           @for (app of kycApplications; track app.id) {
             <div class="kyc-card card">
@@ -137,8 +140,8 @@
                 <span style="font-size:11px;color:var(--text-muted);margin-left:auto">{{ app.submitted }}</span>
               </div>
               <div style="display:flex;gap:8px;margin-top:12px">
-                <button class="btn btn-danger btn-sm" style="flex:1;justify-content:center">Reject</button>
-                <button class="btn btn-success btn-sm" style="flex:1;justify-content:center">Approve</button>
+                <button class="btn btn-danger btn-sm" style="flex:1;justify-content:center" (click)="rejectKyc(app.id)">Reject</button>
+                <button class="btn btn-success btn-sm" style="flex:1;justify-content:center" (click)="approveKyc(app.id)">Approve</button>
               </div>
             </div>
           }

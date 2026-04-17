@@ -26,8 +26,8 @@
 
       <!-- Tab Bar -->
       <div class="tab-bar">
-        @for (tab of tabs; track tab) {
-          <div class="tab" [class.active]="activeTab() === tab" (click)="activeTab.set(tab)">{{ tab }}</div>
+        @for (t of tabs; track t) {
+          <div class="tab" [class.active]="activeTab() === t" (click)="activeTab.set(t)">{{ t }}</div>
         }
       </div>
 
