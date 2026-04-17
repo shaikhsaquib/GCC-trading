@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
+import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { AdminStats, AdminUser, Paginated, AuditEntry, ApiResponse } from '../core/models/api.models';
 
@@ -9,6 +10,22 @@ export interface UserListFilter {
   search?: string;
   limit?:  number;
   offset?: number;
+}
+
+export interface SchedulerJob {
+  name:           string;
+  schedule:       string;
+  description:    string;
+  lastRunAt:      string | null;
+  lastStatus:     'success' | 'failed' | null;
+  lastDurationMs: number | null;
+  runsToday:      number;
+}
+
+export interface ServiceHealth {
+  status:    string;
+  timestamp: string;
+  services:  { postgresql: boolean; redis: boolean; mongodb: boolean };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -38,15 +55,26 @@ export class AdminService {
     return this.http.patch<void>(`${this.base}/users/${id}/activate`, {});
   }
 
-  getAuditTrail(filter: { eventType?: string; limit?: number; offset?: number } = {}) {
+  getAuditTrail(filter: { actorId?: string; eventType?: string; limit?: number; offset?: number } = {}) {
     let params = new HttpParams()
       .set('limit',  String(filter.limit  ?? 50))
       .set('offset', String(filter.offset ?? 0));
     if (filter.eventType) params = params.set('eventType', filter.eventType);
+    if (filter.actorId)   params = params.set('actorId',   filter.actorId);
     return this.http.get<ApiResponse<{ data: AuditEntry[]; total: number }>>(`${this.base}/audit`, { params });
   }
 
   getDailyReport() {
     return this.http.get<unknown[]>(`${this.base}/reports/daily`);
+  }
+
+  getSchedulerJobs() {
+    return this.http
+      .get<ApiResponse<SchedulerJob[]>>(`${this.base}/scheduler/jobs`)
+      .pipe(map(res => res.data));
+  }
+
+  getServiceHealth() {
+    return this.http.get<ServiceHealth>('/health');
   }
 }

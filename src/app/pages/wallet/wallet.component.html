@@ -13,6 +13,12 @@
         </div>
       </div>
 
+      @if (apiError()) {
+        <div class="alert-box alert-danger" style="margin-bottom:16px">
+          <span class="material-icons-round">error</span>{{ apiError() }}
+        </div>
+      }
+
       <!-- Balance Cards -->
       <div class="balance-cards">
         <div class="balance-card primary">
@@ -22,7 +28,7 @@
             @else { {{ balanceCurrency() }} {{ totalBalance() | number:'1.2-2' }} }
           </div>
           <div class="balance-sub">
-            @if (!loading()) {
+            @if (!loading() && !apiError()) {
               <span [style.color]="monthChangeAmt >= 0 ? 'var(--success)' : 'var(--danger)'">
                 {{ monthChangeAmt >= 0 ? '▲' : '▼' }}
                 {{ Math.abs(monthChangePct) | number:'1.2-2' }}%
@@ -36,9 +42,6 @@
             </button>
             <button class="btn btn-secondary btn-sm" (click)="activeAction.set('withdraw')">
               <span class="material-icons-round">remove_circle</span> Withdraw
-            </button>
-            <button class="btn btn-secondary btn-sm" (click)="activeAction.set('transfer')">
-              <span class="material-icons-round">swap_horiz</span> Transfer
             </button>
           </div>
         </div>
@@ -158,50 +161,6 @@
                 } @else {
                   <span class="material-icons-round">remove_circle</span>
                   Withdraw {{ balanceCurrency() }} {{ withdrawAmount | number }}
-                }
-              </button>
-            </div>
-          }
-
-          <!-- Internal Transfer -->
-          @if (activeAction() === 'transfer') {
-            <div class="card fade-in">
-              <h4 style="margin-bottom:20px">Internal Transfer</h4>
-              <div class="form-group">
-                <label>Recipient User ID or Email</label>
-                <input class="form-control" type="text" placeholder="Enter user ID or email"
-                       [(ngModel)]="transferRecipient" name="rid"/>
-              </div>
-              <div class="form-group">
-                <label>Amount ({{ balanceCurrency() }})</label>
-                <div class="amount-input-wrapper">
-                  <span class="currency-symbol">{{ balanceCurrency() }}</span>
-                  <input class="form-control" type="number" placeholder="0.00"
-                         style="padding-left:54px;font-size:18px;font-weight:700"
-                         [(ngModel)]="transferAmount" name="ta"/>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>Note (Optional)</label>
-                <input class="form-control" type="text" placeholder="Transfer note"
-                       [(ngModel)]="transferNote" name="tn"/>
-              </div>
-              <div class="withdraw-info" style="margin-bottom:16px">
-                <div class="info-row"><span>Available Balance</span><span>{{ balanceCurrency() }} {{ availableBalance() | number:'1.2-2' }}</span></div>
-                <div class="info-row"><span>Fee</span><span style="color:var(--success)">Free</span></div>
-              </div>
-              @if (error()) {
-                <div class="alert-box alert-danger"><span class="material-icons-round">error</span>{{ error() }}</div>
-              }
-              @if (success()) {
-                <div class="alert-box alert-success"><span class="material-icons-round">check_circle</span>{{ success() }}</div>
-              }
-              <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center"
-                [disabled]="submitting()" (click)="submitTransfer()">
-                @if (submitting()) {
-                  <span class="material-icons-round" style="animation:spin 1s linear infinite">sync</span> Processing...
-                } @else {
-                  <span class="material-icons-round">swap_horiz</span> Transfer Funds
                 }
               </button>
             </div>

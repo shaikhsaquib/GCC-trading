@@ -14,6 +14,7 @@ export function createAdminRouter(controller: AdminController): Router {
   router.patch('/users/:id/activate',controller.activateUser);
   router.get('/audit',               controller.getAuditTrail);
   router.get('/reports/daily',       controller.getDailyReport);
+  router.get('/scheduler/jobs',      controller.getSchedulerJobs);
 
   return router;
 }

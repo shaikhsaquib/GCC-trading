@@ -264,14 +264,28 @@ export class SettlementComponent implements OnInit {
     });
   }
 
-  settlSteps = [
-    { label: 'Trade Executed', time: 'Apr 15, 2024 · 10:32:07', done: true, active: false },
-    { label: 'Trade Confirmed', time: 'Apr 15, 2024 · 10:33:15', done: true, active: false },
-    { label: 'CSD Notification Sent', time: 'Apr 15, 2024 · 10:35:00', done: true, active: false },
-    { label: 'Counterparty Confirmation', time: 'Waiting...', done: false, active: true },
-    { label: 'Securities Delivery (T+1)', time: 'Apr 16, 2024', done: false, active: false },
-    { label: 'Cash Settlement', time: 'Apr 16, 2024', done: false, active: false },
-  ];
+  get settlSteps() {
+    const s = this.selectedSettlement();
+    if (!s) return [];
+    const tradeDate  = s.tradeDate      ? new Date(s.tradeDate)      : null;
+    const settlDate  = s.settlementDate ? new Date(s.settlementDate) : null;
+    const fmtDate    = (d: Date | null) => d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+    const fmtTs      = (d: Date | null) => d ? `${fmtDate(d)} · ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : '—';
+    const confirmed  = s.status !== 'Pending';
+    const csdSent    = confirmed;
+    const cpConfirm  = s.status === 'Settled' || s.status === 'Processing';
+    const delivered  = s.status === 'Settled';
+    const cashSettled = s.status === 'Settled';
+    const failed     = s.status === 'Failed';
+    return [
+      { label: 'Trade Executed',             time: fmtTs(tradeDate),  done: true,       active: false },
+      { label: 'Trade Confirmed',            time: fmtTs(tradeDate),  done: confirmed,  active: !confirmed && !failed },
+      { label: 'CSD Notification Sent',      time: fmtDate(tradeDate),done: csdSent,    active: confirmed && !cpConfirm && !failed },
+      { label: 'Counterparty Confirmation',  time: cpConfirm ? fmtDate(settlDate) : (failed ? 'Failed' : 'Waiting...'), done: cpConfirm, active: csdSent && !cpConfirm && !failed },
+      { label: 'Securities Delivery (T+1)',  time: fmtDate(settlDate), done: delivered, active: cpConfirm && !delivered && !failed },
+      { label: 'Cash Settlement',            time: fmtDate(settlDate), done: cashSettled,active: delivered && !cashSettled },
+    ];
+  }
 
   filteredSettlements() {
     const tab = this.activeTab();

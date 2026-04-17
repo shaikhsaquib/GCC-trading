@@ -65,23 +65,9 @@ export class DashboardComponent implements OnInit {
     { title: 'Scheduler',         desc: 'Run cron jobs: coupons, maturity, cleanup', icon: 'schedule',             tech: 'Node-cron', techClass: 'cron',   route: '/scheduler',    color: '0,212,255',  status: 'active'  },
   ];
 
-  recentActivity = [
-    { id: 1, icon: 'swap_horiz',             iconBg: 'rgba(124,77,255,0.12)', iconColor: '#7c4dff', title: 'Buy Order Executed — ISIN SA123456789',    meta: 'SAR 500,000 · 5,000 units @ 100.25',       time: '2m ago'  },
-    { id: 2, icon: 'verified_user',          iconBg: 'rgba(0,230,118,0.12)',  iconColor: '#00e676', title: 'KYC Approved — Khalid Al-Mutairi',          meta: 'Document verified · Account activated',     time: '8m ago'  },
-    { id: 3, icon: 'security',               iconBg: 'rgba(255,71,87,0.12)',  iconColor: '#ff4757', title: 'AML Alert — Unusual transaction pattern',   meta: 'User ID #TRD-8821 · Risk score: HIGH',      time: '15m ago' },
-    { id: 4, icon: 'account_balance_wallet', iconBg: 'rgba(0,212,255,0.12)', iconColor: '#00d4ff', title: 'Deposit Completed — Fatima Al-Zahrani',     meta: 'SAR 250,000 credited to wallet',            time: '22m ago' },
-    { id: 5, icon: 'task_alt',               iconBg: 'rgba(46,213,115,0.12)', iconColor: '#2ed573', title: 'Settlement Finalized — Trade #TRD-1042',   meta: 'T+1 settlement · Counterparty confirmed',   time: '31m ago' },
-    { id: 6, icon: 'schedule',               iconBg: 'rgba(255,193,7,0.12)', iconColor: '#ffc107', title: 'Coupon Payment Processed — 12 bonds',       meta: 'SAR 1.2M distributed to 340 holders',      time: '1h ago'  },
-  ];
+  recentActivity: Array<{ id: number; icon: string; iconBg: string; iconColor: string; title: string; meta: string; time: string }> = [];
 
-  services = [
-    { name: 'Auth Service (Node.js)',   uptime: 99.9, up: true },
-    { name: 'Trading Engine (.NET)',    uptime: 99.7, up: true },
-    { name: 'Bond Marketplace (.NET)',  uptime: 99.5, up: true },
-    { name: 'Settlement Service (.NET)',uptime: 98.8, up: true },
-    { name: 'Notification Service',    uptime: 99.2, up: true },
-    { name: 'Scheduler (Node-cron)',   uptime: 97.4, up: true },
-  ];
+  services: Array<{ name: string; uptime: number; up: boolean }> = [];
 
   // ── Investor state ───────────────────────────────────────────────────────────
 
@@ -174,6 +160,82 @@ export class DashboardComponent implements OnInit {
       },
       error: () => {},
     });
+
+    this.adminSvc.getAuditTrail({ limit: 6 }).subscribe({
+      next: res => {
+        this.recentActivity = (res.data?.data ?? []).map((e, i) => ({
+          id:        i + 1,
+          icon:      this.auditIcon(e.event_type),
+          iconBg:    this.auditIconBg(e.event_type),
+          iconColor: this.auditIconColor(e.event_type),
+          title:     e.event_type.replace(/_/g, ' '),
+          meta:      e.target_id ? `Target: ${e.target_id}` : '',
+          time:      this.relativeTime(e.created_at),
+        }));
+      },
+      error: () => {},
+    });
+
+    this.adminSvc.getServiceHealth().subscribe({
+      next: health => {
+        const s = health.services;
+        this.services = [
+          { name: 'PostgreSQL',          uptime: 100, up: s.postgresql },
+          { name: 'Redis',               uptime: 100, up: s.redis },
+          { name: 'MongoDB',             uptime: 100, up: s.mongodb },
+          { name: 'Auth Service (Node.js)', uptime: 100, up: s.postgresql && s.redis },
+          { name: 'API Gateway',         uptime: 100, up: health.status === 'healthy' },
+          { name: 'Scheduler (Node-cron)',uptime: 100, up: true },
+        ];
+      },
+      error: () => {
+        this.services = [
+          { name: 'Auth Service (Node.js)',   uptime: 0, up: false },
+          { name: 'Trading Engine (.NET)',    uptime: 0, up: false },
+          { name: 'Bond Marketplace (.NET)',  uptime: 0, up: false },
+          { name: 'Settlement Service (.NET)',uptime: 0, up: false },
+          { name: 'Notification Service',    uptime: 0, up: false },
+          { name: 'Scheduler (Node-cron)',   uptime: 0, up: false },
+        ];
+      },
+    });
+  }
+
+  private auditIcon(eventType: string): string {
+    if (eventType.includes('LOGIN'))      return 'lock';
+    if (eventType.includes('KYC'))        return 'verified_user';
+    if (eventType.includes('TRADE'))      return 'swap_horiz';
+    if (eventType.includes('DEPOSIT'))    return 'account_balance_wallet';
+    if (eventType.includes('WITHDRAW'))   return 'remove_circle';
+    if (eventType.includes('SETTLEMENT')) return 'task_alt';
+    if (eventType.includes('ORDER'))      return 'swap_horiz';
+    return 'history';
+  }
+
+  private auditIconBg(eventType: string): string {
+    if (eventType.includes('LOGIN'))    return 'rgba(0,230,118,0.12)';
+    if (eventType.includes('KYC'))      return 'rgba(0,212,255,0.12)';
+    if (eventType.includes('TRADE'))    return 'rgba(124,77,255,0.12)';
+    if (eventType.includes('WITHDRAW')) return 'rgba(255,71,87,0.12)';
+    return 'rgba(0,212,255,0.12)';
+  }
+
+  private auditIconColor(eventType: string): string {
+    if (eventType.includes('LOGIN'))    return '#00e676';
+    if (eventType.includes('KYC'))      return '#00d4ff';
+    if (eventType.includes('TRADE'))    return '#7c4dff';
+    if (eventType.includes('WITHDRAW')) return '#ff4757';
+    return '#00d4ff';
+  }
+
+  private relativeTime(iso: string): string {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1)  return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24)  return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
   }
 
   private loadInvestorData() {

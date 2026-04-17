@@ -14,19 +14,16 @@ import { WalletBalance, WalletTransaction } from '../../core/models/api.models';
 export class WalletComponent implements OnInit {
   private readonly walletSvc = inject(WalletService);
 
-  activeAction      = signal('deposit');
-  selectedMethod    = signal('bank');
-  txFilter          = signal('All');
-  page              = signal(1);
+  activeAction   = signal<'deposit' | 'withdraw'>('deposit');
+  selectedMethod = signal('bank');
+  txFilter       = signal('All');
+  page           = signal(1);
   readonly pageSize = 10;
 
-  depositAmount     = 0;
-  withdrawAmount    = 0;
-  transferRecipient = '';
-  transferAmount    = 0;
-  transferNote      = '';
-  searchTerm        = '';
-  selectedBankIdx   = 0;
+  depositAmount  = 0;
+  withdrawAmount = 0;
+  searchTerm     = '';
+  selectedBankIdx = 0;
 
   Math = Math;
 
@@ -35,6 +32,7 @@ export class WalletComponent implements OnInit {
   error      = signal<string | null>(null);
   success    = signal<string | null>(null);
   submitting = signal(false);
+  apiError   = signal<string | null>(null);
 
   availableBalance = signal(0);
   totalBalance     = signal(0);
@@ -110,7 +108,10 @@ export class WalletComponent implements OnInit {
         this.balanceCurrency.set(b.currency);
         this.syncSubBalances(b);
       },
-      error: () => this.loading.set(false),
+      error: (err) => {
+        this.loading.set(false);
+        this.apiError.set(err?.error?.error?.message ?? 'Unable to load wallet balance. Check API connection.');
+      },
     });
   }
 
@@ -235,27 +236,6 @@ export class WalletComponent implements OnInit {
       error: err => {
         this.submitting.set(false);
         this.error.set(err?.error?.error?.message ?? 'Withdrawal failed. Please try again.');
-      },
-    });
-  }
-
-  submitTransfer() {
-    if (!this.transferRecipient.trim()) { this.error.set('Enter a recipient ID or email.'); return; }
-    if (this.transferAmount <= 0)       { this.error.set('Enter an amount greater than 0.'); return; }
-    if (this.transferAmount > this.availableBalance()) { this.error.set('Amount exceeds available balance.'); return; }
-    this.submitting.set(true); this.error.set(null); this.success.set(null);
-    this.walletSvc.transfer(this.transferRecipient, this.transferAmount, this.transferNote).subscribe({
-      next: () => {
-        this.submitting.set(false);
-        this.success.set(`Transfer of ${this.balanceCurrency()} ${this.transferAmount.toLocaleString()} sent to ${this.transferRecipient}.`);
-        this.addLocalTx('DEBIT', this.transferAmount, `Internal Transfer → ${this.transferRecipient}`);
-        this.availableBalance.update(b => b - this.transferAmount);
-        this.transferRecipient = ''; this.transferAmount = 0; this.transferNote = '';
-        setTimeout(() => this.success.set(null), 5000);
-      },
-      error: err => {
-        this.submitting.set(false);
-        this.error.set(err?.error?.error?.message ?? 'Transfer failed. Please try again.');
       },
     });
   }

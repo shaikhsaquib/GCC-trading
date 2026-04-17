@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { AdminService } from './admin.service';
 import { AuditService } from '../audit/audit.service';
 import { sendSuccess }  from '../../middlewares/error-handler';
+import { getSchedulerStatus } from '../../jobs/scheduler';
 
 export class AdminController {
   constructor(
@@ -62,6 +63,12 @@ export class AdminController {
     try {
       const report = await this.service.getDailyReport();
       sendSuccess(res, report);
+    } catch (err) { next(err); }
+  };
+
+  getSchedulerJobs = (_req: Request, res: Response, next: NextFunction): void => {
+    try {
+      sendSuccess(res, getSchedulerStatus());
     } catch (err) { next(err); }
   };
 }

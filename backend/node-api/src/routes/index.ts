@@ -45,7 +45,7 @@ const auditRepo    = new AuditRepository();
 const auditService = new AuditService(auditRepo);
 
 const authRepo    = new AuthRepository();
-const authService = new AuthService(authRepo, eventBus);
+const authService = new AuthService(authRepo, eventBus, auditService);
 const authCtrl    = new AuthController(authService);
 
 const kycRepo    = new KycRepository();

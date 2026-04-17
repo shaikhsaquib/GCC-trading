@@ -17,6 +17,7 @@ import {
 } from '../../core/errors';
 
 import { AuthRepository } from './auth.repository';
+import { AuditService }   from '../audit/audit.service';
 import {
   RegisterDto, LoginDto, Verify2FADto, Enable2FADto,
   TokenPair, LoginResponse, Require2FAResponse, SafeUser,
@@ -31,6 +32,7 @@ export class AuthService {
   constructor(
     private readonly repo:     AuthRepository,
     private readonly eventBus: IEventBus,
+    private readonly audit?:   AuditService,
   ) {}
 
   // ── Register ───────────────────────────────────────────────────────────────
@@ -101,6 +103,7 @@ export class AuthService {
     if (user.status === 'DEACTIVATED') throw new ForbiddenError('Account deactivated');
 
     await this.repo.updateLastLogin(user.id);
+    this.audit?.log({ event_type: 'USER_LOGGED_IN', actor_id: user.id }).catch(() => {});
 
     // 2FA step-up
     if (user.totp_enabled) {

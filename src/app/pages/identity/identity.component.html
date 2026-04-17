@@ -172,7 +172,7 @@
           <div class="card" style="padding:20px;margin-top:16px">
             <h4 style="margin-bottom:14px">Recent Login Events</h4>
             <div class="login-events">
-              @for (e of loginEvents; track e.time) {
+              @for (e of loginEvents(); track e.time) {
                 <div class="login-event">
                   <span class="material-icons-round" [style.color]="e.success ? 'var(--success)' : 'var(--danger)'" style="font-size:16px">
                     {{ e.success ? 'check_circle' : 'cancel' }}

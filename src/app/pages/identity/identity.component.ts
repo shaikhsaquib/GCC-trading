@@ -58,7 +58,7 @@ export class IdentityComponent implements OnInit {
     { label: 'Audit All Actions',         desc: 'Log every user action to audit trail',      enabled: true },
   ];
 
-  loginEvents: Array<{ user: string; ip: string; location: string; time: string; success: boolean }> = [];
+  loginEvents = signal<Array<{ user: string; ip: string; location: string; time: string; success: boolean }>>([]);
 
   private _users = signal<UserDisplay[]>([]);
 
@@ -75,6 +75,18 @@ export class IdentityComponent implements OnInit {
         this._users.set((res.data ?? []).map((u, i) => this.mapUser(u, i)));
       },
       error: () => this.loading.set(false),
+    });
+    this.adminSvc.getAuditTrail({ eventType: 'USER_LOGGED_IN', limit: 20 }).subscribe({
+      next: res => {
+        this.loginEvents.set((res.data?.data ?? []).map(e => ({
+          user:     e.actor_id ?? '—',
+          ip:       '—',
+          location: '—',
+          time:     this.relativeTime(e.created_at),
+          success:  true,
+        })));
+      },
+      error: () => {},
     });
   }
 
