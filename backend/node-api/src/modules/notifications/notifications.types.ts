@@ -10,7 +10,8 @@ export type NotificationEvent =
   | 'COUPON_RECEIVED'
   | 'MATURITY_ALERT'
   | 'PASSWORD_CHANGED'
-  | 'ACCOUNT_SUSPENDED';
+  | 'ACCOUNT_SUSPENDED'
+  | 'SETTLEMENT_COMPLETE';
 
 export interface SendNotificationDto {
   userId:    string;

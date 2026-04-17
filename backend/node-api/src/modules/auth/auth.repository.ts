@@ -1,6 +1,8 @@
-import { PoolClient } from 'pg';
+import { PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { db } from '../../core/database/postgres.client';
 import { UserRow } from './auth.types';
+
+type Queryable = { query<T extends QueryResultRow = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<QueryResult<T>> };
 
 /**
  * AuthRepository — all SQL for the auth module lives here.
@@ -89,7 +91,7 @@ export class AuthRepository {
   }
 
   async savePasswordHash(id: string, hash: string, client?: PoolClient): Promise<void> {
-    const q = client ?? db;
+    const q: Queryable = client ?? db;
     await q.query(
       'UPDATE app_auth.users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
       [hash, id],

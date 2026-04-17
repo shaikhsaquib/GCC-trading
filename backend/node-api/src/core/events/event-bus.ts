@@ -1,4 +1,4 @@
-import amqplib, { Channel, Connection, ConsumeMessage } from 'amqplib';
+import amqplib, { Channel, ChannelModel, ConsumeMessage } from 'amqplib';
 import { v4 as uuidv4 } from 'uuid';
 import { config } from '../../config';
 import { logger } from '../logger';
@@ -23,7 +23,7 @@ export interface IEventBus {
 // ---------------------------------------------------------------------------
 
 class RabbitMqEventBus implements IEventBus {
-  private connection:   Connection | null = null;
+  private connection:   ChannelModel | null = null;
   private channel:      Channel    | null = null;
   private reconnecting: boolean = false;
 

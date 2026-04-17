@@ -1,3 +1,4 @@
+import { Document } from 'mongoose';
 import { AuditLog, IAuditLog } from '../../core/database/mongodb.client';
 import { AuditQueryFilter } from './audit.types';
 
@@ -28,6 +29,6 @@ export class AuditRepository {
       AuditLog.countDocuments(query),
     ]);
 
-    return { data: data as IAuditLog[], total };
+    return { data: data as unknown as IAuditLog[], total };
   }
 }

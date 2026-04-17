@@ -1,8 +1,8 @@
-import { PoolClient, QueryResult } from 'pg';
+import { PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { db } from '../../core/database/postgres.client';
 import { WalletRow, TransactionRow, WithdrawalRow, Currency } from './wallet.types';
 
-type Queryable = { query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<QueryResult<T>> };
+type Queryable = { query<T extends QueryResultRow = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<QueryResult<T>> };
 
 export class WalletRepository {
   async findByUserId(userId: string, client?: PoolClient): Promise<WalletRow | null> {

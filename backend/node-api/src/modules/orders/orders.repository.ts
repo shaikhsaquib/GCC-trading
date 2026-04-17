@@ -1,9 +1,9 @@
 import crypto from 'crypto';
-import { PoolClient, QueryResult } from 'pg';
+import { PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { db } from '../../core/database/postgres.client';
 import { Order, PlaceOrderInput, OrderBookEntry } from './orders.types';
 
-type Queryable = { query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<QueryResult<T>> };
+type Queryable = { query<T extends QueryResultRow = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<QueryResult<T>> };
 
 export class OrdersRepository {
   async create(userId: string, input: PlaceOrderInput): Promise<Order> {
