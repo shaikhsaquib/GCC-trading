@@ -1,5 +1,5 @@
 import { db } from '../../core/database/postgres.client';
-import { PortfolioHolding } from './portfolio.types';
+import { PortfolioHolding, HoldingCalendarRow } from './portfolio.types';
 
 export class PortfolioRepository {
   async findHoldingsByUser(userId: string): Promise<PortfolioHolding[]> {
@@ -21,6 +21,33 @@ export class PortfolioRepository {
     );
 
     return r.rows.map(this.mapHoldingRow);
+  }
+
+  async findCouponCalendarData(userId: string): Promise<HoldingCalendarRow[]> {
+    const r = await db.query<Record<string, unknown>>(
+      `SELECT h.bond_id,
+              b.name             AS bond_name,
+              b.isin,
+              b.coupon_rate,
+              b.coupon_frequency,
+              b.maturity_date,
+              b.face_value,
+              h.quantity
+       FROM portfolio.holdings h
+       JOIN bonds.listings b ON b.id = h.bond_id
+       WHERE h.user_id = $1`,
+      [userId],
+    );
+    return r.rows.map(row => ({
+      bondId:          String(row['bond_id'] ?? ''),
+      bondName:        String(row['bond_name'] ?? ''),
+      isin:            String(row['isin'] ?? ''),
+      couponRate:      parseFloat(String(row['coupon_rate'] ?? 0)),
+      couponFrequency: String(row['coupon_frequency'] ?? 'Annual'),
+      maturityDate:    String(row['maturity_date'] ?? ''),
+      faceValue:       parseFloat(String(row['face_value'] ?? 100)),
+      quantity:        parseFloat(String(row['quantity'] ?? 0)),
+    }));
   }
 
   private mapHoldingRow(row: Record<string, unknown>): PortfolioHolding {

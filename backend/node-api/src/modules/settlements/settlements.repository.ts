@@ -20,7 +20,6 @@ export class SettlementsRepository {
     if (params.userId) {
       conditions.push(`(s.buyer_id = $${i++} OR s.seller_id = $${i++})`);
       values.push(params.userId, params.userId);
-      i++;
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';

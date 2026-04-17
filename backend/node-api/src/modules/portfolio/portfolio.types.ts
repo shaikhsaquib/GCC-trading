@@ -18,3 +18,23 @@ export interface PortfolioSummary {
   holdingsCount:       number;
   currency:            string;
 }
+
+export interface CouponEvent {
+  bondId:     string;
+  bondName:   string;
+  isin:       string;
+  date:       string;
+  amount:     number;
+  couponRate: number;
+}
+
+export interface HoldingCalendarRow {
+  bondId:          string;
+  bondName:        string;
+  isin:            string;
+  couponRate:      number;
+  couponFrequency: string;
+  maturityDate:    string;
+  faceValue:       number;
+  quantity:        number;
+}

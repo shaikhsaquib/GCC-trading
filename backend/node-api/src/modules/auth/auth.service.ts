@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 
 import { config } from '../../config';
+import { db }    from '../../core/database/postgres.client';
 import { redis } from '../../core/database/redis.client';
 import { IEventBus } from '../../core/events/event-bus';
 import { EventRoutes } from '../../core/events/event.types';
@@ -280,6 +281,3 @@ export class AuthService {
     };
   }
 }
-
-// db import needed for transaction in resetPassword
-import { db } from '../../core/database/postgres.client';

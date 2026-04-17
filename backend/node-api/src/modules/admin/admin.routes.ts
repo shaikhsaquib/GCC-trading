@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { AdminController } from './admin.controller';
 import { authenticate }    from '../../middlewares/authenticate';
-import { authorize }       from '../../middlewares/authorize';
+import { authorize, requireActive } from '../../middlewares/authorize';
 
 export function createAdminRouter(controller: AdminController): Router {
   const router = Router();
 
-  router.use(authenticate, authorize('ADMIN', 'L2_ADMIN'));
+  router.use(authenticate, authorize('ADMIN', 'L2_ADMIN'), requireActive);
 
   router.get('/dashboard',           controller.getDashboard);
   router.get('/users',               controller.listUsers);

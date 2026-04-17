@@ -9,7 +9,10 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 export function createKycRouter(controller: KycController): Router {
   const router = Router();
 
-  // All routes require authentication
+  // Webhook — unauthenticated (Onfido calls this directly, must be before authenticate)
+  router.post('/webhook/onfido', controller.handleWebhook);
+
+  // All other routes require authentication
   router.use(authenticate);
 
   // Investor routes
@@ -17,9 +20,6 @@ export function createKycRouter(controller: KycController): Router {
   router.post('/start',               controller.startSubmission);
   router.post('/:kycId/documents',    upload.single('file'), controller.uploadDocument);
   router.post('/:kycId/submit',       controller.submit);
-
-  // Webhook — unauthenticated (Onfido calls this directly)
-  router.post('/webhook/onfido', controller.handleWebhook);
 
   // Admin routes
   router.get('/admin/queue',

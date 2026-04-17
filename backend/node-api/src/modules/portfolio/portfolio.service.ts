@@ -1,5 +1,5 @@
 import { PortfolioRepository } from './portfolio.repository';
-import { PortfolioHolding, PortfolioSummary } from './portfolio.types';
+import { PortfolioHolding, PortfolioSummary, CouponEvent } from './portfolio.types';
 
 export class PortfolioService {
   constructor(private readonly repo: PortfolioRepository) {}
@@ -26,8 +26,46 @@ export class PortfolioService {
     };
   }
 
-  async getCouponCalendar(_userId: string): Promise<unknown[]> {
-    // No coupon_schedule table in the current schema — return empty array
-    return [];
+  async getCouponCalendar(userId: string): Promise<CouponEvent[]> {
+    const rows = await this.repo.findCouponCalendarData(userId);
+    const events: CouponEvent[] = [];
+    const today   = new Date(); today.setHours(0, 0, 0, 0);
+    const ceiling = new Date(today); ceiling.setFullYear(ceiling.getFullYear() + 2);
+
+    const freqMap: Record<string, number> = {
+      Annual: 1, SemiAnnual: 2, Quarterly: 4,
+    };
+
+    for (const row of rows) {
+      const paymentsPerYear   = freqMap[row.couponFrequency] ?? 1;
+      const intervalMonths    = Math.round(12 / paymentsPerYear);
+      const maturity          = new Date(row.maturityDate);
+      const couponPerPayment  = parseFloat(
+        ((row.couponRate / 100 / paymentsPerYear) * row.quantity * row.faceValue).toFixed(2),
+      );
+
+      // Anchor on maturity date and walk back to find first upcoming coupon
+      let d = new Date(maturity.getFullYear(), maturity.getMonth(), maturity.getDate());
+      while (d > today) {
+        d = new Date(d.getFullYear(), d.getMonth() - intervalMonths, d.getDate());
+      }
+      d = new Date(d.getFullYear(), d.getMonth() + intervalMonths, d.getDate());
+
+      while (d <= maturity && d <= ceiling) {
+        if (d >= today) {
+          events.push({
+            bondId:     row.bondId,
+            bondName:   row.bondName,
+            isin:       row.isin,
+            date:       d.toISOString().split('T')[0],
+            amount:     couponPerPayment,
+            couponRate: row.couponRate,
+          });
+        }
+        d = new Date(d.getFullYear(), d.getMonth() + intervalMonths, d.getDate());
+      }
+    }
+
+    return events.sort((a, b) => a.date.localeCompare(b.date));
   }
 }
