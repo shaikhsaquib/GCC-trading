@@ -201,16 +201,17 @@ export class WalletComponent implements OnInit {
   submitDeposit() {
     if (this.depositAmount <= 0) { this.error.set('Enter an amount greater than 0.'); return; }
     this.submitting.set(true); this.error.set(null); this.success.set(null);
-    this.walletSvc.deposit(this.depositAmount, this.balanceCurrency(), this.selectedMethod()).subscribe({
+    const amount = this.depositAmount;
+    const label  = this.paymentMethods.find(m => m.id === this.selectedMethod())?.label ?? 'Bank';
+    this.walletSvc.deposit(amount, this.balanceCurrency(), this.selectedMethod()).subscribe({
       next: () => {
         this.submitting.set(false);
-        const label = this.paymentMethods.find(m => m.id === this.selectedMethod())?.label ?? 'Bank';
-        this.success.set(`Deposit of ${this.balanceCurrency()} ${this.depositAmount.toLocaleString()} initiated successfully.`);
-        this.addLocalTx('CREDIT', this.depositAmount, `Deposit via ${label}`);
-        this.availableBalance.update(b => b + this.depositAmount);
-        this.totalBalance.update(b => b + this.depositAmount);
+        this.success.set(`Deposit of ${this.balanceCurrency()} ${amount.toLocaleString()} initiated successfully.`);
+        this.addLocalTx('CREDIT', amount, `Deposit via ${label}`);
         this.depositAmount = 0;
         setTimeout(() => this.success.set(null), 5000);
+        this.loadBalance();
+        this.loadTransactions();
       },
       error: err => {
         this.submitting.set(false);
@@ -222,16 +223,18 @@ export class WalletComponent implements OnInit {
   submitWithdraw() {
     if (this.withdrawAmount <= 0) { this.error.set('Enter an amount greater than 0.'); return; }
     if (this.withdrawAmount > this.availableBalance()) { this.error.set('Amount exceeds available balance.'); return; }
-    const bank = this.banks[this.selectedBankIdx];
+    const bank   = this.banks[this.selectedBankIdx];
+    const amount = this.withdrawAmount;
     this.submitting.set(true); this.error.set(null); this.success.set(null);
-    this.walletSvc.withdraw(this.withdrawAmount, this.balanceCurrency(), bank.name, bank.iban).subscribe({
+    this.walletSvc.withdraw(amount, this.balanceCurrency(), bank.name, bank.iban).subscribe({
       next: () => {
         this.submitting.set(false);
-        this.success.set(`Withdrawal of ${this.balanceCurrency()} ${this.withdrawAmount.toLocaleString()} submitted. Processing in 1-2 business days.`);
-        this.addLocalTx('DEBIT', this.withdrawAmount, `Withdrawal — ${bank.name}`, 'PROCESSING');
-        this.availableBalance.update(b => b - this.withdrawAmount);
+        this.success.set(`Withdrawal of ${this.balanceCurrency()} ${amount.toLocaleString()} submitted. Processing in 1-2 business days.`);
+        this.addLocalTx('DEBIT', amount, `Withdrawal — ${bank.name}`, 'PROCESSING');
         this.withdrawAmount = 0;
         setTimeout(() => this.success.set(null), 5000);
+        this.loadBalance();
+        this.loadTransactions();
       },
       error: err => {
         this.submitting.set(false);
