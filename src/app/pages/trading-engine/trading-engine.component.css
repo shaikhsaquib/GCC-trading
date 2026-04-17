@@ -111,9 +111,9 @@
     /* Right Panel */
     .right-panel { display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
 
-    .trades-card { padding: 16px; flex: 1; overflow: hidden; }
+    .trades-card { padding: 16px; flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
 
-    .trades-list { display: flex; flex-direction: column; gap: 4px; }
+    .trades-list { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; flex: 1; min-height: 0; }
 
     .trade-row { display: grid; grid-template-columns: 40px 1fr 1fr 1fr; gap: 8px; padding: 6px 8px; border-radius: 4px; font-size: 12px; font-variant-numeric: tabular-nums; &.buy { background: rgba(46,213,115,0.04); } &.sell { background: rgba(255,71,87,0.04); } }
 
@@ -125,7 +125,8 @@
     .trade-qty   { color: var(--text-secondary); text-align: right; }
     .trade-time  { color: var(--text-muted); text-align: right; }
 
-    .my-orders-card { padding: 16px; }
+    .my-orders-card { padding: 16px; display: flex; flex-direction: column; }
+    .my-orders-list { overflow-y: auto; max-height: 220px; flex: 1; }
 
     .my-order-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(30,58,95,0.4); &:last-child { border: none; } }
 
@@ -136,3 +137,5 @@
     .order-form { display: flex; flex-direction: column; gap: 14px; }
 
     .form-group { display: flex; flex-direction: column; gap: 6px; label { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; } }
+
+    @keyframes spin { to { transform: rotate(360deg); } }

@@ -1,0 +1,13 @@
+{
+  "/api/v1/auth":          { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" },
+  "/api/v1/wallet":        { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" },
+  "/api/v1/kyc":           { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" },
+  "/api/v1/notifications": { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" },
+  "/api/v1/admin":         { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" },
+  "/api/v1/health":        { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" },
+  "/api/v1/bonds":         { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" },
+  "/api/v1/orders":        { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" },
+  "/api/v1/portfolio":     { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" },
+  "/api/v1/settlements":   { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" },
+  "/api/v1/aml":           { "target": "http://localhost:5005", "secure": false, "changeOrigin": true, "logLevel": "info" }
+}

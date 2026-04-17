@@ -1,6 +1,37 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject, OnInit, OnDestroy } from '@angular/core';
 import { NgClass, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { TradingService, PlaceOrderDto } from '../../services/trading.service';
+import { BondService } from '../../services/bond.service';
+import { PriceSimulationService, BookRow, TradeRow } from '../../services/price-simulation.service';
+import { Order, Bond } from '../../core/models/api.models';
+
+interface WatchlistBond {
+  id:        string;
+  name:      string;
+  isin:      string;
+  shortName: string;
+  price:     string;
+  change:    number;
+  changePct: number;
+  coupon:    number;
+  ytm:       number;
+  maturity:  string;
+  rating:    string;
+}
+
+interface OrderDisplay {
+  id:     string;
+  side:   string;
+  bond:   string;
+  type:   string;
+  qty:    number;
+  price:  string;
+  filled: number;
+  status: string;
+}
 
 @Component({
   selector: 'app-trading-engine',
@@ -9,57 +40,244 @@ import { FormsModule } from '@angular/forms';
   templateUrl: './trading-engine.component.html',
   styleUrl: './trading-engine.component.css',
 })
-export class TradingEngineComponent {
-  orderSide = signal<'buy' | 'sell'>('buy');
-  orderType = signal('Limit');
-  orderTypes = ['Market', 'Limit', 'Stop', 'Stop-Limit'];
-  quantity = 1000;
-  limitPrice = 100.25;
-  stopPrice = 99.50;
-  tif = 'Day';
+export class TradingEngineComponent implements OnInit, OnDestroy {
+  private readonly tradingSvc = inject(TradingService);
+  private readonly bondSvc    = inject(BondService);
+  private readonly route      = inject(ActivatedRoute);
+  private readonly sim        = inject(PriceSimulationService);
 
-  selectedBond = signal({
-    name: 'Saudi Govt. Bond 2029', isin: 'SA1230001234',
-    shortName: 'SAG-2029', price: '101.45',
-    change: 0.28, coupon: 4.25, ytm: 3.98, maturity: 'Mar 2029', rating: 'AAA',
+  orderSide  = signal<'buy' | 'sell'>('buy');
+  orderType  = signal('Limit');
+  orderTypes = ['Market', 'Limit'];
+  quantity   = 1000;
+  limitPrice = 100.25;
+  tif        = 'Day';
+
+  loading       = signal(true);
+  ordersLoading = signal(true);
+  submitting    = signal(false);
+  orderSuccess  = signal<string | null>(null);
+  orderError    = signal<string | null>(null);
+  cancellingId  = signal<string | null>(null);
+
+  marketTime = signal(this.formatTime());
+  marketOpen = signal(true);
+
+  selectedBond = signal<WatchlistBond>({
+    id: '', name: '—', isin: '—', shortName: '—',
+    price: '—', change: 0, changePct: 0, coupon: 0, ytm: 0, maturity: '—', rating: '—',
   });
 
-  watchlist = [
-    { name: 'Saudi Govt. Bond 2029', isin: 'SA1230001234', shortName: 'SAG-2029', price: '101.45', change: 0.28, coupon: 4.25, ytm: 3.98, maturity: 'Mar 2029', rating: 'AAA' },
-    { name: 'Saudi Aramco Sukuk 2026', isin: 'SA2340015678', shortName: 'ARMC-2026', price: '99.82', change: -0.12, coupon: 3.75, ytm: 3.83, maturity: 'Jun 2026', rating: 'AA+' },
-    { name: 'SABIC Bond 2028', isin: 'SA3450029012', shortName: 'SABIC-2028', price: '100.75', change: 0.45, coupon: 4.50, ytm: 4.34, maturity: 'Dec 2028', rating: 'AA' },
-    { name: 'Abu Dhabi Govt. 2030', isin: 'AE0040012345', shortName: 'ADG-2030', price: '98.60', change: -0.08, coupon: 3.90, ytm: 4.12, maturity: 'Sep 2030', rating: 'AA' },
-  ];
+  private _watchlist = signal<WatchlistBond[]>([]);
+  private _myOrders  = signal<OrderDisplay[]>([]);
 
-  asks = [
-    { price: '101.70', qty: 2400, depth: 48, total: '2.4' },
-    { price: '101.65', qty: 5100, depth: 72, total: '5.1' },
-    { price: '101.60', qty: 3800, depth: 60, total: '3.8' },
-    { price: '101.55', qty: 7200, depth: 85, total: '7.2' },
-    { price: '101.50', qty: 4600, depth: 65, total: '4.6' },
-  ];
+  asks         = signal<BookRow[]>([]);
+  bids         = signal<BookRow[]>([]);
+  recentTrades = signal<TradeRow[]>([]);
 
-  bids = [
-    { price: '101.45', qty: 6800, depth: 80, total: '6.8' },
-    { price: '101.40', qty: 3200, depth: 50, total: '3.2' },
-    { price: '101.35', qty: 8500, depth: 95, total: '8.5' },
-    { price: '101.30', qty: 2100, depth: 35, total: '2.1' },
-    { price: '101.25', qty: 4900, depth: 68, total: '4.9' },
-  ];
+  private tickSub:  Subscription | null = null;
+  private tradeSub: Subscription | null = null;
+  private clockSub: Subscription | null = null;
 
-  recentTrades = [
-    { id: 1, side: 'BUY',  price: '101.45', qty: 2000, time: '14:32:01' },
-    { id: 2, side: 'SELL', price: '101.44', qty: 500,  time: '14:31:58' },
-    { id: 3, side: 'BUY',  price: '101.46', qty: 1500, time: '14:31:55' },
-    { id: 4, side: 'BUY',  price: '101.45', qty: 3000, time: '14:31:50' },
-    { id: 5, side: 'SELL', price: '101.43', qty: 800,  time: '14:31:45' },
-    { id: 6, side: 'SELL', price: '101.44', qty: 2200, time: '14:31:40' },
-    { id: 7, side: 'BUY',  price: '101.45', qty: 1000, time: '14:31:38' },
-  ];
+  get watchlist() { return this._watchlist(); }
+  get myOrders()  {
+    return this._myOrders().filter(o =>
+      o.status !== 'Cancelled' && o.status !== 'Filled' && o.status !== 'Rejected'
+    );
+  }
 
-  myOrders = [
-    { id: 1, side: 'BUY',  bond: 'SAG-2029', type: 'Limit', qty: 5000, price: '101.40', filled: 60 },
-    { id: 2, side: 'SELL', bond: 'ARMC-2026', type: 'Limit', qty: 2000, price: '99.90', filled: 0 },
-    { id: 3, side: 'BUY',  bond: 'ADG-2030', type: 'Market', qty: 1000, price: 'Market', filled: 100 },
-  ];
+  ngOnInit() {
+    this.loadBonds();
+    this.loadOrders();
+    this.startClock();
+  }
+
+  ngOnDestroy() {
+    this.tickSub?.unsubscribe();
+    this.tradeSub?.unsubscribe();
+    this.clockSub?.unsubscribe();
+    this.sim.stop();
+  }
+
+  private startClock() {
+    import('rxjs').then(({ interval }) => {
+      this.clockSub = interval(1000).subscribe(() => {
+        this.marketTime.set(this.formatTime());
+      });
+    });
+  }
+
+  private formatTime(): string {
+    return new Date().toLocaleTimeString('en-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  }
+
+  private loadBonds() {
+    const preselectedId = this.route.snapshot.queryParamMap.get('bondId');
+    this.bondSvc.search({ page: 1, pageSize: 20, status: 'Active' }).subscribe({
+      next: res => {
+        this.loading.set(false);
+        const bonds = (res.data?.items ?? []).map(b => this.mapWatchlistBond(b));
+        this._watchlist.set(bonds);
+
+        // Register all bonds with the simulation engine
+        bonds.forEach(b => this.sim.registerBond(b.id, parseFloat(b.price) || 100));
+        this.sim.start();
+        this.subscribeToTicks();
+
+        const target = preselectedId
+          ? bonds.find(b => b.id === preselectedId) ?? bonds[0]
+          : bonds[0];
+        if (target) {
+          this.activateBond(target);
+        }
+      },
+      error: () => this.loading.set(false),
+    });
+  }
+
+  private subscribeToTicks() {
+    this.tickSub?.unsubscribe();
+    this.tickSub = this.sim.ticks$.subscribe(tick => {
+      // Update watchlist price for this bond
+      this._watchlist.update(list =>
+        list.map(b => b.id === tick.bondId
+          ? { ...b, price: tick.price.toFixed(2), change: tick.change, changePct: +tick.changePct.toFixed(3) }
+          : b
+        )
+      );
+      // If it's the selected bond, update price display + order book
+      if (this.selectedBond().id === tick.bondId) {
+        this.selectedBond.update(b => ({
+          ...b,
+          price:     tick.price.toFixed(2),
+          change:    tick.change,
+          changePct: +tick.changePct.toFixed(3),
+        }));
+        this.limitPrice = +tick.price.toFixed(2);
+        const { bids, asks } = this.sim.orderBook(tick.price, 5);
+        this.bids.set(bids);
+        this.asks.set(asks);
+        // 60% chance of a new trade on each tick
+        if (Math.random() < 0.6) {
+          const trade = this.sim.randomTrade(tick.price);
+          this.recentTrades.update(list => [trade, ...list].slice(0, 12));
+        }
+      }
+    });
+  }
+
+  private activateBond(bond: WatchlistBond) {
+    this.selectedBond.set(bond);
+    this.limitPrice = parseFloat(bond.price) || 100.25;
+    const mid = parseFloat(bond.price) || 100;
+    const { bids, asks } = this.sim.orderBook(mid, 5);
+    this.bids.set(bids);
+    this.asks.set(asks);
+    // Seed with a few initial trades
+    this.recentTrades.set(
+      Array.from({ length: 7 }, () => this.sim.randomTrade(mid))
+        .sort(() => Math.random() - 0.5)
+    );
+  }
+
+  private loadOrders() {
+    this.tradingSvc.getMyOrders(undefined, 20).subscribe({
+      next: res => {
+        this.ordersLoading.set(false);
+        this._myOrders.set((res.data ?? []).map(o => this.mapOrder(o)));
+      },
+      error: () => this.ordersLoading.set(false),
+    });
+  }
+
+  private mapWatchlistBond(b: Bond): WatchlistBond {
+    return {
+      id:        b.id,
+      name:      b.name,
+      isin:      b.isin,
+      shortName: b.isin.slice(-8),
+      price:     b.currentPrice?.toFixed(2) ?? '100.00',
+      change:    0,
+      changePct: 0,
+      coupon:    b.couponRate,
+      ytm:       +(b.couponRate * 0.95 + Math.random() * 0.5).toFixed(2),
+      maturity:  new Date(b.maturityDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      rating:    b.creditRating,
+    };
+  }
+
+  private mapOrder(o: Order): OrderDisplay {
+    return {
+      id:     o.id,
+      side:   o.side.toUpperCase(),
+      bond:   o.bondId.slice(0, 8),
+      type:   o.orderType,
+      qty:    o.quantity,
+      price:  o.price != null ? o.price.toFixed(2) : 'Market',
+      filled: o.quantity > 0 ? Math.round((o.filledQuantity / o.quantity) * 100) : 0,
+      status: o.status,
+    };
+  }
+
+  selectBond(bond: WatchlistBond) {
+    this.activateBond(bond);
+  }
+
+  placeOrder() {
+    const bond = this.selectedBond();
+    if (!bond.id) {
+      this.orderError.set('No bond selected — please wait for the bond list to load.');
+      return;
+    }
+    if (this.quantity <= 0) {
+      this.orderError.set('Quantity must be greater than 0.');
+      return;
+    }
+
+    this.submitting.set(true);
+    this.orderError.set(null);
+    this.orderSuccess.set(null);
+
+    const dto: PlaceOrderDto = {
+      bondId:    bond.id,
+      side:      this.orderSide() === 'buy' ? 'Buy' : 'Sell',
+      orderType: this.orderType() as 'Market' | 'Limit',
+      quantity:  this.quantity,
+      price:     this.orderType() !== 'Market' ? this.limitPrice : undefined,
+    };
+
+    this.tradingSvc.placeOrder(dto).subscribe({
+      next: res => {
+        this.submitting.set(false);
+        this.orderSuccess.set(`Order #${res.data.id.slice(0, 8)} placed successfully`);
+        this.loadOrders();
+        setTimeout(() => this.orderSuccess.set(null), 5000);
+      },
+      error: err => {
+        this.submitting.set(false);
+        this.orderError.set(
+          err?.error?.error?.message ?? err?.error?.message ?? err?.message ?? 'Order placement failed'
+        );
+      },
+    });
+  }
+
+  cancelOrder(id: string) {
+    this.cancellingId.set(id);
+    this.tradingSvc.cancelOrder(id).subscribe({
+      next: () => {
+        this.cancellingId.set(null);
+        this._myOrders.update(list => list.filter(o => o.id !== id));
+      },
+      error: () => this.cancellingId.set(null),
+    });
+  }
+
+  get estimatedValue(): number {
+    const px = parseFloat(this.selectedBond().price) || this.limitPrice;
+    return this.quantity * (this.orderType() === 'Market' ? px : this.limitPrice);
+  }
+  get commission(): number { return this.estimatedValue * 0.001; }
+  get vat():        number { return this.commission * 0.15; }
+  get orderTotal(): number { return this.estimatedValue + this.commission + this.vat; }
 }

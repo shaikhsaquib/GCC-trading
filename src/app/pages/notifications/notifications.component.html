@@ -9,9 +9,11 @@
           <button class="btn btn-secondary" (click)="markAllRead()">
             <span class="material-icons-round">done_all</span> Mark All Read
           </button>
-          <button class="btn btn-primary">
-            <span class="material-icons-round">send</span> Send Notification
-          </button>
+          @if (isAdmin()) {
+            <button class="btn btn-primary">
+              <span class="material-icons-round">send</span> Send Notification
+            </button>
+          }
         </div>
       </div>
 
@@ -60,7 +62,8 @@
         <!-- Right: Settings + Compose -->
         <div class="settings-col">
 
-          <!-- Compose Panel -->
+          <!-- Compose Panel — admin only -->
+          @if (isAdmin()) {
           <div class="card compose-card">
             <h4 style="margin-bottom:16px">Send Notification</h4>
             <div class="form-group">
@@ -108,6 +111,7 @@
               <span class="material-icons-round">send</span> Send Now
             </button>
           </div>
+          } <!-- end @if (isAdmin()) -->
 
           <!-- Preferences -->
           <div class="card pref-card">

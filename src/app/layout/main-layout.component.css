@@ -18,3 +18,29 @@
       padding: 28px;
       background: var(--bg-darkest);
     }
+
+    /* Backdrop for mobile sidebar */
+    .sidebar-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 199;
+      backdrop-filter: blur(2px);
+    }
+
+    .sidebar-backdrop.visible { display: block; }
+
+    /* ── Responsive ─────────────────────────────────────────────────────────── */
+
+    @media (max-width: 768px) {
+      .layout-content {
+        padding: 16px 14px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .layout-content {
+        padding: 12px 10px;
+      }
+    }

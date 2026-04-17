@@ -1,6 +1,8 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgClass } from '@angular/common';
+import { LayoutService } from './layout.service';
+import { AuthService } from '../core/services/auth.service';
 
 @Component({
   selector: 'app-header',
@@ -10,6 +12,15 @@ import { NgClass } from '@angular/common';
   styleUrl: './header.component.css',
 })
 export class HeaderComponent {
+  readonly layout = inject(LayoutService);
+  readonly auth   = inject(AuthService);
+
+  readonly userInitials = computed(() => {
+    const u = this.auth.user();
+    if (!u) return '?';
+    return `${u.firstName?.[0] ?? ''}${u.lastName?.[0] ?? ''}`.toUpperCase();
+  });
+
   tickers = [
     { symbol: 'SAR/USD', price: '0.2666', change: '0.02%', up: true },
     { symbol: 'BRENT', price: '82.40', change: '1.2%', up: true },

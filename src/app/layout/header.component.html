@@ -1,4 +1,9 @@
     <header class="header">
+      <!-- Hamburger (mobile only) -->
+      <button class="hamburger" (click)="layout.toggle()" title="Menu">
+        <span class="material-icons-round">menu</span>
+      </button>
+
       <!-- Left: market ticker -->
       <div class="ticker-bar">
         @for (ticker of tickers; track ticker.symbol) {
@@ -39,6 +44,8 @@
         </button>
 
         <!-- Avatar -->
-        <div class="header-avatar">AH</div>
+        <div class="header-avatar" title="Logout" (click)="auth.logout()" style="cursor:pointer">
+          {{ userInitials() }}
+        </div>
       </div>
     </header>

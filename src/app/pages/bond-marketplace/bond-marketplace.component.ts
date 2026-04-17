@@ -1,64 +1,189 @@
-import { Component, signal } from '@angular/core';
-import { NgClass } from '@angular/common';
+import { Component, signal, inject, OnInit } from '@angular/core';
+import { NgClass, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { BondService } from '../../services/bond.service';
+import { Bond } from '../../core/models/api.models';
+
+interface BondDisplay {
+  id:           string;
+  name:         string;
+  issuer:       string;
+  isin:         string;
+  type:         string;
+  typeColor:    string;
+  rating:       string;
+  coupon:       number;
+  maturityRaw:  string;
+  maturity:     string;
+  faceValue:    number;
+  minInvest:    number;
+  shariah:      boolean;
+  price:        string;
+  priceNum:     number;
+  ytm:          number;
+  volume:       string;
+}
 
 @Component({
   selector: 'app-bond-marketplace',
   standalone: true,
-  imports: [NgClass, FormsModule],
+  imports: [NgClass, FormsModule, RouterLink, DecimalPipe],
   templateUrl: './bond-marketplace.component.html',
   styleUrl: './bond-marketplace.component.css',
 })
-export class BondMarketplaceComponent {
-  viewMode = signal<'table' | 'grid'>('table');
-  searchTerm = '';
-  sortBy = 'yield';
-  minCoupon = null;
-  maxCoupon = null;
-  selectedBond = signal<any>(null);
-  compareList = signal<string[]>([]);
-  activeRatings = signal<string[]>([]);
+export class BondMarketplaceComponent implements OnInit {
+  private readonly bondSvc = inject(BondService);
 
-  bondTypes = ['Government', 'Corporate', 'Sukuk', 'Municipal', 'Supranational'];
-  regions = ['Saudi Arabia', 'UAE', 'Kuwait', 'Bahrain', 'Qatar', 'Oman', 'International'];
-  ratings = ['AAA', 'AA+', 'AA', 'AA-', 'A+', 'A', 'A-', 'BBB+', 'BBB'];
+  viewMode      = signal<'table' | 'grid'>('table');
+  searchTerm    = '';
+  sortBy        = 'yield';
+  minCoupon     = null as number | null;
+  maxCoupon     = null as number | null;
+  selectedBond  = signal<BondDisplay | null>(null);
+  compareList   = signal<string[]>([]);
+  activeRatings = signal<string[]>([]);
+  activeTypes   = signal<string[]>([]);
+
+  loading = signal(true);
+  error   = signal<string | null>(null);
+
+  bondTypes = ['Government', 'Corporate', 'Sukuk'];
+  ratings   = ['AAA', 'AA+', 'AA', 'AA-', 'A+', 'A', 'A-', 'BBB+', 'BBB'];
   maturities = [
-    { label: '< 1 year', checked: true },
-    { label: '1-3 years', checked: true },
-    { label: '3-5 years', checked: true },
-    { label: '5-10 years', checked: true },
-    { label: '> 10 years', checked: false },
+    { label: '< 1 year',   max: 1,   min: 0  },
+    { label: '1–3 years',  max: 3,   min: 1  },
+    { label: '3–5 years',  max: 5,   min: 3  },
+    { label: '5–10 years', max: 10,  min: 5  },
+    { label: '> 10 years', max: 999, min: 10 },
   ];
+  activeMaturities = signal<string[]>(['< 1 year', '1–3 years', '3–5 years', '5–10 years', '> 10 years']);
 
   marketStats = [
-    { label: 'Total Bonds Listed', value: '1,847', chg: '24 new', up: true },
-    { label: 'Market Cap', value: 'SAR 892B', chg: '2.4%', up: true },
-    { label: 'Avg YTM', value: '4.85%', chg: '0.12%', up: false },
-    { label: 'Trading Volume', value: 'SAR 2.8B', chg: '15.3%', up: true },
+    { label: 'Total Bonds',   value: '—', sub: 'listed' },
+    { label: 'Avg YTM',       value: '—', sub: 'yield to maturity' },
+    { label: 'Avg Coupon',    value: '—', sub: 'annual rate' },
+    { label: 'Sharia-Comp.',  value: '—', sub: 'sukuk & compliant' },
   ];
 
-  bonds = [
-    { name: 'Saudi Govt. Bond 2029', issuer: 'Ministry of Finance, KSA', isin: 'SA1230001234', type: 'Government', typeColor: '#00d4ff', rating: 'AAA', coupon: 4.25, maturity: 'Mar 2029', price: '101.45', ytm: 3.98, volume: '1.2B' },
-    { name: 'Saudi Aramco Sukuk 2026', issuer: 'Saudi Aramco', isin: 'SA2340015678', type: 'Sukuk', typeColor: '#17c3b2', rating: 'AA+', coupon: 3.75, maturity: 'Jun 2026', price: '99.82', ytm: 3.83, volume: '850M' },
-    { name: 'SABIC Corporate Bond 2028', issuer: 'Saudi Basic Industries Corp', isin: 'SA3450029012', type: 'Corporate', typeColor: '#7c4dff', rating: 'AA', coupon: 4.50, maturity: 'Dec 2028', price: '100.75', ytm: 4.34, volume: '420M' },
-    { name: 'Abu Dhabi Govt. Bond 2030', issuer: 'Emirate of Abu Dhabi', isin: 'AE0040012345', type: 'Government', typeColor: '#00d4ff', rating: 'AA', coupon: 3.90, maturity: 'Sep 2030', price: '98.60', ytm: 4.12, volume: '980M' },
-    { name: 'Kuwait Finance House Sukuk', issuer: 'Kuwait Finance House', isin: 'KW0050023456', type: 'Sukuk', typeColor: '#17c3b2', rating: 'A+', coupon: 5.00, maturity: 'Jan 2027', price: '102.10', ytm: 4.52, volume: '310M' },
-    { name: 'Qatar National Bank Bond', issuer: 'QNB Group', isin: 'QA0060034567', type: 'Corporate', typeColor: '#7c4dff', rating: 'AA-', coupon: 4.75, maturity: 'Aug 2027', price: '101.25', ytm: 4.41, volume: '560M' },
-    { name: 'NCB Capital Sukuk 2025', issuer: 'NCB Capital', isin: 'SA0070045678', type: 'Sukuk', typeColor: '#17c3b2', rating: 'AA', coupon: 3.50, maturity: 'Oct 2025', price: '99.95', ytm: 3.52, volume: '200M' },
-    { name: 'ADNOC Green Bond 2032', issuer: 'Abu Dhabi National Oil Co', isin: 'AE0080056789', type: 'Corporate', typeColor: '#7c4dff', rating: 'AA+', coupon: 4.10, maturity: 'May 2032', price: '97.80', ytm: 4.48, volume: '750M' },
-  ];
+  private _bonds = signal<BondDisplay[]>([]);
 
-  filteredBonds() {
-    return this.bonds.filter(b =>
-      b.name.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-      b.isin.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-      b.issuer.toLowerCase().includes(this.searchTerm.toLowerCase())
+  get bonds() { return this._bonds(); }
+
+  ngOnInit() { this.loadBonds(); }
+
+  private loadBonds() {
+    this.bondSvc.search({ page: 1, pageSize: 100 }).subscribe({
+      next: res => {
+        this.loading.set(false);
+        const items = res.data?.items ?? [];
+        this._bonds.set(items.map(b => this.mapBond(b)));
+        this.updateMarketStats(items);
+      },
+      error: () => this.loading.set(false),
+    });
+  }
+
+  private mapBond(b: Bond): BondDisplay {
+    const type = b.isShariaCompliant ? 'Sukuk' : b.issuerType;
+    const typeColorMap: Record<string, string> = {
+      Government: '#00d4ff', Corporate: '#7c4dff', Sukuk: '#17c3b2',
+    };
+    const price    = b.currentPrice ?? 100;
+    const ytm      = this.calcYtm(b.couponRate, price, b.maturityDate);
+    const volume   = this.simVolume(b);
+    return {
+      id:          b.id,
+      name:        b.name,
+      issuer:      b.issuerName,
+      isin:        b.isin,
+      type,
+      typeColor:   typeColorMap[type] ?? '#00d4ff',
+      rating:      b.creditRating,
+      coupon:      b.couponRate,
+      maturityRaw: b.maturityDate,
+      maturity:    new Date(b.maturityDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      faceValue:   b.faceValue,
+      minInvest:   b.minInvestment,
+      shariah:     b.isShariaCompliant,
+      price:       price.toFixed(2),
+      priceNum:    price,
+      ytm,
+      volume,
+    };
+  }
+
+  private calcYtm(couponRate: number, price: number, maturityDate: string): number {
+    const yearsLeft = Math.max(0.1,
+      (new Date(maturityDate).getTime() - Date.now()) / (365.25 * 24 * 60 * 60 * 1000)
     );
+    const F   = 100;
+    const C   = couponRate;          // annual coupon (% of face value 100)
+    const P   = price;
+    const ytm = ((C + (F - P) / yearsLeft) / ((F + P) / 2)) * 100;
+    return +Math.max(0, ytm).toFixed(2);
+  }
+
+  private simVolume(b: Bond): string {
+    const seed = b.isin.split('').reduce((s, c) => s + c.charCodeAt(0), 0);
+    const m    = ((seed % 90) + 10);          // 10 – 100
+    const unit = m >= 100 ? `${(m / 100).toFixed(1)}B` : `${m}M`;
+    return `SAR ${unit}`;
+  }
+
+  private updateMarketStats(bonds: Bond[]) {
+    if (!bonds.length) return;
+    const mapped      = this._bonds();
+    const avgYtm      = (mapped.reduce((s, b) => s + b.ytm,    0) / mapped.length).toFixed(2);
+    const avgCoupon   = (bonds.reduce((s,  b) => s + b.couponRate, 0) / bonds.length).toFixed(2);
+    const shariahCount= bonds.filter(b => b.isShariaCompliant).length;
+    this.marketStats  = [
+      { label: 'Total Bonds',  value: bonds.length.toString(),  sub: 'active listings' },
+      { label: 'Avg YTM',      value: `${avgYtm}%`,             sub: 'yield to maturity' },
+      { label: 'Avg Coupon',   value: `${avgCoupon}%`,          sub: 'annual coupon rate' },
+      { label: 'Sharia-Comp.', value: shariahCount.toString(),  sub: 'sukuk / compliant' },
+    ];
+  }
+
+  filteredBonds(): BondDisplay[] {
+    const term      = this.searchTerm.toLowerCase();
+    const ratings   = this.activeRatings();
+    const types     = this.activeTypes();
+    const mats      = this.activeMaturities();
+    const minC      = this.minCoupon;
+    const maxC      = this.maxCoupon;
+    const now       = Date.now();
+
+    let list = this._bonds().filter(b => {
+      if (term && !b.name.toLowerCase().includes(term) &&
+                  !b.isin.toLowerCase().includes(term) &&
+                  !b.issuer.toLowerCase().includes(term)) return false;
+      if (ratings.length && !ratings.includes(b.rating))    return false;
+      if (types.length   && !types.includes(b.type))        return false;
+      if (minC != null   && b.coupon < minC)                 return false;
+      if (maxC != null   && b.coupon > maxC)                 return false;
+      if (mats.length) {
+        const yrs = (new Date(b.maturityRaw).getTime() - now) / (365.25 * 24 * 60 * 60 * 1000);
+        const matched = this.maturities.filter(m => mats.includes(m.label))
+                                       .some(m => yrs >= m.min && yrs < m.max);
+        if (!matched) return false;
+      }
+      return true;
+    });
+
+    switch (this.sortBy) {
+      case 'yield':    list = [...list].sort((a, b) => b.ytm     - a.ytm);     break;
+      case 'price':    list = [...list].sort((a, b) => b.priceNum - a.priceNum); break;
+      case 'coupon':   list = [...list].sort((a, b) => b.coupon  - a.coupon);  break;
+      case 'maturity': list = [...list].sort((a, b) => a.maturityRaw.localeCompare(b.maturityRaw)); break;
+    }
+
+    return list;
   }
 
   toggleCompare(isin: string) {
     const list = [...this.compareList()];
-    const idx = list.indexOf(isin);
+    const idx  = list.indexOf(isin);
     if (idx >= 0) list.splice(idx, 1);
     else if (list.length < 4) list.push(isin);
     this.compareList.set(list);
@@ -66,17 +191,47 @@ export class BondMarketplaceComponent {
 
   toggleRating(r: string) {
     const list = [...this.activeRatings()];
-    const idx = list.indexOf(r);
-    if (idx >= 0) list.splice(idx, 1);
-    else list.push(r);
+    const idx  = list.indexOf(r);
+    if (idx >= 0) list.splice(idx, 1); else list.push(r);
     this.activeRatings.set(list);
+  }
+
+  toggleType(t: string) {
+    const list = [...this.activeTypes()];
+    const idx  = list.indexOf(t);
+    if (idx >= 0) list.splice(idx, 1); else list.push(t);
+    this.activeTypes.set(list);
+  }
+
+  toggleMaturity(label: string) {
+    const list = [...this.activeMaturities()];
+    const idx  = list.indexOf(label);
+    if (idx >= 0) list.splice(idx, 1); else list.push(label);
+    this.activeMaturities.set(list);
+  }
+
+  resetFilters() {
+    this.searchTerm = '';
+    this.sortBy     = 'yield';
+    this.minCoupon  = null;
+    this.maxCoupon  = null;
+    this.activeRatings.set([]);
+    this.activeTypes.set([]);
+    this.activeMaturities.set(this.maturities.map(m => m.label));
   }
 
   ratingClass(r: string) {
     if (r.startsWith('AAA')) return 'rating-aaa';
-    if (r.startsWith('AA')) return 'rating-aa';
-    if (r.startsWith('A')) return 'rating-a';
+    if (r.startsWith('AA'))  return 'rating-aa';
+    if (r.startsWith('A'))   return 'rating-a';
     if (r.startsWith('BBB')) return 'rating-bbb';
     return 'rating-bb';
+  }
+
+  ytmColor(ytm: number): string {
+    if (ytm >= 5)   return 'var(--success)';
+    if (ytm >= 3)   return 'var(--accent-teal)';
+    if (ytm >= 2)   return 'var(--warning)';
+    return 'var(--danger)';
   }
 }

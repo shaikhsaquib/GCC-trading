@@ -187,3 +187,26 @@
       font-size: 11px;
       color: var(--accent-teal);
     }
+
+    /* ── Responsive ─────────────────────────────────────────────────────────── */
+
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100dvh;
+        z-index: 200;
+        transform: translateX(-100%);
+        transition: transform 0.28s ease, width 0.25s ease;
+        width: var(--sidebar-width) !important; /* always full width on mobile */
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+      }
+
+      .sidebar.mobile-open {
+        transform: translateX(0);
+      }
+
+      /* hide desktop collapse button on mobile */
+      .collapse-btn { display: none; }
+    }

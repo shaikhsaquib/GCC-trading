@@ -1,3 +1,10 @@
+    <!-- Mobile sidebar backdrop -->
+    <div
+      class="sidebar-backdrop"
+      [class.visible]="layout.mobileSidebarOpen()"
+      (click)="layout.close()"
+    ></div>
+
     <div class="layout">
       <app-sidebar />
       <div class="layout-main">

@@ -53,53 +53,95 @@
             <p>Sign in to your trading account</p>
           </div>
 
-          <form class="auth-form" (ngSubmit)="onLogin()">
+          <!-- Error alert -->
+          @if (error()) {
+            <div class="alert alert-error">
+              <span class="material-icons-round">error_outline</span>
+              <span>{{ error() }}</span>
+            </div>
+          }
+
+          <form class="auth-form" [formGroup]="form" (ngSubmit)="onLogin()" novalidate>
+
+            <!-- Email -->
             <div class="form-group">
               <label>Email Address</label>
-              <div class="input-wrapper">
+              <div class="input-wrapper" [ngClass]="{ 'field-invalid': hasError('email') }">
                 <span class="input-icon material-icons-round">email</span>
                 <input
                   class="form-control"
                   type="email"
-                  [(ngModel)]="email"
-                  name="email"
+                  formControlName="email"
                   placeholder="you@example.com"
+                  autocomplete="email"
                   style="padding-left: 40px"
                 />
               </div>
+              @if (fieldError('email', 'required')) {
+                <span class="field-error">
+                  <span class="material-icons-round">error</span>
+                  Email address is required
+                </span>
+              }
+              @if (fieldError('email', 'email')) {
+                <span class="field-error">
+                  <span class="material-icons-round">error</span>
+                  Enter a valid email address (e.g.&nbsp;you&#64;example.com)
+                </span>
+              }
             </div>
 
+            <!-- Password -->
             <div class="form-group">
               <label>
                 Password
-                <a routerLink="/auth/2fa" class="forgot-link">Forgot password?</a>
+                <a routerLink="/auth/forgot-password" class="forgot-link">Forgot password?</a>
               </label>
-              <div class="input-wrapper">
+              <div class="input-wrapper" [ngClass]="{ 'field-invalid': hasError('password') }">
                 <span class="input-icon material-icons-round">lock</span>
                 <input
                   class="form-control"
                   [type]="showPass() ? 'text' : 'password'"
-                  [(ngModel)]="password"
-                  name="password"
+                  formControlName="password"
                   placeholder="••••••••"
+                  autocomplete="current-password"
                   style="padding-left: 40px; padding-right: 40px"
                 />
                 <button type="button" class="pass-toggle" (click)="showPass.set(!showPass())">
                   <span class="material-icons-round">{{ showPass() ? 'visibility_off' : 'visibility' }}</span>
                 </button>
               </div>
+              @if (fieldError('password', 'required')) {
+                <span class="field-error">
+                  <span class="material-icons-round">error</span>
+                  Password is required
+                </span>
+              }
+              @if (fieldError('password', 'minlength')) {
+                <span class="field-error">
+                  <span class="material-icons-round">error</span>
+                  Password must be at least 8 characters
+                </span>
+              }
             </div>
 
+            <!-- Remember me -->
             <div class="form-row">
               <label class="checkbox-label">
-                <input type="checkbox" [(ngModel)]="remember" name="remember" />
+                <input type="checkbox" formControlName="remember" />
                 <span>Remember me for 30 days</span>
               </label>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-lg" style="width:100%; justify-content:center" [class.loading]="loading()">
+            <button
+              type="submit"
+              class="btn btn-primary btn-lg"
+              style="width:100%; justify-content:center"
+              [class.loading]="loading()"
+              [disabled]="loading()"
+            >
               @if (loading()) {
-                <span class="spinner"></span> Signing in...
+                <span class="spinner"></span> Signing in…
               } @else {
                 <span class="material-icons-round">login</span> Sign In
               }
@@ -109,13 +151,48 @@
           <div class="divider"><span>or continue with</span></div>
 
           <div class="social-buttons">
-            <button class="btn btn-secondary" style="flex:1;justify-content:center">
-              <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-              Google
+            <!-- Google -->
+            <button
+              class="btn btn-secondary social-btn"
+              type="button"
+              (click)="loginWithGoogle()"
+              [disabled]="!!oauthLoading() || loading()"
+              [class.loading]="oauthLoading() === 'google'"
+              title="Sign in with Google"
+            >
+              @if (oauthLoading() === 'google') {
+                <span class="spinner spinner-sm"></span>
+              } @else {
+                <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+              }
+              <span>Google</span>
             </button>
-            <button class="btn btn-secondary" style="flex:1;justify-content:center">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="#0078d4"><path d="M11.5 0C5.149 0 0 5.149 0 11.5S5.149 23 11.5 23 23 17.851 23 11.5 17.851 0 11.5 0zm0 4a3.5 3.5 0 110 7 3.5 3.5 0 010-7zm0 15.5a8.5 8.5 0 01-7.09-3.795C5.668 14.21 8.476 13 11.5 13s5.832 1.21 7.09 3.205A8.5 8.5 0 0111.5 19.5z"/></svg>
-              Microsoft
+
+            <!-- Microsoft -->
+            <button
+              class="btn btn-secondary social-btn"
+              type="button"
+              (click)="loginWithMicrosoft()"
+              [disabled]="!!oauthLoading() || loading()"
+              [class.loading]="oauthLoading() === 'microsoft'"
+              title="Sign in with Microsoft"
+            >
+              @if (oauthLoading() === 'microsoft') {
+                <span class="spinner spinner-sm"></span>
+              } @else {
+                <svg width="16" height="16" viewBox="0 0 23 23" aria-hidden="true">
+                  <path fill="#f25022" d="M1 1h10v10H1z"/>
+                  <path fill="#00a4ef" d="M12 1h10v10H12z"/>
+                  <path fill="#7fba00" d="M1 12h10v10H1z"/>
+                  <path fill="#ffb900" d="M12 12h10v10H12z"/>
+                </svg>
+              }
+              <span>Microsoft</span>
             </button>
           </div>
 
@@ -124,7 +201,6 @@
             <a routerLink="/auth/register">Create account</a>
           </p>
 
-          <!-- 2FA Note -->
           <div class="twofa-note">
             <span class="material-icons-round">shield</span>
             <span>Two-factor authentication is required for all trading accounts.</span>

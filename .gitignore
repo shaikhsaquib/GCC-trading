@@ -1,0 +1,67 @@
+# ── Claude Code internal tooling ─────────────────────────────────────────────
+.claude/
+
+# ── Node / Angular ────────────────────────────────────────────────────────────
+node_modules/
+dist/
+.angular/
+.cache/
+npm-debug.log*
+yarn-error.log*
+
+# Angular build output
+/dist
+/tmp
+/out-tsc
+
+# ── .NET ──────────────────────────────────────────────────────────────────────
+**/bin/
+**/obj/
+*.user
+.vs/
+*.suo
+*.ncrunch*
+.idea/
+
+# .NET publish output
+**/publish/
+
+# ── Environment & secrets ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.env
+
+# appsettings with real credentials — keep only the template
+# (comment this out if you want to track appsettings.json)
+# appsettings.json
+
+# ── OS / Editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+
+# VS Code workspace settings (keep extensions.json, ignore personal settings)
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+
+# JetBrains
+.idea/
+*.iml
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+logs/
+*.log
+*.log.*
+
+# ── Test coverage ─────────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+*.bak
+*.orig
