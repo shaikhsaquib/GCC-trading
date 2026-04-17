@@ -77,3 +77,15 @@ export interface CouponPaidPayload {
   amount:   string;
   currency: string;
 }
+
+export interface SettlementDonePayload {
+  trade_id:   string;
+  buyer_id:   string;
+  seller_id:  string;
+  bond_id:    string;
+  quantity:   string;
+  price:      string;
+  buyer_fee:  string;
+  seller_fee: string;
+  currency:   string;
+}

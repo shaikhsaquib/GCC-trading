@@ -2,15 +2,18 @@
  * Domain event consumers — subscribe once at startup.
  * Each handler is idempotent; errors are acked to DLQ by the event bus.
  */
+import { v4 as uuidv4 } from 'uuid';
 import { IEventBus } from './event-bus';
 import {
   EventRoutes,
   KycApprovedPayload, KycRejectedPayload,
   WalletFundedPayload, TradeExecutedPayload,
   CouponPaidPayload, UserRegisteredPayload,
+  SettlementDonePayload,
 } from './event.types';
 import { NotificationsService } from '../../modules/notifications/notifications.service';
 import { WalletService }        from '../../modules/wallet/wallet.service';
+import { WalletRepository }     from '../../modules/wallet/wallet.repository';
 import { AuditService }         from '../../modules/audit/audit.service';
 import { db }                   from '../database/postgres.client';
 import { decrypt }              from '../crypto';
@@ -27,10 +30,11 @@ async function getUserContact(userId: string) {
 }
 
 export async function registerEventHandlers(
-  eventBus:  IEventBus,
-  notifSvc:  NotificationsService,
-  walletSvc: WalletService,
-  auditSvc:  AuditService,
+  eventBus:   IEventBus,
+  notifSvc:   NotificationsService,
+  walletSvc:  WalletService,
+  auditSvc:   AuditService,
+  walletRepo: WalletRepository = new WalletRepository(),
 ): Promise<void> {
 
   // USER_REGISTERED → welcome email + audit
@@ -170,6 +174,113 @@ export async function registerEventHandlers(
         metadata:       event.payload as unknown as Record<string, unknown>,
         correlation_id: event.correlationId,
       });
+    },
+  );
+
+  // SETTLEMENT_DONE → write SETTLEMENT_DEBIT (buyer) + SETTLEMENT_CREDIT (seller) + notify both
+  await eventBus.subscribe<SettlementDonePayload>(
+    'node.settlement-done',
+    EventRoutes.SETTLEMENT_DONE,
+    async (event) => {
+      const { trade_id, buyer_id, seller_id, bond_id, quantity, price, buyer_fee, seller_fee, currency } = event.payload;
+
+      const tradeAmount = parseFloat(quantity) * parseFloat(price);
+      const bFee        = parseFloat(buyer_fee);
+      const sFee        = parseFloat(seller_fee);
+      const sellerNet   = tradeAmount - sFee;
+
+      const [buyerWallet, sellerWallet, bondRow] = await Promise.all([
+        walletRepo.findByUserId(buyer_id),
+        walletRepo.findByUserId(seller_id),
+        db.query<{ name: string }>('SELECT name FROM bonds.listings WHERE id = $1', [bond_id]),
+      ]);
+
+      const bondName = bondRow.rows[0]?.name ?? 'Bond';
+
+      await db.transaction(async (client) => {
+        // Idempotency: skip if already settled (check for existing tx)
+        const existing = await walletRepo.findTransactionByIdempotencyKey(`settle-buy-${trade_id}`);
+        if (existing) return;
+
+        if (buyerWallet) {
+          await walletRepo.consumeFrozenForSettlement(buyer_id, tradeAmount, bFee, client);
+          await walletRepo.insertTransaction({
+            walletId:       buyerWallet.id,
+            type:           'SETTLEMENT_DEBIT',
+            amount:         tradeAmount + bFee,
+            currency,
+            status:         'COMPLETED',
+            description:    `Bond Purchase settled — ${bondName}`,
+            referenceId:    trade_id,
+            idempotencyKey: `settle-buy-${trade_id}`,
+          }, client);
+        }
+
+        if (sellerWallet) {
+          await walletRepo.creditSettlement(seller_id, sellerNet, client);
+          await walletRepo.insertTransaction({
+            walletId:       sellerWallet.id,
+            type:           'SETTLEMENT_CREDIT',
+            amount:         sellerNet,
+            currency,
+            status:         'COMPLETED',
+            description:    `Bond Sale settled — ${bondName}`,
+            referenceId:    trade_id,
+            idempotencyKey: `settle-sell-${trade_id}`,
+          }, client);
+        }
+      });
+
+      // Notify buyer
+      if (buyerWallet) {
+        const buyer = await getUserContact(buyer_id);
+        await notifSvc.send({
+          userId:    buyer_id,
+          email:     buyer.email,
+          eventType: 'SETTLEMENT_COMPLETE',
+          channels:  ['email', 'push', 'in_app'],
+          vars: {
+            side:       'BUY',
+            bond_name:  bondName,
+            quantity,
+            price,
+            total:      (tradeAmount + bFee).toFixed(2),
+            fee:        bFee.toFixed(2),
+            currency,
+            first_name: buyer.firstName,
+          },
+        });
+      }
+
+      // Notify seller
+      if (sellerWallet) {
+        const seller = await getUserContact(seller_id);
+        await notifSvc.send({
+          userId:    seller_id,
+          email:     seller.email,
+          eventType: 'SETTLEMENT_COMPLETE',
+          channels:  ['email', 'push', 'in_app'],
+          vars: {
+            side:       'SELL',
+            bond_name:  bondName,
+            quantity,
+            price,
+            total:      sellerNet.toFixed(2),
+            fee:        sFee.toFixed(2),
+            currency,
+            first_name: seller.firstName,
+          },
+        });
+      }
+
+      await auditSvc.log({
+        event_type:     'SETTLEMENT_COMPLETED',
+        action:         'settle',
+        metadata:       event.payload as unknown as Record<string, unknown>,
+        correlation_id: event.correlationId,
+      });
+
+      logger.info('Settlement processed', { trade_id, buyer_id, seller_id, tradeAmount, sellerNet });
     },
   );
 

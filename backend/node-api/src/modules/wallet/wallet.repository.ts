@@ -128,6 +128,51 @@ export class WalletRepository {
     return { rows: rows.rows, total: parseInt(count.rows[0].count, 10) };
   }
 
+  /**
+   * Buyer settlement: consume frozen funds.
+   * frozen_balance -= tradeAmount  (funds leave escrow)
+   * balance        -= tradeAmount + fee  (total cost leaves balance)
+   * available_balance -= fee  (fee deducted from available)
+   */
+  async consumeFrozenForSettlement(
+    userId:      string,
+    tradeAmount: number,
+    fee:         number,
+    client?:     PoolClient,
+  ): Promise<void> {
+    const q = client ?? db;
+    await q.query(
+      `UPDATE wallet.wallets
+       SET frozen_balance    = frozen_balance    - $1,
+           balance           = balance           - ($1 + $2),
+           available_balance = available_balance - $2,
+           updated_at        = NOW()
+       WHERE user_id = $3`,
+      [tradeAmount, fee, userId],
+    );
+  }
+
+  /**
+   * Seller settlement: credit net proceeds.
+   * available_balance += netAmount
+   * balance           += netAmount
+   */
+  async creditSettlement(
+    userId:    string,
+    netAmount: number,
+    client?:   PoolClient,
+  ): Promise<void> {
+    const q = client ?? db;
+    await q.query(
+      `UPDATE wallet.wallets
+       SET available_balance = available_balance + $1,
+           balance           = balance           + $1,
+           updated_at        = NOW()
+       WHERE user_id = $2`,
+      [netAmount, userId],
+    );
+  }
+
   async debitBalance(userId: string, amount: number, client?: PoolClient): Promise<boolean> {
     const q = client ?? db;
     const r = await q.query(
