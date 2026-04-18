@@ -39,7 +39,7 @@ const envSchema = z.object({
   SERVICE_SECRET: z.string().min(16, 'SERVICE_SECRET is required'),
 
   // CORS
-  ALLOWED_ORIGINS: z.string().default('http://localhost:4200'),
+  ALLOWED_ORIGINS: z.string().default('http://localhost:4200,https://gcc-trading.vercel.app'),
 
   // .NET service URLs
   DOTNET_TRADING_URL: z.string().url().default('http://localhost:5001'),

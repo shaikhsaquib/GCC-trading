@@ -1,6 +1,6 @@
 export const environment = {
   production: true,
-  apiUrl: '/api/v1',
+  apiUrl: 'https://gcc-trading-api-9rnb.onrender.com/api/v1',
   oauth: {
     google: {
       clientId: '',
