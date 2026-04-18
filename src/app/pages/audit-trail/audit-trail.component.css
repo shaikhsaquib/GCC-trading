@@ -46,6 +46,29 @@
       box-shadow: 0 8px 32px rgba(0,0,0,0.5);
     }
 
+    @media (max-width: 768px) {
+      .log-detail-panel {
+        position: fixed;
+        inset: 0;
+        bottom: 0;
+        right: 0;
+        width: 100%;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        overflow-y: auto;
+        max-height: 80vh;
+      }
+
+      .log-detail-grid { grid-template-columns: repeat(2, 1fr); }
+
+      .filter-bar { flex-wrap: wrap; gap: 8px; }
+      .date-range { flex-wrap: wrap; }
+      .integrity-badge { display: none; }
+    }
+
+    @media (max-width: 480px) {
+      .log-detail-grid { grid-template-columns: 1fr; }
+    }
+
     .log-detail-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
 
     .ld-item { display: flex; flex-direction: column; gap: 4px; span:first-child { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; } strong, code { font-size: 12px; } }

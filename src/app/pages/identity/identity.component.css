@@ -30,3 +30,18 @@
     .login-event { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: var(--radius-sm); &:hover { background: var(--bg-card-hover); } }
     .event-info { flex: 1; strong { display: block; font-size: 12px; } small { font-size: 11px; color: var(--text-secondary); } }
     .event-time { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+
+    /* ── Responsive ─────────────────────────────────────────────────────────── */
+
+    @media (max-width: 1024px) {
+      .identity-layout { grid-template-columns: 1fr 280px; }
+    }
+
+    @media (max-width: 900px) {
+      .identity-layout { grid-template-columns: 1fr; }
+      .detail-col { display: none; }
+    }
+
+    @media (max-width: 768px) {
+      .detail-grid { grid-template-columns: 1fr; }
+    }

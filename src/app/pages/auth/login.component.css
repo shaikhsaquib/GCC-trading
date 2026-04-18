@@ -1,13 +1,25 @@
+    /* ═══════════════════════════════════════════════════════════════════════
+       LOGIN PAGE — MOBILE FIRST
+       Base styles = mobile (single column, full-width form).
+       Desktop two-panel layout is applied at min-width: 901px.
+       This way the form is ALWAYS visible on small screens with no media
+       query needed to hide/show it.
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    /* ── Page shell ────────────────────────────────────────────────────────── */
+
     .auth-page {
       min-height: 100vh;
-      display: flex;
       background: var(--bg-darkest);
-      overflow: hidden;
+      overflow-x: hidden;
       position: relative;
+      /* Mobile: simple block so auth-right fills 100% naturally */
     }
 
+    /* ── Background decoration ─────────────────────────────────────────────── */
+
     .auth-bg {
-      position: absolute;
+      position: fixed;
       inset: 0;
       pointer-events: none;
       z-index: 0;
@@ -17,9 +29,9 @@
       position: absolute;
       border-radius: 50%;
       filter: blur(80px);
-      opacity: 0.08;
-      &.c1 { width: 500px; height: 500px; background: var(--accent-cyan); top: -100px; left: -100px; }
-      &.c2 { width: 400px; height: 400px; background: var(--accent-teal); bottom: -100px; right: 30%; }
+      opacity: 0.07;
+      &.c1 { width: 400px; height: 400px; background: var(--accent-cyan); top: -80px; left: -80px; }
+      &.c2 { width: 300px; height: 300px; background: var(--accent-teal); bottom: -80px; right: -80px; }
     }
 
     .bg-grid {
@@ -31,110 +43,65 @@
       background-size: 40px 40px;
     }
 
-    /* Left panel */
+    /* ── Left panel — HIDDEN on mobile, shown on desktop ──────────────────── */
+
     .auth-left {
-      flex: 1;
-      padding: 60px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
+      display: none; /* hidden by default (mobile) */
+    }
+
+    /* ── Right panel — full width on mobile ────────────────────────────────── */
+
+    .auth-right {
       position: relative;
       z-index: 1;
-    }
-
-    .brand-block { margin-bottom: 48px; }
-
-    .brand-logo-lg {
-      margin-bottom: 20px;
-      filter: drop-shadow(0 4px 24px rgba(0,212,255,0.3));
-    }
-
-    .brand-title {
-      font-size: 32px;
-      font-weight: 800;
-      background: linear-gradient(135deg, #fff 0%, var(--accent-cyan) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 12px;
-    }
-
-    .brand-tagline {
-      font-size: 15px;
-      color: var(--text-secondary);
-      line-height: 1.6;
-      max-width: 400px;
-    }
-
-    .features-list {
+      width: 100%;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
-      gap: 14px;
-      margin-bottom: 48px;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 20px 64px;
+      box-sizing: border-box;
     }
 
-    .feature-item {
+    /* ── Mobile brand (logo + name at top of form) ─────────────────────────── */
+
+    .mobile-brand {
       display: flex;
       align-items: center;
       gap: 12px;
-      font-size: 14px;
-      color: var(--text-secondary);
-
-      .feature-icon {
-        font-size: 18px;
-        color: var(--accent-cyan);
-      }
+      margin-bottom: 28px;
+      width: 100%;
+      max-width: 440px;
     }
 
-    .stats-row {
-      display: flex;
-      gap: 40px;
-    }
-
-    .auth-stat {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .auth-stat-val {
-      font-size: 24px;
+    .mobile-brand-text {
+      font-size: 18px;
       font-weight: 700;
       color: var(--text-primary);
     }
 
-    .auth-stat-label {
-      font-size: 12px;
-      color: var(--text-secondary);
-    }
-
-    /* Right panel */
-    .auth-right {
-      width: 480px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 40px 40px 40px 0;
-      position: relative;
-      z-index: 1;
-    }
+    /* ── Card ───────────────────────────────────────────────────────────────── */
 
     .auth-card {
       width: 100%;
+      max-width: 440px;
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-xl);
-      padding: 40px;
+      padding: 36px 32px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.5);
     }
 
     .auth-card-header {
-      margin-bottom: 28px;
-      h2 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+      margin-bottom: 24px;
+      h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
       p  { font-size: 14px; color: var(--text-secondary); }
     }
 
-    .auth-form { display: flex; flex-direction: column; gap: 18px; }
+    /* ── Form elements ──────────────────────────────────────────────────────── */
+
+    .auth-form { display: flex; flex-direction: column; gap: 16px; }
 
     label {
       display: flex;
@@ -214,7 +181,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      margin: 24px 0;
+      margin: 20px 0;
       font-size: 12px;
       color: var(--text-muted);
       &::before, &::after { content: ''; flex: 1; height: 1px; background: var(--border); }
@@ -222,7 +189,8 @@
 
     .social-buttons {
       display: flex;
-      gap: 12px;
+      flex-direction: column;
+      gap: 10px;
       margin-bottom: 20px;
     }
 
@@ -242,12 +210,12 @@
       background: rgba(0,212,255,0.06);
       border: 1px solid rgba(0,212,255,0.15);
       border-radius: var(--radius-sm);
-      font-size: 12px;
+      font-size: 11px;
       color: var(--text-secondary);
       .material-icons-round { font-size: 16px; color: var(--accent-cyan); flex-shrink: 0; }
     }
 
-    /* ── Validation & errors ─────────────────────────────────────── */
+    /* ── Validation ─────────────────────────────────────────────────────────── */
 
     .alert {
       display: flex;
@@ -256,7 +224,7 @@
       padding: 12px 14px;
       border-radius: var(--radius-sm);
       font-size: 13px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       line-height: 1.5;
       .material-icons-round { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
     }
@@ -282,10 +250,8 @@
       box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.08);
     }
 
-    /* ── Social buttons ──────────────────────────────────────────── */
-
     .social-btn {
-      flex: 1;
+      width: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -305,3 +271,112 @@
       animation: spin 0.7s linear infinite;
       flex-shrink: 0;
     }
+
+    /* ── Small phone adjustments ─────────────────────────────────────────────── */
+
+    @media (max-width: 400px) {
+      .auth-right  { padding: 32px 12px 48px; }
+      .auth-card   { padding: 28px 16px; border-radius: var(--radius-lg); }
+      .auth-card-header h2 { font-size: 20px; }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       DESKTOP — two-panel layout kicks in above 900px
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    @media (min-width: 901px) {
+      .auth-page {
+        display: flex;
+        flex-direction: row;
+      }
+
+      /* Show left brand panel on desktop */
+      .auth-left {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        justify-content: center;
+        padding: 60px;
+        position: relative;
+        z-index: 1;
+        min-width: 0;
+      }
+
+      .brand-block { margin-bottom: 48px; }
+
+      .brand-logo-lg {
+        margin-bottom: 20px;
+        filter: drop-shadow(0 4px 24px rgba(0,212,255,0.3));
+      }
+
+      .brand-title {
+        font-size: 32px;
+        font-weight: 800;
+        background: linear-gradient(135deg, #fff 0%, var(--accent-cyan) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 12px;
+      }
+
+      .brand-tagline {
+        font-size: 15px;
+        color: var(--text-secondary);
+        line-height: 1.6;
+        max-width: 400px;
+      }
+
+      .features-list {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        margin-bottom: 48px;
+      }
+
+      .feature-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 14px;
+        color: var(--text-secondary);
+        .feature-icon { font-size: 18px; color: var(--accent-cyan); }
+      }
+
+      .stats-row       { display: flex; gap: 40px; }
+      .auth-stat       { display: flex; flex-direction: column; gap: 4px; }
+      .auth-stat-val   { font-size: 24px; font-weight: 700; color: var(--text-primary); }
+      .auth-stat-label { font-size: 12px; color: var(--text-secondary); }
+
+      /* Right panel: fixed 480px on desktop, hides mobile brand */
+      .auth-right {
+        width: 480px;
+        flex-shrink: 0;
+        padding: 40px;
+        align-items: stretch;
+        justify-content: center;
+        min-height: auto;
+      }
+
+      .mobile-brand { display: none; }
+
+      /* Card: full width within auth-right on desktop */
+      .auth-card {
+        max-width: none;
+        padding: 40px;
+      }
+
+      .auth-card-header {
+        margin-bottom: 28px;
+        h2 { font-size: 24px; }
+      }
+
+      .auth-form { gap: 18px; }
+
+      .social-buttons { flex-direction: row; gap: 12px; }
+      .social-btn     { width: auto; flex: 1; }
+
+      .divider { margin: 24px 0; }
+      .twofa-note { font-size: 12px; }
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }

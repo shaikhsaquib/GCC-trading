@@ -52,7 +52,12 @@ html, body {
   font-size: 14px;
   background: var(--bg-darkest);
   color: var(--text-primary);
-  overflow: hidden;
+  /* overflow is NOT hidden here — the main layout handles its own overflow:hidden.
+     Auth pages need the body to be scrollable. */
+}
+
+@media (max-width: 768px) {
+  html, body { overflow: auto; }
 }
 
 /* Scrollbar */
@@ -436,4 +441,33 @@ h4 { font-size: 15px; font-weight: 600; }
 @media (max-width: 768px) {
   :root { --sidebar-width: 0px; }
   .hide-mobile { display: none !important; }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .page-actions { flex-wrap: wrap; }
+
+  .data-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tab-bar .tab { white-space: nowrap; }
+
+  h1 { font-size: 22px; }
+  h2 { font-size: 18px; }
+}
+
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+
+  .card { padding: 16px; }
+
+  .btn { padding: 8px 14px; font-size: 12px; }
+  .btn-lg { padding: 10px 20px; font-size: 14px; }
 }

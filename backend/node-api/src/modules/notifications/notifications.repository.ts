@@ -28,7 +28,7 @@ export class NotificationsRepository {
         .lean(),
       NotificationLog.countDocuments({ user_id: userId }),
     ]);
-    return { data: data as INotificationLog[], total };
+    return { data: data as unknown as INotificationLog[], total };
   }
 
   async markRead(id: string, userId: string): Promise<void> {

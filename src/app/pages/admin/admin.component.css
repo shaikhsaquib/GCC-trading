@@ -32,3 +32,23 @@
 
     .report-card h4 { font-size: 14px; font-weight: 700; }
     .report-card p { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+
+    /* ── Responsive ─────────────────────────────────────────────────────────── */
+
+    @media (max-width: 1100px) {
+      .kyc-review-grid { grid-template-columns: repeat(2, 1fr); }
+      .reports-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (max-width: 900px) {
+      .reports-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 768px) {
+      .kyc-review-grid { grid-template-columns: 1fr; }
+      .toolbar { flex-wrap: wrap; gap: 8px; }
+    }
+
+    @media (max-width: 480px) {
+      .reports-grid { grid-template-columns: 1fr; }
+    }

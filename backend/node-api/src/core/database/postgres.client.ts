@@ -1,4 +1,4 @@
-import { Pool, PoolClient, QueryResult } from 'pg';
+import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { config } from '../../config';
 import { logger } from '../logger';
 
@@ -24,7 +24,7 @@ class PostgresClient {
   }
 
   /** Execute a single query. */
-  async query<T = Record<string, unknown>>(
+  async query<T extends QueryResultRow = Record<string, unknown>>(
     sql: string,
     params?: unknown[],
   ): Promise<QueryResult<T>> {

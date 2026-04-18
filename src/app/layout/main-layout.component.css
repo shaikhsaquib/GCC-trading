@@ -1,6 +1,15 @@
+    /* Prevent body scroll when the main app layout is active.
+       Auth pages (login/register) do NOT use this layout, so body
+       scrolls freely for them. */
+    :host {
+      display: block;
+      height: 100vh;
+      overflow: hidden;
+    }
+
     .layout {
       display: flex;
-      height: 100vh;
+      height: 100%;
       overflow: hidden;
     }
 
