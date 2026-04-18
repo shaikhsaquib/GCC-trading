@@ -1,10 +1,12 @@
 /* ── Page shell ──────────────────────────────────────────────────────────────── */
 
 .auth-page {
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
   background: var(--bg-darkest);
   overflow-y: auto;
-  position: relative;
+  overflow-x: hidden;
+  z-index: 10;
 }
 
 .auth-bg {
