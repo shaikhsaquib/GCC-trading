@@ -52,7 +52,8 @@ html, body {
   font-size: 14px;
   background: var(--bg-darkest);
   color: var(--text-primary);
-  overflow: hidden;
+  /* overflow is NOT hidden here — the main layout handles its own overflow:hidden.
+     Auth pages need the body to be scrollable. */
 }
 
 @media (max-width: 768px) {

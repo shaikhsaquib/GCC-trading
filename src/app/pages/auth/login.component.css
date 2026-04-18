@@ -1,15 +1,14 @@
-    /* Auth page — fixed overlay so it controls its own scroll
-       independently of the body overflow:hidden set by styles.scss */
+    /* ── Page wrapper ─────────────────────────────────────────────────────────
+       display:flex row — left panel + right panel side-by-side on desktop.
+       min-height:100vh so the page fills the screen and can grow for scroll. */
     .auth-page {
-      position: fixed;
-      inset: 0;
+      min-height: 100vh;
       display: flex;
       flex-direction: row;
       background: var(--bg-darkest);
-      overflow-y: auto;
-      overflow-x: hidden;
-      z-index: 10;
     }
+
+    /* ── Decorative background ──────────────────────────────────────────────── */
 
     .auth-bg {
       position: fixed;
@@ -36,7 +35,7 @@
       background-size: 40px 40px;
     }
 
-    /* ── Left panel ─────────────────────────────────────────────────────────── */
+    /* ── Left panel (branding) ──────────────────────────────────────────────── */
 
     .auth-left {
       flex: 1;
@@ -87,35 +86,15 @@
       font-size: 14px;
       color: var(--text-secondary);
 
-      .feature-icon {
-        font-size: 18px;
-        color: var(--accent-cyan);
-      }
+      .feature-icon { font-size: 18px; color: var(--accent-cyan); }
     }
 
-    .stats-row {
-      display: flex;
-      gap: 40px;
-    }
+    .stats-row       { display: flex; gap: 40px; }
+    .auth-stat       { display: flex; flex-direction: column; gap: 4px; }
+    .auth-stat-val   { font-size: 24px; font-weight: 700; color: var(--text-primary); }
+    .auth-stat-label { font-size: 12px; color: var(--text-secondary); }
 
-    .auth-stat {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .auth-stat-val {
-      font-size: 24px;
-      font-weight: 700;
-      color: var(--text-primary);
-    }
-
-    .auth-stat-label {
-      font-size: 12px;
-      color: var(--text-secondary);
-    }
-
-    /* ── Right panel ─────────────────────────────────────────────────────────── */
+    /* ── Right panel (form) ─────────────────────────────────────────────────── */
 
     .auth-right {
       width: 480px;
@@ -129,7 +108,7 @@
       z-index: 1;
     }
 
-    /* Mobile brand — hidden on desktop */
+    /* Mobile-only brand header — hidden on desktop */
     .mobile-brand {
       display: none;
       align-items: center;
@@ -142,6 +121,8 @@
       font-weight: 700;
       color: var(--text-primary);
     }
+
+    /* ── Card ────────────────────────────────────────────────────────────────── */
 
     .auth-card {
       width: 100%;
@@ -157,6 +138,8 @@
       h2 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
       p  { font-size: 14px; color: var(--text-secondary); }
     }
+
+    /* ── Form elements ───────────────────────────────────────────────────────── */
 
     .auth-form { display: flex; flex-direction: column; gap: 18px; }
 
@@ -244,11 +227,7 @@
       &::before, &::after { content: ''; flex: 1; height: 1px; background: var(--border); }
     }
 
-    .social-buttons {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
+    .social-buttons   { display: flex; gap: 12px; margin-bottom: 20px; }
 
     .auth-switch {
       text-align: center;
@@ -271,7 +250,7 @@
       .material-icons-round { font-size: 16px; color: var(--accent-cyan); flex-shrink: 0; }
     }
 
-    /* ── Validation & errors ─────────────────────────────────────── */
+    /* ── Validation ──────────────────────────────────────────────────────────── */
 
     .alert {
       display: flex;
@@ -306,8 +285,6 @@
       box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.08);
     }
 
-    /* ── Social buttons ──────────────────────────────────────────── */
-
     .social-btn {
       flex: 1;
       display: flex;
@@ -330,38 +307,42 @@
       flex-shrink: 0;
     }
 
-    /* ── Responsive ─────────────────────────────────────────────────────────── */
+    /* ── Responsive ─────────────────────────────────────────────────────────────
+       Strategy: auth-right gets min-height:100vh so it always fills the screen.
+       Since auth-page uses flex and min-height (not fixed height), when the card
+       is taller than the viewport the page grows and body scrolls naturally.     */
 
-    /* Tablet — hide left panel, form fills full width */
     @media (max-width: 900px) {
-      .auth-left  { display: none; }
+      /* Hide left brand panel, right panel fills everything */
+      .auth-left { display: none; }
 
       .auth-right {
         width: 100%;
+        min-height: 100vh;
         justify-content: flex-start;
-        padding: 40px 24px 60px;
+        padding: 48px 24px 64px;
       }
 
+      /* Show inline brand at top */
       .mobile-brand { display: flex; }
 
+      /* Center the card with a max width */
       .auth-card {
-        max-width: 480px;
+        max-width: 460px;
         width: 100%;
         margin: 0 auto;
       }
     }
 
-    /* Large phone */
     @media (max-width: 600px) {
-      .auth-right { padding: 32px 16px 52px; }
+      .auth-right { padding: 36px 16px 56px; }
     }
 
-    /* Small phone */
     @media (max-width: 480px) {
-      .auth-right { padding: 24px 14px 48px; }
+      .auth-right { padding: 28px 12px 48px; }
 
       .auth-card {
-        padding: 28px 18px;
+        padding: 28px 16px;
         border-radius: var(--radius-lg);
       }
 
@@ -372,19 +353,19 @@
 
       .auth-form { gap: 14px; }
 
+      .social-buttons { flex-direction: column; gap: 8px; }
+      .social-btn     { width: 100%; }
+
       .divider { margin: 16px 0; }
 
-      .social-buttons { flex-direction: column; gap: 8px; }
-      .social-btn { width: 100%; }
-
       .twofa-note { font-size: 11px; }
+
+      .mobile-brand-text { font-size: 16px; }
     }
 
-    /* Very small phone (320px) */
     @media (max-width: 360px) {
-      .auth-right  { padding: 20px 10px 40px; }
-      .auth-card   { padding: 22px 14px; }
-      .mobile-brand-text { font-size: 15px; }
+      .auth-right { padding: 20px 10px 40px; }
+      .auth-card  { padding: 22px 12px; }
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
