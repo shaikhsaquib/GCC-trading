@@ -55,3 +55,19 @@
     .pref-channels { display: flex; gap: 4px; }
 
     .pref-ch { width: 28px; height: 28px; border-radius: 6px; background: var(--bg-surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; color: var(--text-muted); &.on { background: rgba(0,212,255,0.1); border-color: var(--accent-cyan); color: var(--accent-cyan); } }
+
+    /* ── Responsive ─────────────────────────────────────────────────────────── */
+
+    @media (max-width: 1024px) {
+      .notif-layout { grid-template-columns: 1fr 300px; }
+    }
+
+    @media (max-width: 900px) {
+      .notif-layout { grid-template-columns: 1fr; }
+      .settings-col { display: none; }
+    }
+
+    @media (max-width: 768px) {
+      .notif-type-grid { grid-template-columns: 1fr; }
+      .pref-item { flex-wrap: wrap; }
+    }

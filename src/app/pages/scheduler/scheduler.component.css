@@ -47,3 +47,23 @@
     .tl-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
     .tl-info { display: flex; flex-direction: column; gap: 2px; strong { font-size: 12px; } small { font-size: 10px; } }
+
+    /* ── Responsive ─────────────────────────────────────────────────────────── */
+
+    @media (max-width: 1024px) {
+      .scheduler-layout { grid-template-columns: 1fr 320px; }
+    }
+
+    @media (max-width: 900px) {
+      .scheduler-layout { grid-template-columns: 1fr; }
+      .detail-col { display: none; }
+    }
+
+    @media (max-width: 768px) {
+      .job-row { flex-wrap: wrap; gap: 10px; }
+      .job-timing { min-width: 0; width: 100%; flex-direction: row; gap: 16px; }
+    }
+
+    @media (max-width: 480px) {
+      .detail-fields { grid-template-columns: 1fr; }
+    }

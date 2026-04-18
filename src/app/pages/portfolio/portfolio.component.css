@@ -33,3 +33,17 @@
     .chip.active { background: rgba(0,212,255,0.1); color: var(--accent-cyan); border-color: var(--accent-cyan); }
 
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ─────────────────────────────────────────────────────────── */
+
+    @media (max-width: 1024px) {
+      .portfolio-layout { grid-template-columns: 240px 1fr; }
+    }
+
+    @media (max-width: 900px) {
+      .portfolio-layout { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 768px) {
+      .pnl-bar-row { flex-direction: column; gap: 10px; }
+    }

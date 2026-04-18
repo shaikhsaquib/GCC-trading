@@ -78,3 +78,29 @@
     .alert-success { background: rgba(46,213,115,0.1); color: var(--success); }
 
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ─────────────────────────────────────────────────────────── */
+
+    @media (max-width: 1024px) {
+      .wallet-layout { grid-template-columns: 300px 1fr; }
+    }
+
+    @media (max-width: 900px) {
+      .wallet-layout { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 768px) {
+      .balance-cards { grid-template-columns: 1fr; gap: 12px; }
+      .balance-card { padding: 20px; }
+      .balance-amount { font-size: 26px; }
+      .balance-sub-grid { grid-template-columns: 1fr 1fr; }
+      .panel-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .header-filters { flex-wrap: wrap; }
+      .table-footer { flex-direction: column; gap: 10px; }
+    }
+
+    @media (max-width: 480px) {
+      .balance-sub-grid { grid-template-columns: 1fr; }
+      .balance-actions { flex-direction: column; }
+      .quick-amounts .btn { flex: 1; }
+    }
