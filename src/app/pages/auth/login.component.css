@@ -2,7 +2,8 @@
       min-height: 100vh;
       display: flex;
       background: var(--bg-darkest);
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
       position: relative;
     }
 
@@ -111,12 +112,27 @@
     /* Right panel */
     .auth-right {
       width: 480px;
+      min-width: 0;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 40px 40px 40px 0;
       position: relative;
       z-index: 1;
+    }
+
+    /* Mobile-only brand header shown inside right panel */
+    .mobile-brand {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .mobile-brand-text {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
     }
 
     .auth-card {
@@ -310,19 +326,61 @@
 
     @media (max-width: 900px) {
       .auth-left { display: none; }
+
+      .mobile-brand { display: flex; }
+
       .auth-right {
         width: 100%;
-        padding: 32px 24px;
-        justify-content: center;
+        padding: 40px 24px;
+        align-items: flex-start;
+        min-height: 100vh;
+      }
+
+      .auth-right > .auth-card,
+      .auth-right > * {
+        max-width: 480px;
+        margin: 0 auto;
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .auth-right {
+        padding: 28px 16px;
       }
     }
 
     @media (max-width: 480px) {
-      .auth-right { padding: 20px 16px; align-items: flex-start; }
-      .auth-card { padding: 28px 20px; border-radius: var(--radius-lg); }
-      .auth-card-header h2 { font-size: 20px; }
-      .social-buttons { flex-direction: column; }
-      .social-btn { width: 100%; }
+      .auth-right {
+        padding: 20px 12px;
+      }
+
+      .auth-card {
+        padding: 28px 20px;
+        border-radius: var(--radius-lg);
+        box-shadow: none;
+        border: none;
+        background: transparent;
+      }
+
+      .auth-card-header {
+        margin-bottom: 20px;
+        h2 { font-size: 22px; }
+      }
+
+      .auth-form { gap: 14px; }
+
+      .social-buttons { flex-direction: column; gap: 8px; }
+      .social-btn { width: 100%; justify-content: center; }
+
+      .divider { margin: 16px 0; }
+
+      .twofa-note { font-size: 11px; }
+    }
+
+    @media (max-width: 360px) {
+      .auth-right { padding: 16px 10px; }
+      .auth-card { padding: 20px 14px; }
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
