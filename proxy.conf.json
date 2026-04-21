@@ -10,5 +10,6 @@
   "/api/v1/orders":        { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" },
   "/api/v1/portfolio":     { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" },
   "/api/v1/settlements":   { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" },
-  "/api/v1/aml":           { "target": "http://localhost:5005", "secure": false, "changeOrigin": true, "logLevel": "info" }
+  "/api/v1/aml":           { "target": "http://localhost:5005", "secure": false, "changeOrigin": true, "logLevel": "info" },
+  "/api/v1/wallet/demo-complete": { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" }
 }

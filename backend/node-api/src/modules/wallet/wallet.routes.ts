@@ -25,6 +25,9 @@ export function createWalletRouter(controller: WalletController): Router {
     controller.deposit,
   );
 
+  // Demo payment completion — only active when HYPERPAY_API_KEY is not set
+  router.post('/demo-complete', controller.demoComplete);
+
   router.post('/withdraw',
     walletRateLimit,
     validate(withdrawSchema),

@@ -204,8 +204,12 @@ export class WalletComponent implements OnInit {
     const amount = this.depositAmount;
     const label  = this.paymentMethods.find(m => m.id === this.selectedMethod())?.label ?? 'Bank';
     this.walletSvc.deposit(amount, this.balanceCurrency(), this.selectedMethod()).subscribe({
-      next: () => {
+      next: (result) => {
         this.submitting.set(false);
+        if (result?.checkoutUrl) {
+          window.location.href = result.checkoutUrl;
+          return;
+        }
         this.success.set(`Deposit of ${this.balanceCurrency()} ${amount.toLocaleString()} initiated successfully.`);
         this.addLocalTx('CREDIT', amount, `Deposit via ${label}`);
         this.depositAmount = 0;

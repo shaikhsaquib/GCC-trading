@@ -47,34 +47,18 @@ export class WalletService {
 
     const idempotencyKey = uuidv4();
 
-    // No payment gateway configured — complete deposit immediately (dev/demo)
+    // No payment gateway configured — create pending transaction and return demo checkout URL
     if (!config.hyperpay.apiKey) {
-      await db.transaction(async (client) => {
-        const fresh = await this.repo.findByUserId(userId, client);
-        if (!fresh) throw new NotFoundError('Wallet');
-
-        const credited = await this.repo.creditWithVersion(fresh.id, dto.amount, fresh.version, client);
-        if (!credited) throw new Error('Optimistic lock conflict — please retry');
-
-        await this.repo.insertTransaction({
-          walletId:       fresh.id,
-          type:           'CREDIT',
-          amount:         dto.amount,
-          currency:       dto.currency,
-          status:         'COMPLETED',
-          description:    `Direct Deposit (${dto.method ?? 'bank'})`,
-          referenceId:    `DEP-${Date.now()}`,
-          idempotencyKey,
-        }, client);
+      const tx = await this.repo.insertTransaction({
+        walletId:       wallet.id,
+        type:           'CREDIT',
+        amount:         dto.amount,
+        currency:       dto.currency,
+        status:         'PENDING',
+        description:    `Demo Deposit (${dto.method ?? 'bank'})`,
+        idempotencyKey,
       });
-
-      await this.eventBus.publish(EventRoutes.WALLET_FUNDED, {
-        user_id:  userId,
-        amount:   dto.amount,
-        currency: dto.currency,
-      });
-
-      return { checkoutUrl: '', transactionId: idempotencyKey };
+      return { checkoutUrl: `/demo-payment?txId=${tx.id}`, transactionId: tx.id };
     }
 
     // Payment gateway flow — record pending transaction
@@ -107,6 +91,30 @@ export class WalletService {
     }
 
     return { checkoutUrl, transactionId: tx.id };
+  }
+
+  async completeDemoDeposit(transactionId: string, userId: string): Promise<void> {
+    const existing = await this.repo.findTransactionById(transactionId);
+    if (!existing) throw new NotFoundError('Transaction');
+    if (existing.status === 'COMPLETED') return;
+
+    await db.transaction(async (client) => {
+      const wallet = await this.repo.findByUserId(userId, client);
+      if (!wallet) throw new NotFoundError('Wallet');
+
+      const credited = await this.repo.creditWithVersion(
+        wallet.id, parseFloat(existing.amount), wallet.version, client,
+      );
+      if (!credited) throw new Error('Optimistic lock conflict — please retry');
+      await this.repo.updateTransactionStatus(existing.id, 'COMPLETED', client);
+    });
+
+    await this.eventBus.publish(EventRoutes.WALLET_FUNDED, {
+      user_id:        userId,
+      amount:         existing.amount,
+      currency:       existing.currency,
+      transaction_id: transactionId,
+    });
   }
 
   async handleDepositWebhook(hyperpayId: string, transactionId: string): Promise<void> {

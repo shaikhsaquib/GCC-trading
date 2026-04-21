@@ -27,6 +27,14 @@ export class WalletController {
     } catch (err) { next(err); }
   };
 
+  demoComplete = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { transactionId } = req.body as { transactionId: string };
+      await this.service.completeDemoDeposit(transactionId, req.user!.id);
+      res.status(200).json({ success: true });
+    } catch (err) { next(err); }
+  };
+
   withdraw = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const result = await this.service.initiateWithdrawal(req.user!.id, req.body);
