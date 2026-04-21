@@ -12,7 +12,8 @@
     "test:watch": "jest --watch",
     "lint":        "eslint 'src/**/*.ts' --max-warnings 0",
     "typecheck":   "tsc --noEmit",
-    "create-admin": "ts-node --transpile-only scripts/create-admin.ts"
+    "create-admin":    "ts-node --transpile-only scripts/create-admin.ts",
+    "seed-test-users": "ts-node --transpile-only scripts/seed-test-users.ts"
   },
   "dependencies": {
     "express": "^4.18.2",
