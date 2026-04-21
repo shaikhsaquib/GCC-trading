@@ -1,51 +1,84 @@
-    <header class="header">
-      <!-- Hamburger (mobile only) -->
-      <button class="hamburger" (click)="layout.toggle()" title="Menu">
-        <span class="material-icons-round">menu</span>
-      </button>
+<header class="header">
+  <!-- Hamburger (mobile) -->
+  <button class="hamburger" (click)="layout.toggle()" title="Menu">
+    <span class="material-icons-round">menu</span>
+  </button>
 
-      <!-- Left: market ticker -->
-      <div class="ticker-bar">
-        @for (ticker of tickers; track ticker.symbol) {
-          <div class="ticker-item">
-            <span class="ticker-symbol">{{ ticker.symbol }}</span>
-            <span class="ticker-price">{{ ticker.price }}</span>
-            <span class="ticker-change" [ngClass]="ticker.up ? 'up' : 'down'">
-              {{ ticker.up ? '▲' : '▼' }} {{ ticker.change }}
-            </span>
+  <!-- Market ticker -->
+  <div class="ticker-bar">
+    @for (ticker of tickers(); track ticker.symbol) {
+      <div class="ticker-item">
+        <span class="ticker-symbol">{{ ticker.symbol }}</span>
+        <span class="ticker-price">{{ ticker.price }}</span>
+        <span class="ticker-change" [ngClass]="ticker.up ? 'up' : 'down'">
+          {{ ticker.up ? '▲' : '▼' }} {{ ticker.change }}
+        </span>
+      </div>
+    }
+  </div>
+
+  <!-- Right actions -->
+  <div class="header-actions">
+
+    <!-- Search -->
+    <div class="header-search">
+      <span class="material-icons-round search-ic">search</span>
+      <input
+        #searchInput
+        type="text"
+        placeholder="Search bonds, ISIN, issuer…"
+        [(ngModel)]="searchQuery"
+        (keydown)="onSearchKeydown($event)"
+      />
+      <kbd>⌘K</kbd>
+    </div>
+
+    <!-- Market status -->
+    <div class="market-status" [ngClass]="marketOpen() ? 'open' : 'closed'">
+      <span class="status-dot"></span>
+      <span>{{ marketOpen() ? 'Market Open' : 'Market Closed' }}</span>
+    </div>
+
+    <!-- Notifications -->
+    <button class="icon-btn" title="Notifications" (click)="goToNotifications()">
+      <span class="material-icons-round">notifications</span>
+      @if (unreadCount() > 0) {
+        <span class="notif-badge">{{ unreadCount() > 99 ? '99+' : unreadCount() }}</span>
+      }
+    </button>
+
+    <!-- User avatar + dropdown -->
+    <div class="header-avatar-wrap">
+      <div
+        class="header-avatar"
+        [title]="userName()"
+        (click)="toggleProfileMenu()"
+        [ngClass]="{ active: showProfileMenu }"
+      >
+        {{ userInitials() }}
+      </div>
+
+      @if (showProfileMenu) {
+        <div class="profile-dropdown">
+          <div class="profile-info">
+            <div class="profile-avatar-lg">{{ userInitials() }}</div>
+            <div class="profile-text">
+              <div class="profile-name">{{ userName() }}</div>
+              <div class="profile-role">{{ userRole() }}</div>
+            </div>
           </div>
-        }
-      </div>
-
-      <!-- Right: actions -->
-      <div class="header-actions">
-        <!-- Search -->
-        <div class="header-search">
-          <span class="material-icons-round search-ic">search</span>
-          <input type="text" placeholder="Search bonds, ISIN, issuer..." />
-          <kbd>⌘K</kbd>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item" (click)="goToProfile()">
+            <span class="material-icons-round">person</span>
+            My Profile
+          </button>
+          <button class="dropdown-item danger" (click)="logout()">
+            <span class="material-icons-round">logout</span>
+            Sign Out
+          </button>
         </div>
+      }
+    </div>
 
-        <!-- Market status -->
-        <div class="market-status">
-          <span class="status-dot active"></span>
-          <span>Market Open</span>
-        </div>
-
-        <!-- Notifications -->
-        <button class="icon-btn" title="Notifications">
-          <span class="material-icons-round">notifications</span>
-          <span class="notif-badge">5</span>
-        </button>
-
-        <!-- Settings -->
-        <button class="icon-btn" title="Settings">
-          <span class="material-icons-round">settings</span>
-        </button>
-
-        <!-- Avatar -->
-        <div class="header-avatar" title="Logout" (click)="auth.logout()" style="cursor:pointer">
-          {{ userInitials() }}
-        </div>
-      </div>
-    </header>
+  </div>
+</header>

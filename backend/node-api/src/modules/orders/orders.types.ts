@@ -18,6 +18,20 @@ export interface PlaceOrderInput {
   orderType: 'Market' | 'Limit';
   quantity:  number;
   price?:    number;
+  tif?:      'Day' | 'GTC' | 'FOK' | 'IOC';
+}
+
+export interface TradeRecord {
+  id:            string;
+  buyerId:       string;
+  sellerId:      string;
+  bondId:        string;
+  quantity:      number;
+  price:         number;
+  buyerFee:      number;
+  sellerFee:     number;
+  settlementFee: number;
+  executedAt:    string;
 }
 
 export interface OrderBookEntry {
