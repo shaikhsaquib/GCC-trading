@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
 COPY GccBond.sln ./
@@ -11,10 +11,12 @@ COPY src/GccBond.Settlement/  src/GccBond.Settlement/
 RUN dotnet publish src/GccBond.Settlement/GccBond.Settlement.csproj \
     -c Release -o /app/publish --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
 WORKDIR /app
 RUN useradd -u 1001 -ms /bin/bash appuser
 COPY --from=build /app/publish .
 USER appuser
-EXPOSE 5003
-ENTRYPOINT ["dotnet", "GccBond.Settlement.dll"]
+EXPOSE 8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+# Railway injects $PORT at runtime; fall back to 8080 locally
+CMD ["sh", "-c", "dotnet GccBond.Settlement.dll --urls http://0.0.0.0:${PORT:-8080}"]
