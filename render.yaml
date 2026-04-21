@@ -79,10 +79,32 @@ services:
       - key: ENCRYPTION_IV
         sync: false
 
-      # ── .NET microservices (deploy via Railway — see railway/ folder) ────────
-      # After deploying each .NET service, paste its public URL here.
+      # ── .NET microservices (auto-wired from sibling Render services) ──────────
       - key: DOTNET_TRADING_URL
-        sync: false
+        fromService:
+          name: gcc-dotnet-trading
+          type: web
+          property: url
+      - key: DOTNET_MARKETPLACE_URL
+        fromService:
+          name: gcc-dotnet-marketplace
+          type: web
+          property: url
+      - key: DOTNET_SETTLEMENT_URL
+        fromService:
+          name: gcc-dotnet-settlement
+          type: web
+          property: url
+      - key: DOTNET_PORTFOLIO_URL
+        fromService:
+          name: gcc-dotnet-portfolio
+          type: web
+          property: url
+      - key: DOTNET_AML_URL
+        fromService:
+          name: gcc-dotnet-aml
+          type: web
+          property: url
 
       # ── External services (optional — features degrade gracefully) ───────────
       - key: SENDGRID_API_KEY
@@ -147,3 +169,68 @@ services:
         value: 60000
       - key: RATE_LIMIT_MAX_REQUESTS
         value: 100
+
+  # ── .NET Trading Service ───────────────────────────────────────────────────
+  - type: web
+    name: gcc-dotnet-trading
+    env: docker
+    dockerfilePath: ./backend/dotnet-services/Dockerfile.trading
+    dockerContext: ./backend/dotnet-services
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+
+  # ── .NET Marketplace Service ───────────────────────────────────────────────
+  - type: web
+    name: gcc-dotnet-marketplace
+    env: docker
+    dockerfilePath: ./backend/dotnet-services/Dockerfile.marketplace
+    dockerContext: ./backend/dotnet-services
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+
+  # ── .NET Settlement Service ────────────────────────────────────────────────
+  - type: web
+    name: gcc-dotnet-settlement
+    env: docker
+    dockerfilePath: ./backend/dotnet-services/Dockerfile.settlement
+    dockerContext: ./backend/dotnet-services
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+
+  # ── .NET Portfolio Service ─────────────────────────────────────────────────
+  - type: web
+    name: gcc-dotnet-portfolio
+    env: docker
+    dockerfilePath: ./backend/dotnet-services/Dockerfile.portfolio
+    dockerContext: ./backend/dotnet-services
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+
+  # ── .NET AML Service ───────────────────────────────────────────────────────
+  - type: web
+    name: gcc-dotnet-aml
+    env: docker
+    dockerfilePath: ./backend/dotnet-services/Dockerfile.aml
+    dockerContext: ./backend/dotnet-services
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
