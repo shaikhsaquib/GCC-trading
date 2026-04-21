@@ -1,16 +1,17 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { KycController }  from './kyc.controller';
-import { authenticate }   from '../../middlewares/authenticate';
-import { authorize }      from '../../middlewares/authorize';
+import { KycController }        from './kyc.controller';
+import { authenticate }         from '../../middlewares/authenticate';
+import { authorize }            from '../../middlewares/authorize';
+import { verifyOnfidoSignature } from '../../middlewares/verify-webhook';
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 export function createKycRouter(controller: KycController): Router {
   const router = Router();
 
-  // Webhook — unauthenticated (Onfido calls this directly, must be before authenticate)
-  router.post('/webhook/onfido', controller.handleWebhook);
+  // Webhook — unauthenticated; signature verified before handler runs
+  router.post('/webhook/onfido', verifyOnfidoSignature, controller.handleWebhook);
 
   // All other routes require authentication
   router.use(authenticate);

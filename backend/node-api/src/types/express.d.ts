@@ -16,6 +16,8 @@ declare global {
       };
       /** Request correlation ID (set by requestId middleware) */
       requestId: string;
+      /** Raw body buffer — populated by express.json verify callback for webhook HMAC */
+      rawBody?: Buffer;
     }
   }
 }
