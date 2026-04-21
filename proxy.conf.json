@@ -1,4 +1,5 @@
 {
+  "/health":               { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" },
   "/api/v1/auth":          { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" },
   "/api/v1/wallet":        { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" },
   "/api/v1/kyc":           { "target": "http://localhost:3000", "secure": false, "changeOrigin": true, "logLevel": "info" },
