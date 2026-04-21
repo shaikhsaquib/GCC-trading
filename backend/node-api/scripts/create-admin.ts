@@ -109,8 +109,8 @@ async function main() {
 
     // Insert approved KYC so admin can also trade in tests
     await pool.query(
-      `INSERT INTO kyc.submissions (user_id, status, risk_level, document_type, document_number)
-       VALUES ($1, 'Approved', 'HIGH', 'Passport', 'ADMIN000')
+      `INSERT INTO kyc.submissions (user_id, status, risk_level)
+       VALUES ($1, 'Approved', 'HIGH')
        ON CONFLICT DO NOTHING`,
       [userId],
     );

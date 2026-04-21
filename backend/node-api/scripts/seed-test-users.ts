@@ -43,7 +43,6 @@ const USERS = [
     lastName:  'User',
     role:      'ADMIN',
     riskLevel: 'HIGH',
-    kycDoc:    'ADMIN001',
   },
   {
     email:     'seller@test.com',
@@ -53,7 +52,6 @@ const USERS = [
     lastName:  'Seller',
     role:      'INVESTOR',
     riskLevel: 'HIGH',
-    kycDoc:    'SELL001',
   },
   {
     email:     'buyer@test.com',
@@ -63,7 +61,6 @@ const USERS = [
     lastName:  'Buyer',
     role:      'INVESTOR',
     riskLevel: 'HIGH',
-    kycDoc:    'BUY001',
   },
 ];
 
@@ -113,11 +110,10 @@ async function main() {
       const userId = result.rows[0].id;
 
       await pool.query(
-        `INSERT INTO kyc.submissions
-           (user_id, status, risk_level, document_type, document_number)
-         VALUES ($1,'Approved',$2,'Passport',$3)
+        `INSERT INTO kyc.submissions (user_id, status, risk_level)
+         VALUES ($1, 'Approved', $2)
          ON CONFLICT DO NOTHING`,
-        [userId, u.riskLevel, u.kycDoc],
+        [userId, u.riskLevel],
       );
 
       console.log(`✅  Created ${u.email}  (${u.role})  id: ${userId}`);
