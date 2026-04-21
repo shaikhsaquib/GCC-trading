@@ -77,13 +77,8 @@ export function createApp(): Application {
 
   // ── API routes ────────────────────────────────────────────────────────────
   const apiPrefix = `/api/${config.api.version}`;
-
-  // Webhook routes bypass maintenance mode (payment/KYC providers call these)
   const apiRouter = createApiRouter();
-  app.use(`${apiPrefix}/wallet/webhook`, apiRouter);
-  app.use(`${apiPrefix}/kyc/webhook`,    apiRouter);
 
-  // All other API routes go through rate limiting + maintenance gate
   app.use(apiPrefix, apiRateLimit);
   app.use(apiPrefix, maintenanceCheck as express.RequestHandler);
   app.use(apiPrefix, apiRouter);
