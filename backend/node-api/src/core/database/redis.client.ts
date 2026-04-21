@@ -127,6 +127,18 @@ class RedisClient {
     return this.client.zrevrange(key, start, stop);
   }
 
+  // ── Distributed locking (matching engine) ────────────────────────────────
+
+  async tryAcquireLock(key: string, lockId: string, ttlSeconds: number): Promise<boolean> {
+    const result = await this.client.set(key, lockId, 'EX', ttlSeconds, 'NX');
+    return result === 'OK';
+  }
+
+  async releaseLock(key: string, lockId: string): Promise<void> {
+    const script = `if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) else return 0 end`;
+    await this.client.eval(script, 1, key, lockId);
+  }
+
   async healthCheck(): Promise<boolean> {
     try {
       await this.client.ping();
