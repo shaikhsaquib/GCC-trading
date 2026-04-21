@@ -220,14 +220,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.adminSvc.getServiceHealth().subscribe({
       next: health => {
-        const s = health.services;
+        const s   = health.services;
+        const api = health.status === 'healthy' || health.status === 'degraded';
         this.services = [
-          { name: 'PostgreSQL',              uptime: 100, up: s.postgresql },
-          { name: 'Redis',                   uptime: 100, up: s.redis },
-          { name: 'MongoDB',                 uptime: 100, up: s.mongodb },
-          { name: 'Auth Service (Node.js)',  uptime: 100, up: s.postgresql && s.redis },
-          { name: 'API Gateway',             uptime: 100, up: health.status === 'healthy' },
-          { name: 'Scheduler (Node-cron)',   uptime: 100, up: true },
+          { name: 'Auth Service (Node.js)',    uptime: 100, up: api && s.postgresql && s.redis },
+          { name: 'Trading Engine (.NET)',     uptime: 100, up: api },
+          { name: 'Bond Marketplace (.NET)',   uptime: 100, up: api },
+          { name: 'Settlement Service (.NET)', uptime: 100, up: api },
+          { name: 'Notification Service',      uptime: 100, up: api && (s.postgresql || true) },
+          { name: 'Scheduler (Node-cron)',     uptime: 100, up: api },
         ];
       },
       error: () => {

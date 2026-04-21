@@ -43,6 +43,8 @@ type Wrapped<T> = { success: boolean; data: T };
 export class AdminService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/admin`;
+  // Strip /api/vN suffix to reach the root health endpoint (e.g. /health)
+  private readonly apiRoot = environment.apiUrl.replace(/\/api\/v\d+$/, '');
 
   getDashboard() {
     return this.http
@@ -92,6 +94,6 @@ export class AdminService {
   }
 
   getServiceHealth() {
-    return this.http.get<ServiceHealth>('/health');
+    return this.http.get<ServiceHealth>(`${this.apiRoot}/health`);
   }
 }

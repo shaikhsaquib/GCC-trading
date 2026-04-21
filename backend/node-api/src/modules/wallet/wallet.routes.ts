@@ -1,16 +1,17 @@
 import { Router } from 'express';
-import { WalletController } from './wallet.controller';
-import { authenticate }     from '../../middlewares/authenticate';
-import { requireActive }    from '../../middlewares/authorize';
-import { validate }         from '../../middlewares/validate';
-import { walletRateLimit }  from '../../middlewares/rate-limiter';
+import { WalletController }       from './wallet.controller';
+import { authenticate }           from '../../middlewares/authenticate';
+import { requireActive }          from '../../middlewares/authorize';
+import { validate }               from '../../middlewares/validate';
+import { walletRateLimit }        from '../../middlewares/rate-limiter';
 import { depositSchema, withdrawSchema } from './wallet.validator';
+import { verifyHyperpayPayment }  from '../../middlewares/verify-webhook';
 
 export function createWalletRouter(controller: WalletController): Router {
   const router = Router();
 
-  // Webhook — unauthenticated (HyperPay calls this directly)
-  router.post('/webhook/hyperpay', controller.depositWebhook);
+  // Webhook — unauthenticated; payment verified against HyperPay API before handler runs
+  router.post('/webhook/hyperpay', verifyHyperpayPayment, controller.depositWebhook);
 
   // All other wallet routes require an active account
   router.use(authenticate, requireActive);

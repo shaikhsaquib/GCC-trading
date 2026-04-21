@@ -79,9 +79,16 @@ services:
       - key: ENCRYPTION_IV
         sync: false
 
-      # ── .NET microservices (deploy via Railway — see railway/ folder) ────────
-      # After deploying each .NET service, paste its public URL here.
+      # ── .NET microservices — paste full https:// URLs after each service deploys
       - key: DOTNET_TRADING_URL
+        sync: false
+      - key: DOTNET_MARKETPLACE_URL
+        sync: false
+      - key: DOTNET_SETTLEMENT_URL
+        sync: false
+      - key: DOTNET_PORTFOLIO_URL
+        sync: false
+      - key: DOTNET_AML_URL
         sync: false
 
       # ── External services (optional — features degrade gracefully) ───────────
@@ -147,3 +154,108 @@ services:
         value: 60000
       - key: RATE_LIMIT_MAX_REQUESTS
         value: 100
+
+  # ── .NET Trading Service ───────────────────────────────────────────────────
+  - type: web
+    name: gcc-dotnet-trading
+    env: docker
+    dockerfilePath: ./backend/dotnet-services/Dockerfile.trading
+    dockerContext: ./backend/dotnet-services
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: JWT_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: RABBITMQ_URL
+        sync: false
+
+  # ── .NET Marketplace Service ───────────────────────────────────────────────
+  - type: web
+    name: gcc-dotnet-marketplace
+    env: docker
+    dockerfilePath: ./backend/dotnet-services/Dockerfile.marketplace
+    dockerContext: ./backend/dotnet-services
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: JWT_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: RABBITMQ_URL
+        sync: false
+
+  # ── .NET Settlement Service ────────────────────────────────────────────────
+  - type: web
+    name: gcc-dotnet-settlement
+    env: docker
+    dockerfilePath: ./backend/dotnet-services/Dockerfile.settlement
+    dockerContext: ./backend/dotnet-services
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: JWT_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: RABBITMQ_URL
+        sync: false
+
+  # ── .NET Portfolio Service ─────────────────────────────────────────────────
+  - type: web
+    name: gcc-dotnet-portfolio
+    env: docker
+    dockerfilePath: ./backend/dotnet-services/Dockerfile.portfolio
+    dockerContext: ./backend/dotnet-services
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: JWT_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: RABBITMQ_URL
+        sync: false
+
+  # ── .NET AML Service ───────────────────────────────────────────────────────
+  - type: web
+    name: gcc-dotnet-aml
+    env: docker
+    dockerfilePath: ./backend/dotnet-services/Dockerfile.aml
+    dockerContext: ./backend/dotnet-services
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: JWT_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: RABBITMQ_URL
+        sync: false
