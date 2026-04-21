@@ -10,6 +10,7 @@ import helmet       from 'helmet';
 import cors         from 'cors';
 import compression  from 'compression';
 import morgan       from 'morgan';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 import { v4 as uuidv4 } from 'uuid';
 
 import { config }         from './config';
@@ -77,6 +78,25 @@ export function createApp(): Application {
 
   // ── API routes ────────────────────────────────────────────────────────────
   const apiPrefix = `/api/${config.api.version}`;
+
+  // Proxy /api/v1/aml/* → .NET AML microservice (in all environments)
+  // The .NET service handles its own JWT auth; we just forward the request.
+  app.use(
+    `${apiPrefix}/aml`,
+    createProxyMiddleware({
+      target:       config.dotnet.amlUrl,
+      changeOrigin: true,
+      on: {
+        error: (_err, _req, res) => {
+          (res as express.Response).status(502).json({
+            success: false,
+            error: { code: 'SERVICE_UNAVAILABLE', message: 'AML service is currently unavailable' },
+          });
+        },
+      },
+    }) as express.RequestHandler,
+  );
+
   const apiRouter = createApiRouter();
 
   app.use(apiPrefix, apiRateLimit);
@@ -85,7 +105,7 @@ export function createApp(): Application {
 
   // ── Dev proxy to .NET Core services ──────────────────────────────────────
   if (config.isDev) {
-    void setupDevProxy(app, apiPrefix);
+    setupDevProxy(app, apiPrefix);
   }
 
   // ── Error handling — must be last ─────────────────────────────────────────
@@ -95,10 +115,8 @@ export function createApp(): Application {
   return app;
 }
 
-async function setupDevProxy(app: Application, prefix: string): Promise<void> {
-  const { createProxyMiddleware } = await import('http-proxy-middleware');
+function setupDevProxy(app: Application, prefix: string): void {
   const dotnetUrl = config.dotnet.tradingUrl;
-
   for (const path of ['bonds', 'orders', 'portfolio', 'settlement']) {
     app.use(
       `${prefix}/${path}`,

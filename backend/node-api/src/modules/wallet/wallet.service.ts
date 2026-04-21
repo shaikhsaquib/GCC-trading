@@ -26,7 +26,7 @@ export class WalletService {
   }
 
   async getBalance(userId: string): Promise<BalanceResponse> {
-    const wallet = await this.repo.findByUserId(userId);
+    const wallet = await this.getOrCreateWallet(userId);
     if (!wallet) throw new NotFoundError('Wallet');
 
     return {
@@ -42,7 +42,7 @@ export class WalletService {
       throw new ValidationError(`Maximum deposit is ${MAX_DEPOSIT} ${dto.currency}`);
     }
 
-    const wallet = await this.repo.findByUserId(userId);
+    const wallet = await this.getOrCreateWallet(userId);
     if (!wallet) throw new NotFoundError('Wallet');
 
     const idempotencyKey = uuidv4();
@@ -163,7 +163,7 @@ export class WalletService {
   }
 
   async initiateWithdrawal(userId: string, dto: WithdrawDto): Promise<{ requestId: string; requiresApproval: boolean }> {
-    const wallet = await this.repo.findByUserId(userId);
+    const wallet = await this.getOrCreateWallet(userId);
     if (!wallet) throw new NotFoundError('Wallet');
 
     if (parseFloat(wallet.available_balance) < dto.amount) {
@@ -205,7 +205,7 @@ export class WalletService {
   }
 
   async getTransactions(userId: string, query: PaginationQuery): Promise<{ data: unknown[]; total: number }> {
-    const wallet = await this.repo.findByUserId(userId);
+    const wallet = await this.getOrCreateWallet(userId);
     if (!wallet) throw new NotFoundError('Wallet');
 
     const { rows, total } = await this.repo.getTransactions(
@@ -214,6 +214,24 @@ export class WalletService {
       query.offset ?? 0,
     );
     return { data: rows, total };
+  }
+
+  /**
+   * Returns the wallet for a user, creating it lazily if it doesn't exist.
+   * This handles the case where a user was activated without going through
+   * the full KYC event flow (e.g. RabbitMQ was down, or admin manual approval).
+   */
+  private async getOrCreateWallet(userId: string) {
+    const existing = await this.repo.findByUserId(userId);
+    if (existing) return existing;
+
+    const currencyRow = await db.query<{ preferred_currency: string }>(
+      'SELECT preferred_currency FROM app_auth.users WHERE id = $1',
+      [userId],
+    );
+    const currency = (currencyRow.rows[0]?.preferred_currency ?? 'AED') as Currency;
+    await this.repo.create(userId, currency);
+    return this.repo.findByUserId(userId);
   }
 }
 

@@ -8,8 +8,8 @@ export function createNotificationsRouter(controller: NotificationsController): 
   router.use(authenticate);
 
   router.get('/',              controller.getAll);
+  router.patch('/read-all',    controller.markAllRead);  // must come before /:id/read
   router.patch('/:id/read',    controller.markRead);
-  router.patch('/read-all',    controller.markAllRead);
 
   return router;
 }
