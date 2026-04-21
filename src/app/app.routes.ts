@@ -3,6 +3,13 @@ import { MainLayoutComponent } from './layout/main-layout.component';
 import { authGuard, adminGuard, activeGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
+  /* ─── Demo payment page (no sidebar, requires auth token in cookie/header) ─── */
+  {
+    path: 'demo-payment',
+    loadComponent: () =>
+      import('./pages/demo-payment/demo-payment.component').then(m => m.DemoPaymentComponent),
+  },
+
   /* ─── Auth pages (no sidebar, no guard) ─── */
   {
     path: 'auth',

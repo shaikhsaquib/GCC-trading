@@ -100,6 +100,14 @@ export class WalletRepository {
     return r.rows[0];
   }
 
+  async findTransactionById(id: string): Promise<TransactionRow | null> {
+    const r = await db.query<TransactionRow>(
+      'SELECT * FROM wallet.transactions WHERE id = $1',
+      [id],
+    );
+    return r.rows[0] ?? null;
+  }
+
   async findTransactionByIdempotencyKey(key: string): Promise<TransactionRow | null> {
     const r = await db.query<TransactionRow>(
       'SELECT * FROM wallet.transactions WHERE idempotency_key = $1',
