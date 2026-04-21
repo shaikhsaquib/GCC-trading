@@ -79,32 +79,17 @@ services:
       - key: ENCRYPTION_IV
         sync: false
 
-      # ── .NET microservices (auto-wired from sibling Render services) ──────────
+      # ── .NET microservices — paste full https:// URLs after each service deploys
       - key: DOTNET_TRADING_URL
-        fromService:
-          name: gcc-dotnet-trading
-          type: web
-          property: url
+        sync: false
       - key: DOTNET_MARKETPLACE_URL
-        fromService:
-          name: gcc-dotnet-marketplace
-          type: web
-          property: url
+        sync: false
       - key: DOTNET_SETTLEMENT_URL
-        fromService:
-          name: gcc-dotnet-settlement
-          type: web
-          property: url
+        sync: false
       - key: DOTNET_PORTFOLIO_URL
-        fromService:
-          name: gcc-dotnet-portfolio
-          type: web
-          property: url
+        sync: false
       - key: DOTNET_AML_URL
-        fromService:
-          name: gcc-dotnet-aml
-          type: web
-          property: url
+        sync: false
 
       # ── External services (optional — features degrade gracefully) ───────────
       - key: SENDGRID_API_KEY
