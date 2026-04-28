@@ -1,26 +1,37 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, inject } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
 import { KycService } from '../../services/kyc.service';
 import {
-  KycSubmission, KycQueueItem, RiskLevel, DocumentType,
+  KycSubmission, KycDocument, KycQueueItem, RiskLevel, DocumentType,
 } from '../../core/models/api.models';
 
 // ── Document metadata ─────────────────────────────────────────────────────────
 
-const DOC_META: Record<DocumentType, { label: string; icon: string; accept: string }> = {
-  PASSPORT:         { label: 'Passport',        icon: 'book',        accept: 'image/*,application/pdf' },
-  NATIONAL_ID:      { label: 'National ID',      icon: 'badge',       accept: 'image/*,application/pdf' },
-  DRIVING_LICENSE:  { label: 'Driving License',  icon: 'drive_eta',   accept: 'image/*,application/pdf' },
-  PROOF_OF_ADDRESS: { label: 'Proof of Address', icon: 'home',        accept: 'image/*,application/pdf' },
-  SELFIE:           { label: 'Selfie Photo',     icon: 'face',        accept: 'image/*' },
-  LIVENESS_VIDEO:   { label: 'Liveness Video',   icon: 'videocam',    accept: 'video/mp4' },
+interface DocMeta { label: string; icon: string; accept: string; required: boolean; hint: string; }
+
+const DOC_META: Record<DocumentType, DocMeta> = {
+  PASSPORT:         { label: 'Passport',          icon: 'book',     accept: 'image/*,application/pdf', required: true,  hint: 'Photo page clearly visible' },
+  NATIONAL_ID:      { label: 'National ID',        icon: 'badge',    accept: 'image/*,application/pdf', required: false, hint: 'Front and back if possible' },
+  DRIVING_LICENSE:  { label: 'Driving License',    icon: 'drive_eta',accept: 'image/*,application/pdf', required: false, hint: 'Optional — alternative ID' },
+  PROOF_OF_ADDRESS: { label: 'Proof of Address',   icon: 'home',     accept: 'image/*,application/pdf', required: false, hint: 'Utility bill or bank statement < 3 months' },
+  SELFIE:           { label: 'Selfie Photo',        icon: 'face',     accept: 'image/*',                 required: true,  hint: 'Clear photo of your face, no glasses' },
+  LIVENESS_VIDEO:   { label: 'Liveness Video',      icon: 'videocam', accept: 'video/mp4',               required: false, hint: 'Short MP4 video, look straight at camera' },
 };
 
+const REQUIRED_DOCS: DocumentType[] = ['PASSPORT', 'SELFIE'];
 const ALL_DOC_TYPES = Object.keys(DOC_META) as DocumentType[];
 
-// ── Component ─────────────────────────────────────────────────────────────────
+const RISK_LIMITS: Record<string, { limit: string; desc: string }> = {
+  LOW:    { limit: '10,000 AED',  desc: 'Standard investor — orders up to 10,000 AED' },
+  MEDIUM: { limit: '50,000 AED',  desc: 'Verified investor — orders up to 50,000 AED' },
+  HIGH:   { limit: '200,000 AED', desc: 'Accredited investor — orders up to 200,000 AED' },
+};
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf', 'video/mp4'];
+const POLL_INTERVAL = 30_000; // 30 s
 
 @Component({
   selector: 'app-kyc',
@@ -29,29 +40,29 @@ const ALL_DOC_TYPES = Object.keys(DOC_META) as DocumentType[];
   templateUrl: './kyc.component.html',
   styleUrl: './kyc.component.css',
 })
-export class KycComponent implements OnInit {
+export class KycComponent implements OnInit, OnDestroy {
   private readonly auth   = inject(AuthService);
   private readonly kycSvc = inject(KycService);
 
-  // ── Role ─────────────────────────────────────────────────────────────────────
+  // ── Role ──────────────────────────────────────────────────────────────────────
   readonly isAdmin = this.auth.isAdmin;
 
   // ── Admin state ───────────────────────────────────────────────────────────────
-  searchTerm   = '';
-  activeFilter = signal('all');
-  loading      = signal(false);
+  searchTerm    = '';
+  activeFilter  = signal('all');
+  loading       = signal(false);
   actionLoading = signal(false);
 
-  _queue     = signal<KycQueueItem[]>([]);
-  totalQueue = signal(0);
+  _queue       = signal<KycQueueItem[]>([]);
+  totalQueue   = signal(0);
   selectedItem = signal<KycQueueItem | null>(null);
 
   kycStats = signal([
     { label: 'Total in Queue', value: '—', color: 'var(--text-primary)' },
-    { label: 'Submitted',      value: '—', color: 'var(--warning)' },
-    { label: 'Under Review',   value: '—', color: 'var(--accent-cyan)' },
-    { label: 'Approved',       value: '—', color: 'var(--success)' },
-    { label: 'Rejected',       value: '—', color: 'var(--danger)' },
+    { label: 'Submitted',      value: '—', color: 'var(--warning)'      },
+    { label: 'Under Review',   value: '—', color: 'var(--accent-cyan)'  },
+    { label: 'Approved',       value: '—', color: 'var(--success)'      },
+    { label: 'Rejected',       value: '—', color: 'var(--danger)'       },
   ]);
 
   filters = [
@@ -69,20 +80,33 @@ export class KycComponent implements OnInit {
 
   // ── Investor state ────────────────────────────────────────────────────────────
   investorLoading = signal(false);
+  docsLoading     = signal(false);
   submission      = signal<KycSubmission | null>(null);
-  uploadedDocs    = signal<{ documentType: DocumentType; fileName: string; fileSize: number }[]>([]);
-  uploadingDoc    = signal<DocumentType | null>(null);
 
-  readonly allDocTypes = ALL_DOC_TYPES;
-  readonly docMeta     = DOC_META;
+  // Keyed by DocumentType — populated from server on load, updated on upload
+  uploadedDocs = signal<Partial<Record<DocumentType, KycDocument>>>({});
+  uploadingDoc = signal<DocumentType | null>(null);
+  uploadErrors = signal<Partial<Record<DocumentType, string>>>({});
+
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  readonly allDocTypes   = ALL_DOC_TYPES;
+  readonly requiredDocs  = REQUIRED_DOCS;
+  readonly docMeta       = DOC_META;
+  readonly riskLimits    = RISK_LIMITS;
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────────
+
   ngOnInit() {
     if (this.isAdmin()) {
       this.loadQueue();
     } else {
       this.loadMyStatus();
     }
+  }
+
+  ngOnDestroy() {
+    this.clearPoll();
   }
 
   // ── Admin methods ─────────────────────────────────────────────────────────────
@@ -104,11 +128,11 @@ export class KycComponent implements OnInit {
   computeStats(items: KycQueueItem[], total: number) {
     const count = (s: string) => items.filter(i => i.status === s).length;
     this.kycStats.set([
-      { label: 'Total in Queue', value: String(total),           color: 'var(--text-primary)' },
-      { label: 'Submitted',      value: String(count('Submitted')),   color: 'var(--warning)'      },
-      { label: 'Under Review',   value: String(count('UnderReview')), color: 'var(--accent-cyan)'  },
-      { label: 'Approved',       value: String(count('Approved')),    color: 'var(--success)'      },
-      { label: 'Rejected',       value: String(count('Rejected')),    color: 'var(--danger)'       },
+      { label: 'Total in Queue', value: String(total),                    color: 'var(--text-primary)' },
+      { label: 'Submitted',      value: String(count('Submitted')),        color: 'var(--warning)'      },
+      { label: 'Under Review',   value: String(count('UnderReview')),      color: 'var(--accent-cyan)'  },
+      { label: 'Approved',       value: String(count('Approved')),         color: 'var(--success)'      },
+      { label: 'Rejected',       value: String(count('Rejected')),         color: 'var(--danger)'       },
     ]);
   }
 
@@ -197,11 +221,8 @@ export class KycComponent implements OnInit {
 
   statusLabel(status: string) {
     const labels: Record<string, string> = {
-      Draft:       'Draft',
-      Submitted:   'Pending',
-      UnderReview: 'In Review',
-      Approved:    'Approved',
-      Rejected:    'Rejected',
+      Draft: 'Draft', Submitted: 'Pending',
+      UnderReview: 'In Review', Approved: 'Approved', Rejected: 'Rejected',
     };
     return labels[status] ?? status;
   }
@@ -235,16 +256,34 @@ export class KycComponent implements OnInit {
   loadMyStatus() {
     this.investorLoading.set(true);
     this.kycSvc.getMyStatus().subscribe({
-      next:  sub => { this.submission.set(sub); this.investorLoading.set(false); },
-      error: ()  => this.investorLoading.set(false),
+      next: sub => {
+        this.submission.set(sub);
+        this.investorLoading.set(false);
+        if (sub?.status === 'Draft') this.loadExistingDocs(sub.id);
+        if (sub?.status === 'Submitted' || sub?.status === 'UnderReview') this.startPolling();
+      },
+      error: () => this.investorLoading.set(false),
+    });
+  }
+
+  private loadExistingDocs(submissionId: string) {
+    this.docsLoading.set(true);
+    this.kycSvc.getDocuments(submissionId).subscribe({
+      next: docs => {
+        const map: Partial<Record<DocumentType, KycDocument>> = {};
+        docs.forEach(d => { map[d.document_type] = d; });
+        this.uploadedDocs.set(map);
+        this.docsLoading.set(false);
+      },
+      error: () => this.docsLoading.set(false),
     });
   }
 
   startKyc() {
     this.investorLoading.set(true);
     this.kycSvc.startSubmission().subscribe({
-      next:  sub => { this.submission.set(sub); this.investorLoading.set(false); },
-      error: ()  => this.investorLoading.set(false),
+      next: sub => { this.submission.set(sub); this.investorLoading.set(false); },
+      error: () => this.investorLoading.set(false),
     });
   }
 
@@ -254,26 +293,75 @@ export class KycComponent implements OnInit {
     const sub   = this.submission();
     if (!file || !sub) return;
 
+    // Clear previous error
+    this.uploadErrors.update(e => ({ ...e, [docType]: undefined }));
+
+    // Frontend validation
+    if (file.size > MAX_FILE_SIZE) {
+      this.uploadErrors.update(e => ({ ...e, [docType]: `File too large (max 10 MB, yours is ${this.formatBytes(file.size)})` }));
+      input.value = '';
+      return;
+    }
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      this.uploadErrors.update(e => ({ ...e, [docType]: `Unsupported type: ${file.type}. Use JPG, PNG, PDF or MP4.` }));
+      input.value = '';
+      return;
+    }
+
     this.uploadingDoc.set(docType);
     this.kycSvc.uploadDocument(sub.id, docType, file).subscribe({
       next: () => {
-        this.uploadedDocs.update(docs => [
-          ...docs.filter(d => d.documentType !== docType),
-          { documentType: docType, fileName: file.name, fileSize: file.size },
-        ]);
+        // Optimistic update — real data matches what user selected
+        const fakeDoc: KycDocument = {
+          id: '',
+          submission_id: sub.id,
+          document_type: docType,
+          mongo_doc_id: '',
+          file_name: file.name,
+          mime_type: file.type,
+          file_size_bytes: file.size,
+          status: 'Pending',
+          created_at: new Date().toISOString(),
+        };
+        this.uploadedDocs.update(m => ({ ...m, [docType]: fakeDoc }));
         this.uploadingDoc.set(null);
         input.value = '';
       },
-      error: () => this.uploadingDoc.set(null),
+      error: (err) => {
+        const msg = err?.error?.error ?? 'Upload failed — please try again';
+        this.uploadErrors.update(e => ({ ...e, [docType]: msg }));
+        this.uploadingDoc.set(null);
+        input.value = '';
+      },
     });
   }
 
   isDocUploaded(docType: DocumentType) {
-    return this.uploadedDocs().some(d => d.documentType === docType);
+    return !!this.uploadedDocs()[docType];
+  }
+
+  getUploadedDoc(docType: DocumentType) {
+    return this.uploadedDocs()[docType];
+  }
+
+  isRequired(docType: DocumentType) {
+    return REQUIRED_DOCS.includes(docType);
+  }
+
+  getError(docType: DocumentType): string | undefined {
+    return this.uploadErrors()[docType];
+  }
+
+  uploadedCount() {
+    return Object.keys(this.uploadedDocs()).length;
+  }
+
+  requiredMet() {
+    return REQUIRED_DOCS.every(d => this.isDocUploaded(d));
   }
 
   canSubmit() {
-    return this.uploadedDocs().length >= 2;
+    return this.requiredMet() && !this.uploadingDoc();
   }
 
   submitKyc() {
@@ -284,6 +372,7 @@ export class KycComponent implements OnInit {
       next: () => {
         this.submission.update(s => s ? { ...s, status: 'Submitted' } : s);
         this.investorLoading.set(false);
+        this.startPolling();
       },
       error: () => this.investorLoading.set(false),
     });
@@ -291,19 +380,45 @@ export class KycComponent implements OnInit {
 
   restartKyc() {
     this.investorLoading.set(true);
+    this.clearPoll();
     this.kycSvc.startSubmission().subscribe({
       next: sub => {
         this.submission.set(sub);
-        this.uploadedDocs.set([]);
+        this.uploadedDocs.set({});
+        this.uploadErrors.set({});
         this.investorLoading.set(false);
       },
       error: () => this.investorLoading.set(false),
     });
   }
 
-  getUploadedDoc(docType: DocumentType) {
-    return this.uploadedDocs().find(d => d.documentType === docType);
+  // ── Polling ───────────────────────────────────────────────────────────────────
+
+  private startPolling() {
+    this.clearPoll();
+    this.pollTimer = setInterval(() => this.pollStatus(), POLL_INTERVAL);
   }
+
+  private clearPoll() {
+    if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null; }
+  }
+
+  private pollStatus() {
+    this.kycSvc.getMyStatus().subscribe({
+      next: sub => {
+        const prev = this.submission();
+        this.submission.set(sub);
+        // Stop polling when review is complete
+        if (sub?.status === 'Approved' || sub?.status === 'Rejected') {
+          this.clearPoll();
+          // Reload page data if status changed
+          if (prev?.status !== sub?.status) window.location.reload();
+        }
+      },
+    });
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────────
 
   formatBytes(bytes: number) {
     if (bytes < 1024)    return `${bytes} B`;

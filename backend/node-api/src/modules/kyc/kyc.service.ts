@@ -180,6 +180,13 @@ export class KycService {
     });
   }
 
+  async getDocuments(submissionId: string, userId: string) {
+    const submission = await this.repo.findSubmissionById(submissionId);
+    if (!submission) throw new NotFoundError('KYC submission');
+    if (submission.user_id !== userId) throw new ForbiddenError('Not your submission');
+    return this.repo.getDocumentsBySubmission(submissionId);
+  }
+
   async getQueue(filter: KycQueueFilter): Promise<{ data: unknown[]; total: number }> {
     const { rows, total } = await this.repo.getQueue({
       status: filter.status,

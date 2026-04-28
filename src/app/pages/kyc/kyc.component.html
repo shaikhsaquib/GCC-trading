@@ -272,7 +272,6 @@
     </div>
 
     @if (investorLoading() && !submission()) {
-      <!-- Initial loading -->
       <div class="investor-loading">
         <span class="material-icons-round spin">sync</span>
         <p>Loading your KYC status…</p>
@@ -292,17 +291,33 @@
             a one-time identity verification process before placing orders.
           </p>
           <div class="kyc-requirements">
-            <div class="req-item">
-              <span class="material-icons-round">badge</span>
-              <span>Government-issued ID (National ID or Passport)</span>
+            <div class="req-item req-item--required">
+              <span class="material-icons-round">book</span>
+              <div>
+                <strong>Passport</strong> <span class="req-badge">Required</span>
+                <small>Photo page clearly visible</small>
+              </div>
             </div>
-            <div class="req-item">
+            <div class="req-item req-item--required">
               <span class="material-icons-round">face</span>
-              <span>A clear selfie photo</span>
+              <div>
+                <strong>Selfie Photo</strong> <span class="req-badge">Required</span>
+                <small>Clear photo of your face, no glasses</small>
+              </div>
             </div>
             <div class="req-item">
               <span class="material-icons-round">home</span>
-              <span>Optional: Proof of address or driving license</span>
+              <div>
+                <strong>Proof of Address</strong>
+                <small>Optional — utility bill or bank statement</small>
+              </div>
+            </div>
+            <div class="req-item">
+              <span class="material-icons-round">badge</span>
+              <div>
+                <strong>National ID / Driving License</strong>
+                <small>Optional — additional identity document</small>
+              </div>
             </div>
           </div>
           <button class="btn btn-primary btn-lg" (click)="startKyc()"
@@ -335,61 +350,78 @@
           <div class="step-line"></div>
           <div class="step" [class.completed]="canSubmit()">
             <div class="step-circle">
-              @if (canSubmit()) {
-                <span class="material-icons-round">check</span>
-              } @else {
-                3
-              }
+              @if (canSubmit()) { <span class="material-icons-round">check</span> } @else { 3 }
             </div>
             <span>Submit</span>
           </div>
         </div>
 
-        <!-- Upload progress badge -->
-        <div class="upload-progress-bar">
-          <span class="material-icons-round" [style.color]="canSubmit() ? 'var(--success)' : 'var(--warning)'">
-            {{ canSubmit() ? 'check_circle' : 'upload_file' }}
-          </span>
-          <span>
-            {{ uploadedDocs().length }} of {{ allDocTypes.length }} documents uploaded
-            @if (!canSubmit()) {
-              &nbsp;— upload at least 2 to proceed
-            }
-          </span>
+        <!-- Progress summary -->
+        <div class="upload-progress-bar" [ngClass]="canSubmit() ? 'ready' : 'pending'">
+          @if (docsLoading()) {
+            <span class="material-icons-round spin" style="font-size:16px">sync</span>
+            <span>Loading uploaded documents…</span>
+          } @else {
+            <span class="material-icons-round">{{ canSubmit() ? 'check_circle' : 'upload_file' }}</span>
+            <span>
+              {{ uploadedCount() }} document{{ uploadedCount() !== 1 ? 's' : '' }} uploaded
+              @if (!requiredMet()) {
+                &nbsp;— Passport and Selfie are required
+              } @else if (uploadingDoc()) {
+                &nbsp;— upload in progress…
+              } @else {
+                &nbsp;— ready to submit
+              }
+            </span>
+          }
         </div>
 
         <!-- Document cards grid -->
         <div class="doc-upload-grid">
           @for (docType of allDocTypes; track docType) {
-            <div class="doc-upload-card" [class.uploaded]="isDocUploaded(docType)"
-                 [class.uploading]="uploadingDoc() === docType">
+            <div class="doc-upload-card"
+                 [class.uploaded]="isDocUploaded(docType)"
+                 [class.uploading]="uploadingDoc() === docType"
+                 [class.has-error]="!!getError(docType)"
+                 [class.required]="isRequired(docType)">
+
               <div class="doc-type-icon">
                 <span class="material-icons-round">{{ docMeta[docType].icon }}</span>
               </div>
+
               <div class="doc-type-info">
-                <strong>{{ docMeta[docType].label }}</strong>
+                <div class="doc-label-row">
+                  <strong>{{ docMeta[docType].label }}</strong>
+                  @if (isRequired(docType)) {
+                    <span class="req-badge">Required</span>
+                  } @else {
+                    <span class="opt-badge">Optional</span>
+                  }
+                </div>
                 @if (isDocUploaded(docType)) {
-                  <small class="doc-uploaded-name">{{ getUploadedDoc(docType)?.fileName }}</small>
-                  <small class="doc-uploaded-size">{{ formatBytes(getUploadedDoc(docType)?.fileSize ?? 0) }}</small>
+                  <small class="doc-uploaded-name">{{ getUploadedDoc(docType)?.file_name }}</small>
+                  <small class="doc-uploaded-size">{{ formatBytes(getUploadedDoc(docType)?.file_size_bytes ?? 0) }}</small>
+                } @else if (getError(docType)) {
+                  <small class="doc-error">{{ getError(docType) }}</small>
                 } @else {
-                  <small>JPG, PNG or PDF · max 10 MB</small>
+                  <small class="doc-hint">{{ docMeta[docType].hint }}</small>
                 }
               </div>
+
               <div class="doc-type-action">
                 @if (uploadingDoc() === docType) {
                   <span class="material-icons-round spin" style="color:var(--accent-cyan)">sync</span>
                 } @else if (isDocUploaded(docType)) {
-                  <label class="btn btn-secondary btn-sm replace-btn">
-                    <span class="material-icons-round" style="font-size:14px">edit</span>
-                    Replace
+                  <label class="btn btn-secondary btn-sm">
+                    <span class="material-icons-round" style="font-size:14px">edit</span> Replace
                     <input type="file" hidden [accept]="docMeta[docType].accept"
                            (change)="onFileSelected(docType, $event)"/>
                   </label>
                   <span class="doc-check material-icons-round">check_circle</span>
                 } @else {
-                  <label class="btn btn-secondary btn-sm upload-btn">
+                  <label class="btn btn-secondary btn-sm" [class.btn-danger-outline]="!!getError(docType)">
                     <span class="material-icons-round" style="font-size:14px">upload</span>
-                    Upload
+                    {{ getError(docType) ? 'Retry' : 'Upload' }}
                     <input type="file" hidden [accept]="docMeta[docType].accept"
                            (change)="onFileSelected(docType, $event)"/>
                   </label>
@@ -399,12 +431,12 @@
           }
         </div>
 
-        <!-- Submit button -->
+        <!-- Submit -->
         <div class="submit-section">
           <div class="submit-info">
             <span class="material-icons-round" style="color:var(--text-muted)">info</span>
             <small>
-              By submitting, you confirm that all documents are authentic and belong to you.
+              By submitting, you confirm all documents are authentic and belong to you.
               Our compliance team will review your application within 1–2 business days.
             </small>
           </div>
@@ -412,9 +444,10 @@
                   (click)="submitKyc()">
             @if (investorLoading()) {
               <span class="material-icons-round spin">sync</span> Submitting…
+            } @else if (uploadingDoc()) {
+              <span class="material-icons-round spin">sync</span> Upload in progress…
             } @else {
-              <span class="material-icons-round">send</span>
-              Submit for Review
+              <span class="material-icons-round">send</span> Submit for Review
             }
           </button>
         </div>
@@ -437,7 +470,9 @@
           <div class="status-meta">
             <div class="status-meta-item">
               <span class="info-label">Status</span>
-              <span class="badge badge-info">{{ submission()!.status === 'Submitted' ? 'Pending Review' : 'Under Review' }}</span>
+              <span class="badge badge-info">
+                {{ submission()!.status === 'Submitted' ? 'Pending Review' : 'Under Review' }}
+              </span>
             </div>
             <div class="status-meta-item">
               <span class="info-label">Submitted</span>
@@ -449,6 +484,10 @@
             </div>
           </div>
           <div class="status-tip">
+            <span class="material-icons-round spin" style="font-size:16px;color:var(--warning)">sync</span>
+            Checking for updates automatically every 30 seconds…
+          </div>
+          <div class="status-tip" style="margin-top:8px">
             <span class="material-icons-round">schedule</span>
             Typical review time is 1–2 business days
           </div>
@@ -482,11 +521,22 @@
             </div>
             @if (submission()!.review_notes) {
               <div class="status-meta-item" style="grid-column:1/-1">
-                <span class="info-label">Notes</span>
+                <span class="info-label">Notes from Reviewer</span>
                 <span class="info-value">{{ submission()!.review_notes }}</span>
               </div>
             }
           </div>
+
+          <!-- Trading limit explanation -->
+          @if (submission()!.risk_level && riskLimits[submission()!.risk_level!]) {
+            <div class="risk-limit-box">
+              <span class="material-icons-round">trending_up</span>
+              <div>
+                <strong>Order limit: {{ riskLimits[submission()!.risk_level!].limit }}</strong>
+                <small>{{ riskLimits[submission()!.risk_level!].desc }}</small>
+              </div>
+            </div>
+          }
         </div>
       </div>
     }
@@ -516,7 +566,12 @@
             </div>
             <div class="status-meta-item">
               <span class="info-label">Attempts Used</span>
-              <span class="info-value">{{ submission()!.submission_count }} of 3</span>
+              <span class="info-value">
+                {{ submission()!.submission_count }} of 3
+                @if (submission()!.submission_count < 3) {
+                  &nbsp;— {{ 3 - submission()!.submission_count }} remaining
+                }
+              </span>
             </div>
           </div>
           @if (submission()!.submission_count < 3) {
@@ -525,8 +580,7 @@
               @if (investorLoading()) {
                 <span class="material-icons-round spin">sync</span> Starting…
               } @else {
-                <span class="material-icons-round">refresh</span>
-                Resubmit KYC
+                <span class="material-icons-round">refresh</span> Resubmit KYC
               }
             </button>
           } @else {
