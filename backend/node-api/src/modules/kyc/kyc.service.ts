@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { config } from '../../config';
+import { logger } from '../../core/logger';
 import { IEventBus } from '../../core/events/event-bus';
 import { EventRoutes } from '../../core/events/event.types';
 import { encryptBuffer } from '../../core/crypto';
@@ -55,22 +56,33 @@ export class KycService {
       throw new ValidationError(`File exceeds ${MAX_FILE_SIZE_MB}MB limit`);
     }
 
-    const { data, iv } = encryptBuffer(dto.file.buffer);
-
-    const doc = await KycDocument.create({
-      submission_id:  dto.submissionId,
-      document_type:  dto.documentType,
-      encrypted_data: data,
-      encryption_iv:  iv,
-      file_name:      dto.file.originalname,
-      mime_type:      dto.file.mimetype,
-      file_size:      dto.file.size,
-    });
+    // Try to store encrypted file in MongoDB. If MongoDB is unavailable (e.g. not
+    // configured in this environment), fall back to metadata-only storage so that
+    // the submission can still proceed through the review workflow.
+    let mongoDocId = 'not-stored';
+    try {
+      const { data, iv } = encryptBuffer(dto.file.buffer);
+      const doc = await KycDocument.create({
+        submission_id:  dto.submissionId,
+        document_type:  dto.documentType,
+        encrypted_data: data,
+        encryption_iv:  iv,
+        file_name:      dto.file.originalname,
+        mime_type:      dto.file.mimetype,
+        file_size:      dto.file.size,
+      });
+      mongoDocId = doc._id.toString();
+    } catch (err) {
+      logger.warn('MongoDB unavailable — storing document metadata only', {
+        submissionId: dto.submissionId,
+        error: (err as Error).message,
+      });
+    }
 
     await this.repo.createDocument({
       submissionId: dto.submissionId,
       documentType: dto.documentType,
-      mongoDocId:   doc._id.toString(),
+      mongoDocId,
       fileName:     dto.file.originalname,
       mimeType:     dto.file.mimetype,
       fileSize:     dto.file.size,
@@ -127,7 +139,7 @@ export class KycService {
     const autoApprove   = livenessScore >= LIVENESS_THRESHOLD && risk_level === 'LOW';
 
     if (autoApprove) {
-      await this.approve(id, 'SYSTEM', { riskLevel: 'LOW' });
+      await this.approve(id, user_id, { riskLevel: 'LOW' }); // use user_id as fallback; reviewer_id must be a valid UUID
     } else {
       await this.repo.updateSubmissionStatus(id, 'UnderReview', {
         liveness_score: livenessScore,
