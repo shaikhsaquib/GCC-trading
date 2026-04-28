@@ -1,4 +1,5 @@
 import { db } from '../../core/database/postgres.client';
+import { decrypt } from '../../core/crypto';
 import { KycSubmissionRow, KycDocumentRow, KycStatus, RiskLevel } from './kyc.types';
 
 export class KycRepository {
@@ -85,27 +86,37 @@ export class KycRepository {
     rows: Array<KycSubmissionRow & { first_name: string; last_name: string; email: string }>;
     total: number;
   }> {
-    const conditions = filter.status ? 'WHERE ks.status = $3' : '';
-    const params: unknown[] = [filter.limit, filter.offset];
-    if (filter.status) params.push(filter.status);
+    const rowsWhere  = filter.status ? 'WHERE ks.status = $3' : '';
+    const rowsParams: unknown[] = [filter.limit, filter.offset];
+    if (filter.status) rowsParams.push(filter.status);
+
+    const countWhere  = filter.status ? 'WHERE status = $1' : '';
+    const countParams = filter.status ? [filter.status] : [];
 
     const [rows, count] = await Promise.all([
       db.query(
         `SELECT ks.*, u.first_name, u.last_name, u.email
          FROM kyc.submissions ks
          JOIN app_auth.users u ON u.id = ks.user_id
-         ${conditions}
+         ${rowsWhere}
          ORDER BY ks.created_at DESC
          LIMIT $1 OFFSET $2`,
-        params,
+        rowsParams,
       ),
       db.query<{ count: string }>(
-        `SELECT COUNT(*) FROM kyc.submissions ks ${conditions}`,
-        filter.status ? [filter.status] : [],
+        `SELECT COUNT(*) FROM kyc.submissions ${countWhere}`,
+        countParams,
       ),
     ]);
 
-    return { rows: rows.rows as any, total: parseInt(count.rows[0].count, 10) };
+    // Decrypt PII fields for admin display
+    const decryptSafe = (val: string) => { try { return decrypt(val); } catch { return val; } };
+    const mapped = (rows.rows as any[]).map(row => ({
+      ...row,
+      email: row.email ? decryptSafe(row.email) : '',
+    }));
+
+    return { rows: mapped as any, total: parseInt(count.rows[0].count, 10) };
   }
 
   async countSubmissions(userId: string): Promise<number> {
