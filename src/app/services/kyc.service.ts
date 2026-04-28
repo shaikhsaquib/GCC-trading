@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { map } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
-  ApiResponse, KycSubmission, KycQueueItem, RiskLevel, DocumentType,
+  ApiResponse, KycSubmission, KycDocument, KycQueueItem, RiskLevel, DocumentType,
 } from '../core/models/api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -32,6 +32,12 @@ export class KycService {
     return this.http
       .post<ApiResponse<{ uploaded: boolean }>>(`${this.base}/${kycId}/documents`, fd)
       .pipe(map(res => res.data));
+  }
+
+  getDocuments(kycId: string) {
+    return this.http
+      .get<ApiResponse<{ documents: KycDocument[] }>>(`${this.base}/${kycId}/documents`)
+      .pipe(map(res => res.data.documents));
   }
 
   submit(kycId: string) {

@@ -38,6 +38,13 @@ export class KycController {
     } catch (err) { next(err); }
   };
 
+  getDocuments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const docs = await this.service.getDocuments(req.params.kycId, req.user!.id);
+      sendSuccess(res, { documents: docs });
+    } catch (err) { next(err); }
+  };
+
   handleWebhook = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       await this.service.handleOnfidoWebhook(req.body);

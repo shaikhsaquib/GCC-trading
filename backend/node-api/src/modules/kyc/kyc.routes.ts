@@ -19,6 +19,7 @@ export function createKycRouter(controller: KycController): Router {
   // Investor routes
   router.get('/status',               controller.getStatus);
   router.post('/start',               controller.startSubmission);
+  router.get('/:kycId/documents',     controller.getDocuments);
   router.post('/:kycId/documents',    upload.single('file'), controller.uploadDocument);
   router.post('/:kycId/submit',       controller.submit);
 
