@@ -45,8 +45,15 @@ async function bootstrap(): Promise<void> {
     });
   }
 
-  // Verify PostgreSQL is reachable
-  const pgOk = await db.healthCheck();
+  // Verify PostgreSQL is reachable — retry up to 5× with backoff for cold starts
+  let pgOk = false;
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    pgOk = await db.healthCheck();
+    if (pgOk) break;
+    const wait = attempt * 2_000;
+    logger.warn(`PostgreSQL not ready (attempt ${attempt}/5) — retrying in ${wait / 1000}s`);
+    await new Promise(r => setTimeout(r, wait));
+  }
   if (!pgOk) throw new Error('PostgreSQL is unreachable at startup');
 
   // 2. Register domain event consumers

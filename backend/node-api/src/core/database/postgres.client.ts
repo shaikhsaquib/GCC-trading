@@ -10,12 +10,17 @@ class PostgresClient {
   private readonly pool: Pool;
 
   constructor() {
+    // Supabase and most cloud PostgreSQL providers require SSL. Enable it
+    // automatically unless the connection string opts out (sslmode=disable).
+    const needsSsl = !config.database.url.includes('sslmode=disable') && config.isProd;
+
     this.pool = new Pool({
       connectionString: config.database.url,
       min:              config.database.poolMin,
       max:              config.database.poolMax,
-      idleTimeoutMillis: 30_000,
-      connectionTimeoutMillis: 10_000,
+      idleTimeoutMillis:       30_000,
+      connectionTimeoutMillis: 30_000, // Raised for cold-start on Render free tier
+      ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
     });
 
     this.pool.on('error', (err) => {
