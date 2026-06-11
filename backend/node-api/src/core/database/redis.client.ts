@@ -20,7 +20,7 @@ class RedisClient {
     }
 
     this.client = new Redis(url, {
-      maxRetriesPerRequest: null,  // Let ioredis retry indefinitely on transient errors
+      maxRetriesPerRequest: 1,     // Fail fast so callers don't hang when Redis is unavailable
       enableReadyCheck:     false, // Upstash doesn't support INFO server used by ready check
       lazyConnect:          true,
       retryStrategy: (times) => Math.min(times * 500, 10_000), // cap at 10s backoff

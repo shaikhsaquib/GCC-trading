@@ -36,9 +36,13 @@ export async function maintenanceCheck(
   _res: Response,
   next: NextFunction,
 ): Promise<void> {
-  const maintenance = await redis.getFeatureFlag('MAINTENANCE_MODE');
-  if (maintenance) {
-    return next(new ServiceUnavailableError('Platform is under scheduled maintenance'));
+  try {
+    const maintenance = await redis.getFeatureFlag('MAINTENANCE_MODE');
+    if (maintenance) {
+      return next(new ServiceUnavailableError('Platform is under scheduled maintenance'));
+    }
+  } catch {
+    // Redis unavailable — assume not in maintenance, let request proceed
   }
   next();
 }
