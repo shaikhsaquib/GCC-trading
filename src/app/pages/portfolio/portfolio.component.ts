@@ -4,6 +4,7 @@ import { PortfolioService } from '../../services/portfolio.service';
 import { PortfolioHolding, PortfolioSummary, CouponEvent } from '../../core/models/api.models';
 import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
+import { CountUpDirective } from '../../shared/count-up.directive';
 
 interface HoldingDisplay {
   name:      string;
@@ -25,15 +26,28 @@ interface HoldingDisplay {
 interface DonutSegment {
   label:  string;
   pct:    number;
+  value:  number;
   color:  string;
   dash:   string;
   offset: number;
 }
 
+interface PortfolioKpi {
+  label:     string;
+  value:     string;
+  raw:       number | null;
+  prefix?:   string;
+  suffix?:   string;
+  decimals?: number;
+  color:     string;
+  sub:       string | null;
+  up:        boolean;
+}
+
 @Component({
   selector: 'app-portfolio',
   standalone: true,
-  imports: [NgClass, DecimalPipe],
+  imports: [NgClass, DecimalPipe, CountUpDirective],
   templateUrl: './portfolio.component.html',
   styleUrl: './portfolio.component.css',
 })
@@ -46,12 +60,12 @@ export class PortfolioComponent implements OnInit {
   activeType      = signal<string>('All');
   totalValue      = signal(0);
 
-  kpis: Array<{ label: string; value: string; color: string; sub: string | null; up: boolean }> = [
-    { label: 'Total Portfolio Value', value: '—', color: 'var(--text-primary)', sub: null, up: true },
-    { label: 'Unrealized P&L',        value: '—', color: 'var(--success)',      sub: null, up: true },
-    { label: 'Avg YTM',               value: '—', color: 'var(--accent-cyan)',  sub: null, up: true },
-    { label: 'Accrued Interest',       value: '—', color: 'var(--accent-teal)', sub: null, up: true },
-    { label: 'Holdings Count',         value: '—', color: 'var(--text-primary)', sub: null, up: true },
+  kpis: PortfolioKpi[] = [
+    { label: 'Total Portfolio Value', value: '—', raw: null, color: 'var(--text-primary)', sub: null, up: true },
+    { label: 'Unrealized P&L',        value: '—', raw: null, color: 'var(--success)',      sub: null, up: true },
+    { label: 'Avg YTM',               value: '—', raw: null, color: 'var(--accent-cyan)',  sub: null, up: true },
+    { label: 'Accrued Interest',       value: '—', raw: null, color: 'var(--accent-teal)', sub: null, up: true },
+    { label: 'Holdings Count',         value: '—', raw: null, color: 'var(--text-primary)', sub: null, up: true },
   ];
 
   donutSegments: DonutSegment[] = [];
@@ -86,11 +100,11 @@ export class PortfolioComponent implements OnInit {
           : '0.00';
         this.totalValue.set(s.totalValue);
         this.kpis = [
-          { label: 'Total Portfolio Value', value: `${currency} ${s.totalValue.toLocaleString()}`,  color: 'var(--text-primary)', sub: null, up: true },
-          { label: 'Unrealized P&L',        value: `${pnlUp ? '+' : ''}${currency} ${s.unrealizedPnl.toLocaleString()}`, color: pnlUp ? 'var(--success)' : 'var(--danger)', sub: `${pnlUp ? '+' : ''}${pnlPct}%`, up: pnlUp },
-          { label: 'Avg YTM',               value: '—',                                              color: 'var(--accent-cyan)',  sub: null, up: true },
-          { label: 'Accrued Interest',       value: `${currency} ${s.totalCouponReceived.toLocaleString()}`, color: 'var(--accent-teal)', sub: null, up: true },
-          { label: 'Holdings Count',         value: s.holdingsCount.toString(),                      color: 'var(--text-primary)', sub: null, up: true },
+          { label: 'Total Portfolio Value', value: `${currency} ${s.totalValue.toLocaleString()}`,  raw: s.totalValue, prefix: `${currency} `, color: 'var(--text-primary)', sub: null, up: true },
+          { label: 'Unrealized P&L',        value: `${pnlUp ? '+' : ''}${currency} ${s.unrealizedPnl.toLocaleString()}`, raw: s.unrealizedPnl, prefix: `${pnlUp ? '+' : ''}${currency} `, color: pnlUp ? 'var(--success)' : 'var(--danger)', sub: `${pnlUp ? '+' : ''}${pnlPct}%`, up: pnlUp },
+          { label: 'Avg YTM',               value: '—',                                              raw: null, color: 'var(--accent-cyan)',  sub: null, up: true },
+          { label: 'Accrued Interest',       value: `${currency} ${s.totalCouponReceived.toLocaleString()}`, raw: s.totalCouponReceived, prefix: `${currency} `, color: 'var(--accent-teal)', sub: null, up: true },
+          { label: 'Holdings Count',         value: s.holdingsCount.toString(),                      raw: s.holdingsCount, color: 'var(--text-primary)', sub: null, up: true },
         ];
       },
       error: () => {
@@ -206,8 +220,10 @@ export class PortfolioComponent implements OnInit {
 
   private updateAvgYtm(holdings: HoldingDisplay[]) {
     if (!holdings.length) return;
-    const avg = (holdings.reduce((s, h) => s + h.ytm, 0) / holdings.length).toFixed(2);
-    this.kpis = this.kpis.map((k, i) => i === 2 ? { ...k, value: `${avg}%` } : k);
+    const avg = holdings.reduce((s, h) => s + h.ytm, 0) / holdings.length;
+    this.kpis = this.kpis.map((k, i) => i === 2
+      ? { ...k, value: `${avg.toFixed(2)}%`, raw: avg, suffix: '%', decimals: 2 }
+      : k);
   }
 
   private updateDonutFromHoldings(holdings: PortfolioHolding[]) {
@@ -230,10 +246,35 @@ export class PortfolioComponent implements OnInit {
       .map(([label, v]) => {
         const pct  = Math.round((v / total) * 100);
         const dash = `${(pct / 100) * c} ${c}`;
-        const seg: DonutSegment = { label, pct, color: colors[label] ?? '#00d4ff', dash, offset: -offset };
+        const seg: DonutSegment = { label, pct, value: v, color: colors[label] ?? '#00d4ff', dash, offset: -offset };
         offset += (pct / 100) * c;
         return seg;
       });
+  }
+
+  // ── Donut tooltip ─────────────────────────────────────────────────────────────
+
+  donutTooltip = signal<{ x: number; y: number; lines: string[] } | null>(null);
+  hoveredSeg   = signal<string | null>(null);
+
+  onSegHover(ev: MouseEvent, seg: DonutSegment) {
+    const wrap = (ev.currentTarget as Element).closest('.donut-chart-wrapper');
+    if (!wrap) return;
+    const box = wrap.getBoundingClientRect();
+    this.hoveredSeg.set(seg.label);
+    this.donutTooltip.set({
+      x: ev.clientX - box.left,
+      y: ev.clientY - box.top - 12,
+      lines: [
+        seg.label,
+        `${seg.pct}% · SAR ${seg.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+      ],
+    });
+  }
+
+  onSegLeave() {
+    this.hoveredSeg.set(null);
+    this.donutTooltip.set(null);
   }
 
   ytmColor(ytm: number): string {

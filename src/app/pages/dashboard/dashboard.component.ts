@@ -9,10 +9,15 @@ import { KycService }      from '../../services/kyc.service';
 import {
   AdminStats, WalletBalance, PortfolioSummary, KycSubmission, WalletTransaction, AuditEntry,
 } from '../../core/models/api.models';
+import { CountUpDirective } from '../../shared/count-up.directive';
 
 interface Kpi {
   label:     string;
   value:     string;
+  raw:       number | null;
+  prefix?:   string;
+  suffix?:   string;
+  decimals?: number;
   icon:      string;
   iconBg:    string;
   iconColor: string;
@@ -39,7 +44,7 @@ interface ChartBar {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [RouterLink, NgClass],
+  imports: [RouterLink, NgClass, CountUpDirective],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
 })
@@ -164,6 +169,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.chartData().reduce((s, r) => s + (parseInt(r.trade_count) || 0), 0);
   }
 
+  // ── Chart tooltip ────────────────────────────────────────────────────────────
+
+  chartTooltip = signal<{ x: number; y: number; lines: string[] } | null>(null);
+  hoveredBar   = signal<string | null>(null);
+
+  onBarHover(ev: MouseEvent, bar: ChartBar) {
+    const rect = (ev.currentTarget as SVGRectElement).getBoundingClientRect();
+    const wrap = (ev.currentTarget as Element).closest('.chart-area')?.getBoundingClientRect();
+    if (!wrap) return;
+    this.hoveredBar.set(bar.date);
+    this.chartTooltip.set({
+      x: Math.min(Math.max(rect.left - wrap.left + rect.width / 2, 60), wrap.width - 60),
+      y: rect.top - wrap.top - 8,
+      lines: [
+        new Date(bar.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        `SAR ${bar.volume.toLocaleString(undefined, { maximumFractionDigits: 0 })} · ${bar.count} trade${bar.count !== 1 ? 's' : ''}`,
+      ],
+    });
+  }
+
+  onBarLeave() {
+    this.hoveredBar.set(null);
+    this.chartTooltip.set(null);
+  }
+
   // ── Lifecycle ────────────────────────────────────────────────────────────────
 
   ngOnInit() {
@@ -256,30 +286,35 @@ export class DashboardComponent implements OnInit, OnDestroy {
         label: 'Total AUM', icon: 'account_balance',
         iconBg: 'rgba(0,212,255,0.1)', iconColor: 'var(--accent-cyan)',
         value: `SAR ${aumM.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}M`,
+        raw: aumM, prefix: 'SAR ', suffix: 'M', decimals: 2,
         change: null, up: true,
       },
       {
         label: 'Active Bonds', icon: 'public',
         iconBg: 'rgba(23,195,178,0.1)', iconColor: 'var(--accent-teal)',
         value: s.totalBonds.toLocaleString(),
+        raw: s.totalBonds,
         change: null, up: true,
       },
       {
         label: 'Open Orders', icon: 'swap_horiz',
         iconBg: 'rgba(124,77,255,0.1)', iconColor: 'var(--accent-purple)',
         value: s.openOrders.toLocaleString(),
+        raw: s.openOrders,
         change: null, up: false,
       },
       {
         label: 'KYC Pending', icon: 'pending_actions',
         iconBg: 'rgba(255,165,2,0.1)', iconColor: 'var(--warning)',
         value: s.pendingKyc.toLocaleString(),
+        raw: s.pendingKyc,
         change: null, up: false,
       },
       {
         label: "Today's Volume", icon: 'bar_chart',
         iconBg: 'rgba(46,213,115,0.1)', iconColor: 'var(--success)',
         value: `SAR ${s.tradeVolumeToday.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+        raw: s.tradeVolumeToday, prefix: 'SAR ',
         change: volDelta,
         up: s.tradeVolumeToday >= s.volumeYesterday,
       },
@@ -287,6 +322,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         label: 'Trades Today', icon: 'swap_vert',
         iconBg: 'rgba(0,212,255,0.08)', iconColor: 'var(--accent-cyan)',
         value: s.tradesToday.toLocaleString(),
+        raw: s.tradesToday,
         change: null, up: true,
       },
     ];
@@ -370,18 +406,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
         label: 'Wallet Balance', icon: 'account_balance_wallet',
         iconBg: 'rgba(0,212,255,0.1)', iconColor: 'var(--accent-cyan)',
         value: w ? `${w.currency} ${w.availableBalance.toLocaleString()}` : '—',
+        raw: w ? w.availableBalance : null,
+        prefix: w ? `${w.currency} ` : '',
         sub: w ? `${w.currency} ${w.frozenBalance.toLocaleString()} frozen` : 'No wallet yet',
       },
       {
         label: 'Portfolio Value', icon: 'trending_up',
         iconBg: 'rgba(23,195,178,0.1)', iconColor: 'var(--accent-teal)',
         value: p ? `${p.currency} ${p.totalValue.toLocaleString()}` : '—',
+        raw: p ? p.totalValue : null,
+        prefix: p ? `${p.currency} ` : '',
         sub: p ? `${p.holdingsCount} bond${p.holdingsCount !== 1 ? 's' : ''}` : 'No holdings',
       },
       {
         label: 'Unrealized P&L', icon: 'show_chart',
         iconBg: 'rgba(46,213,115,0.1)', iconColor: 'var(--success)',
         value: p ? `${p.currency} ${p.unrealizedPnl >= 0 ? '+' : ''}${p.unrealizedPnl.toLocaleString()}` : '—',
+        raw: p ? p.unrealizedPnl : null,
+        prefix: p ? `${p.currency} ${p.unrealizedPnl >= 0 ? '+' : ''}` : '',
         sub: p && p.totalCost > 0
           ? `${((p.unrealizedPnl / p.totalCost) * 100).toFixed(2)}% return`
           : 'No cost basis',
@@ -390,6 +432,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
         label: 'Coupon Income', icon: 'payments',
         iconBg: 'rgba(124,77,255,0.1)', iconColor: 'var(--accent-purple)',
         value: p ? `${p.currency} ${p.totalCouponReceived.toLocaleString()}` : '—',
+        raw: p ? p.totalCouponReceived : null,
+        prefix: p ? `${p.currency} ` : '',
         sub: 'Total received',
       },
     ];

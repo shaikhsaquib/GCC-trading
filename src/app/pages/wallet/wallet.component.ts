@@ -5,11 +5,12 @@ import { WalletService } from '../../services/wallet.service';
 import { WalletBalance, WalletTransaction } from '../../core/models/api.models';
 import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
+import { CountUpDirective } from '../../shared/count-up.directive';
 
 @Component({
   selector: 'app-wallet',
   standalone: true,
-  imports: [NgClass, FormsModule, DecimalPipe],
+  imports: [NgClass, FormsModule, DecimalPipe, CountUpDirective],
   templateUrl: './wallet.component.html',
   styleUrl: './wallet.component.css',
 })
@@ -55,11 +56,14 @@ export class WalletComponent implements OnInit {
     { id: 'stc',  icon: 'phone_android',   label: 'STC Pay',               desc: 'Instant · Free',     color: 'var(--accent-purple)' },
   ];
 
-  subBalances = [
-    { label: 'Available Cash',   amount: '—', icon: 'account_balance_wallet', iconBg: 'rgba(0,212,255,0.1)',  iconColor: 'var(--accent-cyan)'   },
-    { label: 'Total Balance',    amount: '—', icon: 'trending_up',            iconBg: 'rgba(23,195,178,0.1)', iconColor: 'var(--accent-teal)'   },
-    { label: 'Frozen / Pending', amount: '—', icon: 'pending',                iconBg: 'rgba(255,193,7,0.1)',  iconColor: 'var(--warning)'       },
-    { label: 'Coupon Income',    amount: '—', icon: 'payments',               iconBg: 'rgba(46,213,115,0.1)', iconColor: 'var(--success)'       },
+  subBalances: Array<{
+    label: string; amount: string; raw: number | null;
+    icon: string; iconBg: string; iconColor: string;
+  }> = [
+    { label: 'Available Cash',   amount: '—', raw: null, icon: 'account_balance_wallet', iconBg: 'rgba(0,212,255,0.1)',  iconColor: 'var(--accent-cyan)'   },
+    { label: 'Total Balance',    amount: '—', raw: null, icon: 'trending_up',            iconBg: 'rgba(23,195,178,0.1)', iconColor: 'var(--accent-teal)'   },
+    { label: 'Frozen / Pending', amount: '—', raw: null, icon: 'pending',                iconBg: 'rgba(255,193,7,0.1)',  iconColor: 'var(--warning)'       },
+    { label: 'Coupon Income',    amount: '—', raw: null, icon: 'payments',               iconBg: 'rgba(46,213,115,0.1)', iconColor: 'var(--success)'       },
   ];
 
   chartPath       = '';
@@ -67,6 +71,11 @@ export class WalletComponent implements OnInit {
   chartDateLabels: string[] = [];
   monthChangeAmt  = 0;
   monthChangePct  = 0;
+
+  // Chart hover tooltip
+  chartTooltip = signal<{ x: number; y: number; lines: string[] } | null>(null);
+  hoverPoint   = signal<{ x: number; y: number } | null>(null);
+  private chartPoints: Array<{ x: number; y: number; value: number; label: string }> = [];
 
   private _rawTx = signal<WalletTransaction[]>([]);
 
@@ -154,10 +163,10 @@ export class WalletComponent implements OnInit {
       .filter(t => t.type === 'COUPON' && t.status === 'COMPLETED')
       .reduce((s, t) => s + parseFloat(t.amount), 0);
     this.subBalances = [
-      { label: 'Available Cash',   amount: fmt(b.availableBalance), icon: 'account_balance_wallet', iconBg: 'rgba(0,212,255,0.1)',  iconColor: 'var(--accent-cyan)'   },
-      { label: 'Total Balance',    amount: fmt(b.balance),          icon: 'trending_up',            iconBg: 'rgba(23,195,178,0.1)', iconColor: 'var(--accent-teal)'   },
-      { label: 'Frozen / Pending', amount: fmt(b.frozenBalance),    icon: 'pending',                iconBg: 'rgba(255,193,7,0.1)',  iconColor: 'var(--warning)'       },
-      { label: 'Coupon Income',    amount: fmt(couponIncome),       icon: 'payments',               iconBg: 'rgba(46,213,115,0.1)', iconColor: 'var(--success)'       },
+      { label: 'Available Cash',   amount: fmt(b.availableBalance), raw: b.availableBalance, icon: 'account_balance_wallet', iconBg: 'rgba(0,212,255,0.1)',  iconColor: 'var(--accent-cyan)'   },
+      { label: 'Total Balance',    amount: fmt(b.balance),          raw: b.balance,          icon: 'trending_up',            iconBg: 'rgba(23,195,178,0.1)', iconColor: 'var(--accent-teal)'   },
+      { label: 'Frozen / Pending', amount: fmt(b.frozenBalance),    raw: b.frozenBalance,    icon: 'pending',                iconBg: 'rgba(255,193,7,0.1)',  iconColor: 'var(--warning)'       },
+      { label: 'Coupon Income',    amount: fmt(couponIncome),       raw: couponIncome,       icon: 'payments',               iconBg: 'rgba(46,213,115,0.1)', iconColor: 'var(--success)'       },
     ];
   }
 
@@ -192,13 +201,49 @@ export class WalletComponent implements OnInit {
 
     const maxVal = Math.max(...pts, 1);
     const W = 300; const H = 80;
-    const coords = pts.map((v, i) => {
-      const x = ((i / (days - 1)) * W).toFixed(1);
-      const y = (H - (v / maxVal) * (H - 6)).toFixed(1);
-      return `${x},${y}`;
-    });
+    this.chartPoints = pts.map((v, i) => ({
+      x:     +((i / (days - 1)) * W).toFixed(1),
+      y:     +(H - (v / maxVal) * (H - 6)).toFixed(1),
+      value: v,
+      label: new Date(now - (days - 1 - i) * 86_400_000)
+        .toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    }));
+    const coords = this.chartPoints.map(p => `${p.x},${p.y}`);
     this.chartLine = `M ${coords.join(' L ')}`;
     this.chartPath = `${this.chartLine} L ${W},${H} L 0,${H} Z`;
+  }
+
+  // ── Chart tooltip ─────────────────────────────────────────────────────────────
+
+  onChartMove(ev: MouseEvent) {
+    if (!this.chartPoints.length) return;
+    const svg  = (ev.currentTarget as SVGRectElement).ownerSVGElement;
+    const wrap = svg?.closest('.chart-wrap') as HTMLElement | null;
+    if (!svg || !wrap) return;
+
+    const box  = svg.getBoundingClientRect();
+    const wrapBox = wrap.getBoundingClientRect();
+    const xView = ((ev.clientX - box.left) / box.width) * 300;
+
+    let nearest = this.chartPoints[0];
+    for (const p of this.chartPoints) {
+      if (Math.abs(p.x - xView) < Math.abs(nearest.x - xView)) nearest = p;
+    }
+
+    this.hoverPoint.set({ x: nearest.x, y: nearest.y });
+    this.chartTooltip.set({
+      x: Math.min(Math.max(box.left - wrapBox.left + (nearest.x / 300) * box.width, 55), wrapBox.width - 55),
+      y: box.top - wrapBox.top + (nearest.y / 100) * box.height - 8,
+      lines: [
+        nearest.label,
+        `${this.balanceCurrency()} ${nearest.value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
+      ],
+    });
+  }
+
+  onChartLeave() {
+    this.hoverPoint.set(null);
+    this.chartTooltip.set(null);
   }
 
   private computeMonthChange(txs: WalletTransaction[]) {

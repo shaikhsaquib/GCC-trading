@@ -1,6 +1,7 @@
 .header {
   height: var(--header-height);
-  background: var(--bg-dark);
+  background: rgba(9, 15, 29, 0.78);
+  backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -215,6 +216,7 @@
   right: 0;
   width: 220px;
   background: var(--bg-card);
+  backdrop-filter: blur(18px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);

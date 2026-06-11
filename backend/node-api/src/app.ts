@@ -82,23 +82,8 @@ export function createApp(): Application {
   // ── API routes ────────────────────────────────────────────────────────────
   const apiPrefix = `/api/${config.api.version}`;
 
-  // Proxy /api/v1/aml/* → .NET AML microservice (in all environments)
-  // The .NET service handles its own JWT auth; we just forward the request.
-  app.use(
-    `${apiPrefix}/aml`,
-    createProxyMiddleware({
-      target:       config.dotnet.amlUrl,
-      changeOrigin: true,
-      on: {
-        error: (_err, _req, res) => {
-          (res as express.Response).status(502).json({
-            success: false,
-            error: { code: 'SERVICE_UNAVAILABLE', message: 'AML service is currently unavailable' },
-          });
-        },
-      },
-    }) as express.RequestHandler,
-  );
+  // AML alerts are served natively from the aml.alerts table (modules/aml) —
+  // no proxy to the .NET AML service, which is not deployed in this environment.
 
   const apiRouter = createApiRouter();
 

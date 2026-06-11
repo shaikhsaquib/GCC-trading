@@ -25,7 +25,11 @@
           <div class="balance-label">Total Balance</div>
           <div class="balance-amount">
             @if (loading()) { <span style="color:rgba(255,255,255,0.4)">—</span> }
-            @else { {{ balanceCurrency() }} {{ totalBalance() | number:'1.2-2' }} }
+            @else {
+              <span [appCountUp]="totalBalance()"
+                    [countUpPrefix]="balanceCurrency() + ' '"
+                    [countUpDecimals]="2"></span>
+            }
           </div>
           <div class="balance-sub">
             @if (!loading() && !apiError()) {
@@ -56,6 +60,11 @@
                 <div class="sub-label">{{ b.label }}</div>
                 <div class="sub-amount">
                   @if (loading()) { <span style="color:var(--text-muted)">—</span> }
+                  @else if (b.raw !== null) {
+                    <span [appCountUp]="b.raw"
+                          [countUpPrefix]="balanceCurrency() + ' '"
+                          [countUpDecimals]="2"></span>
+                  }
                   @else { {{ b.amount }} }
                 </div>
               </div>
@@ -172,17 +181,30 @@
             @if (txLoading()) {
               <div class="skeleton" style="height:100px"></div>
             } @else {
-              <svg width="100%" height="100" viewBox="0 0 300 100" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="var(--accent-cyan)" stop-opacity="0.3"/>
-                    <stop offset="100%" stop-color="var(--accent-cyan)" stop-opacity="0"/>
-                  </linearGradient>
-                </defs>
-                <path [attr.d]="chartPath" fill="url(#chartFill)"/>
-                <path [attr.d]="chartLine" fill="none" stroke="var(--accent-cyan)" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
+              <div class="chart-wrap">
+                <svg width="100%" height="100" viewBox="0 0 300 100" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="var(--accent-cyan)" stop-opacity="0.3"/>
+                      <stop offset="100%" stop-color="var(--accent-cyan)" stop-opacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  <path [attr.d]="chartPath" fill="url(#chartFill)"/>
+                  <path [attr.d]="chartLine" fill="none" stroke="var(--accent-cyan)" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round"/>
+                  @if (hoverPoint(); as hp) {
+                    <circle [attr.cx]="hp.x" [attr.cy]="hp.y" r="3.5"
+                            fill="var(--accent-cyan)" stroke="#0e1a2d" stroke-width="1.5"/>
+                  }
+                  <rect x="0" y="0" width="300" height="100" fill="transparent"
+                        (mousemove)="onChartMove($event)" (mouseleave)="onChartLeave()"/>
+                </svg>
+                @if (chartTooltip(); as tt) {
+                  <div class="chart-tooltip" [style.left.px]="tt.x" [style.top.px]="tt.y">
+                    @for (line of tt.lines; track $index) { <div>{{ line }}</div> }
+                  </div>
+                }
+              </div>
               <div class="chart-labels">
                 @for (lbl of chartDateLabels; track lbl) { <span>{{ lbl }}</span> }
               </div>

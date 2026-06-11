@@ -18,6 +18,7 @@ import { createBondsRouter }         from '../modules/bonds/bonds.routes';
 import { createOrdersRouter }        from '../modules/orders/orders.routes';
 import { createPortfolioRouter }     from '../modules/portfolio/portfolio.routes';
 import { createSettlementsRouter }   from '../modules/settlements/settlements.routes';
+import { createAmlRouter }           from '../modules/aml/aml.routes';
 
 // Services & Repositories (dependency wiring)
 import { AuthRepository }          from '../modules/auth/auth.repository';
@@ -87,6 +88,7 @@ export function createApiRouter(): Router {
   router.use('/orders',        createOrdersRouter());
   router.use('/portfolio',     createPortfolioRouter());
   router.use('/settlements',   createSettlementsRouter());
+  router.use('/aml',           createAmlRouter());
 
   return router;
 }
