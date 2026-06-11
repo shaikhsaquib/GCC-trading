@@ -10,7 +10,16 @@ class RedisClient {
   private readonly client: Redis;
 
   constructor() {
-    this.client = new Redis(config.redis.url, {
+    // Upstash requires TLS. If the URL uses redis:// against an upstash.io
+    // host, the TCP connection succeeds but Upstash closes it immediately,
+    // causing an endless connect/reconnect loop. Upgrade the scheme here.
+    let url = config.redis.url;
+    if (url.startsWith('redis://') && url.includes('upstash.io')) {
+      logger.warn('REDIS_URL uses redis:// against Upstash — upgrading to rediss:// (TLS required)');
+      url = url.replace('redis://', 'rediss://');
+    }
+
+    this.client = new Redis(url, {
       maxRetriesPerRequest: null,  // Let ioredis retry indefinitely on transient errors
       enableReadyCheck:     false, // Upstash doesn't support INFO server used by ready check
       lazyConnect:          true,
@@ -18,7 +27,10 @@ class RedisClient {
     });
 
     this.client.on('connect',        () => logger.info('Redis connected'));
+    this.client.on('ready',          () => logger.info('Redis ready'));
     this.client.on('error',  (err)   => logger.error('Redis error', { error: err.message }));
+    this.client.on('close',          () => logger.warn('Redis connection closed'));
+    this.client.on('end',            () => logger.warn('Redis connection ended'));
     this.client.on('reconnecting',   () => logger.warn('Redis reconnecting...'));
   }
 
