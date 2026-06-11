@@ -223,12 +223,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
         const s   = health.services;
         const api = health.status === 'healthy' || health.status === 'degraded';
         this.services = [
-          { name: 'Auth Service (Node.js)',    uptime: 100, up: api && s.postgresql && s.redis },
-          { name: 'Trading Engine (.NET)',     uptime: 100, up: api },
-          { name: 'Bond Marketplace (.NET)',   uptime: 100, up: api },
-          { name: 'Settlement Service (.NET)', uptime: 100, up: api },
-          { name: 'Notification Service',      uptime: 100, up: api && (s.postgresql || true) },
-          { name: 'Scheduler (Node-cron)',     uptime: 100, up: api },
+          // Auth requires PostgreSQL; Redis is optional (sessions/OTP degrade but login works)
+          { name: 'Auth Service (Node.js)',    uptime: 100, up: api && s.postgresql },
+          { name: 'Trading Engine (.NET)',     uptime: 100, up: api && s.postgresql },
+          { name: 'Bond Marketplace (.NET)',   uptime: 100, up: api && s.postgresql },
+          { name: 'Settlement Service (.NET)', uptime: 100, up: api && s.postgresql },
+          { name: 'Notification Service',      uptime: 100, up: api && s.mongodb },
+          { name: 'Scheduler (Node-cron)',     uptime: 100, up: api && s.postgresql },
         ];
       },
       error: () => {

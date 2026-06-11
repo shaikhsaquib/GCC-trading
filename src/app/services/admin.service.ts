@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { map } from 'rxjs/operators';
+import { map, catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AdminStats, AdminUser, Paginated, AuditEntry, ApiResponse } from '../core/models/api.models';
 
@@ -94,6 +95,14 @@ export class AdminService {
   }
 
   getServiceHealth() {
-    return this.http.get<ServiceHealth>(`${this.apiRoot}/health`);
+    // Use catchError so a 503 (degraded) response still populates the health panel
+    // instead of triggering the error path and marking all services as down.
+    return this.http.get<ServiceHealth>(`${this.apiRoot}/health`).pipe(
+      catchError(() => of({
+        status: 'degraded' as const,
+        timestamp: new Date().toISOString(),
+        services: { postgresql: false, redis: false, mongodb: false },
+      })),
+    );
   }
 }
