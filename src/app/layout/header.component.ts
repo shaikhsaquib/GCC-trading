@@ -1,7 +1,8 @@
-import { Component, inject, computed, signal, OnInit, HostListener, ViewChild, ElementRef } from '@angular/core';
+import { Component, inject, computed, signal, OnInit, OnDestroy, HostListener, ViewChild, ElementRef } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subscription, interval } from 'rxjs';
 import { LayoutService } from './layout.service';
 import { AuthService } from '../core/services/auth.service';
 import { NotificationsService } from '../services/notifications.service';
@@ -16,7 +17,7 @@ interface Ticker { symbol: string; price: string; change: string; up: boolean; }
   templateUrl: './header.component.html',
   styleUrl: './header.component.css',
 })
-export class HeaderComponent implements OnInit {
+export class HeaderComponent implements OnInit, OnDestroy {
   readonly layout           = inject(LayoutService);
   readonly auth             = inject(AuthService);
   private readonly notifSvc = inject(NotificationsService);
@@ -80,9 +81,17 @@ export class HeaderComponent implements OnInit {
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
+  private unreadPollSub: Subscription | null = null;
+
   ngOnInit(): void {
     this.loadUnreadCount();
     this.loadTickers();
+    // Keep the bell badge fresh — new trades/KYC events appear without a reload
+    this.unreadPollSub = interval(60_000).subscribe(() => this.loadUnreadCount());
+  }
+
+  ngOnDestroy(): void {
+    this.unreadPollSub?.unsubscribe();
   }
 
   private loadUnreadCount(): void {
