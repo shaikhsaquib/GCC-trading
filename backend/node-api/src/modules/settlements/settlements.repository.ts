@@ -14,59 +14,68 @@ export class SettlementsRepository {
     let   i = 1;
 
     if (params.status) {
-      conditions.push(`s.status = $${i++}`);
+      conditions.push(`st.status = $${i++}`);
       values.push(params.status);
     }
     if (params.userId) {
-      conditions.push(`(s.buyer_id = $${i++} OR s.seller_id = $${i++})`);
-      values.push(params.userId, params.userId);
+      conditions.push(`(t.buyer_id = $${i} OR t.seller_id = $${i})`);
+      values.push(params.userId);
+      i++;
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
+    // Settlement rows only hold trade_id + status/dates; trade economics
+    // (bond, quantity, price, parties) come from trading.trades.
     const [rows, countRow] = await Promise.all([
       db.query<Record<string, unknown>>(
-        `SELECT s.id, s.trade_id, s.bond_id,
+        `SELECT st.id, st.trade_id, t.bond_id,
                 COALESCE(b.name, '') AS bond_name,
                 COALESCE(b.isin, '') AS isin,
-                s.side, s.quantity, s.price,
-                s.quantity * s.price AS value,
-                s.buyer_id, s.seller_id,
-                s.status, s.trade_date, s.settlement_date,
-                s.failure_reason, s.created_at
-         FROM trading.settlements s
-         LEFT JOIN bonds.listings b ON b.id = s.bond_id
+                t.quantity, t.price,
+                t.quantity * t.price AS value,
+                t.buyer_id, t.seller_id,
+                st.status, st.trade_date, st.settlement_date,
+                st.failure_reason, st.created_at
+         FROM settlement.settlements st
+         JOIN trading.trades  t ON t.id = st.trade_id
+         LEFT JOIN bonds.listings b ON b.id = t.bond_id
          ${where}
-         ORDER BY s.created_at DESC
+         ORDER BY st.created_at DESC
          LIMIT $${i} OFFSET $${i + 1}`,
         [...values, params.pageSize, offset],
       ),
       db.query<{ count: string }>(
-        `SELECT COUNT(*) AS count FROM trading.settlements s ${where}`,
+        `SELECT COUNT(*) AS count
+         FROM settlement.settlements st
+         JOIN trading.trades t ON t.id = st.trade_id
+         ${where}`,
         values,
       ),
     ]);
 
     return {
-      items: rows.rows.map(this.mapRow),
+      items: rows.rows.map(r => this.mapRow(r, params.userId)),
       total: parseInt(countRow.rows[0]?.count ?? '0', 10),
     };
   }
 
   async getStats(userId?: string): Promise<SettlementStats> {
     const condition = userId
-      ? `WHERE buyer_id = $1 OR seller_id = $1`
+      ? `WHERE t.buyer_id = $1 OR t.seller_id = $1`
       : '';
     const values = userId ? [userId] : [];
 
     const row = await db.query<Record<string, unknown>>(
       `SELECT
-         COUNT(*) FILTER (WHERE status = 'Pending')    AS pending,
-         COUNT(*) FILTER (WHERE status = 'Processing') AS processing,
-         COUNT(*) FILTER (WHERE status = 'Settled')    AS completed,
-         COUNT(*) FILTER (WHERE status = 'Failed')     AS failed,
-         COALESCE(SUM(quantity * price) FILTER (WHERE status = 'Settled'), 0) AS total_value
-       FROM trading.settlements ${condition}`,
+         COUNT(*) FILTER (WHERE st.status = 'Pending')                       AS pending,
+         COUNT(*) FILTER (WHERE st.status IN ('Processing', 'Reconciling'))  AS processing,
+         COUNT(*) FILTER (WHERE st.status = 'Completed')                     AS completed,
+         COUNT(*) FILTER (WHERE st.status = 'Failed')                        AS failed,
+         COALESCE(SUM(t.quantity * t.price) FILTER (WHERE st.status = 'Completed'), 0) AS total_value
+       FROM settlement.settlements st
+       JOIN trading.trades t ON t.id = st.trade_id
+       ${condition}`,
       values,
     );
 
@@ -80,19 +89,22 @@ export class SettlementsRepository {
     };
   }
 
-  private mapRow(r: Record<string, unknown>): Settlement {
+  private mapRow(r: Record<string, unknown>, viewerId?: string): Settlement {
+    const buyerId  = String(r['buyer_id']);
+    const sellerId = String(r['seller_id']);
     return {
       id:             String(r['id']),
       tradeId:        String(r['trade_id'] ?? r['id']),
       bondId:         String(r['bond_id']),
       bondName:       String(r['bond_name'] ?? ''),
       isin:           String(r['isin'] ?? ''),
-      side:           r['side'] as 'Buy' | 'Sell',
-      quantity:       Number(r['quantity']),
-      price:          parseFloat(String(r['price'])),
-      value:          parseFloat(String(r['value'])),
-      buyerId:        String(r['buyer_id']),
-      sellerId:       String(r['seller_id']),
+      // Side is relative to the viewer; for admin views (no filter) show Buy
+      side:           viewerId && sellerId === viewerId ? 'Sell' : 'Buy',
+      quantity:       parseFloat(String(r['quantity'] ?? 0)),
+      price:          parseFloat(String(r['price'] ?? 0)),
+      value:          parseFloat(String(r['value'] ?? 0)),
+      buyerId,
+      sellerId,
       status:         r['status'] as Settlement['status'],
       tradeDate:      r['trade_date'] ? new Date(String(r['trade_date'])).toISOString().split('T')[0] : '',
       settlementDate: r['settlement_date'] ? new Date(String(r['settlement_date'])).toISOString().split('T')[0] : '',

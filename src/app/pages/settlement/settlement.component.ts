@@ -272,9 +272,9 @@ export class SettlementComponent implements OnInit {
     const fmtTs      = (d: Date | null) => d ? `${fmtDate(d)} · ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : '—';
     const confirmed  = s.status !== 'Pending';
     const csdSent    = confirmed;
-    const cpConfirm  = s.status === 'Settled' || s.status === 'Processing';
-    const delivered  = s.status === 'Settled';
-    const cashSettled = s.status === 'Settled';
+    const cpConfirm  = s.status === 'Completed' || s.status === 'Processing' || s.status === 'Reconciling';
+    const delivered  = s.status === 'Completed';
+    const cashSettled = s.status === 'Completed';
     const failed     = s.status === 'Failed';
     return [
       { label: 'Trade Executed',             time: fmtTs(tradeDate),  done: true,       active: false },
@@ -291,8 +291,8 @@ export class SettlementComponent implements OnInit {
     const term = this.searchTerm.trim().toLowerCase();
     let list   = this.settlements;
     if (tab === 'Pending T+1')      list = list.filter(s => s.status === 'Pending');
-    else if (tab === 'In Progress') list = list.filter(s => s.status === 'Processing');
-    else if (tab === 'Settled')     list = list.filter(s => s.status === 'Settled');
+    else if (tab === 'In Progress') list = list.filter(s => s.status === 'Processing' || s.status === 'Reconciling');
+    else if (tab === 'Settled')     list = list.filter(s => s.status === 'Completed');
     else if (tab === 'Failed')      list = list.filter(s => s.status === 'Failed');
     if (term) {
       list = list.filter(s =>
@@ -304,5 +304,5 @@ export class SettlementComponent implements OnInit {
     return list;
   }
 
-  statusBadge(s: string) { return { 'badge-warning': s === 'Pending', 'badge-info': s === 'Processing', 'badge-success': s === 'Settled', 'badge-danger': s === 'Failed' }; }
+  statusBadge(s: string) { return { 'badge-warning': s === 'Pending', 'badge-info': s === 'Processing' || s === 'Reconciling', 'badge-success': s === 'Completed', 'badge-danger': s === 'Failed' }; }
 }
