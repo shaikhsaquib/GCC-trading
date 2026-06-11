@@ -33,7 +33,7 @@
           <!-- Notification list -->
           <div class="notif-list">
             @for (n of filteredNotifs(); track n.id) {
-              <div class="notif-item" [class.unread]="!n.read" (click)="n.read = true">
+              <div class="notif-item" [class.unread]="!n.read" (click)="markRead(n.id)">
                 <div class="notif-icon-wrapper" [style.background]="n.iconBg">
                   <span class="material-icons-round" [style.color]="n.iconColor">{{ n.icon }}</span>
                 </div>
@@ -107,9 +107,15 @@
                 }
               </div>
             </div>
-            <button class="btn btn-primary" style="width:100%;justify-content:center">
+            <button class="btn btn-primary" style="width:100%;justify-content:center"
+                    title="Broadcast sending is coming soon"
+                    (click)="sendBroadcast()">
               <span class="material-icons-round">send</span> Send Now
             </button>
+            <small style="display:block;text-align:center;margin-top:8px;color:var(--text-muted);font-size:11px">
+              <span class="material-icons-round" style="font-size:12px;vertical-align:middle">schedule</span>
+              Broadcast delivery is coming soon
+            </small>
           </div>
           } <!-- end @if (isAdmin()) -->
 

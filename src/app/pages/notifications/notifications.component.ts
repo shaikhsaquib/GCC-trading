@@ -3,6 +3,7 @@ import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationsService } from '../../services/notifications.service';
+import { ToastService } from '../../core/services/toast.service';
 import { Notification } from '../../core/models/api.models';
 
 interface NotifDisplay {
@@ -41,6 +42,7 @@ const EVENT_META: Record<string, { title: string; icon: string; bg: string; colo
 })
 export class NotificationsComponent implements OnInit {
   private readonly notifSvc = inject(NotificationsService);
+  private readonly toast    = inject(ToastService);
   readonly auth             = inject(AuthService);
   readonly isAdmin          = this.auth.isAdmin;
 
@@ -105,8 +107,17 @@ export class NotificationsComponent implements OnInit {
         this._allNotifs.set(mapped);
         this.updateTabCounts(mapped);
       },
-      error: () => this.loading.set(false),
+      error: () => {
+        this.loading.set(false);
+        this.error.set('Failed to load notifications');
+        this.toast.error('Failed to load notifications — please try again later');
+      },
     });
+  }
+
+  /** Admin compose panel — broadcast API not available yet. */
+  sendBroadcast() {
+    this.toast.info('Broadcast sending is not yet available');
   }
 
   private mapNotif(n: Notification): NotifDisplay {

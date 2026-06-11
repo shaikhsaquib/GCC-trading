@@ -2,11 +2,13 @@ import { Component, signal, inject, OnInit, OnDestroy } from '@angular/core';
 import { NgClass, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, interval, timer, forkJoin, of } from 'rxjs';
+import { switchMap, map, catchError } from 'rxjs/operators';
 import { TradingService, PlaceOrderDto } from '../../services/trading.service';
 import { BondService } from '../../services/bond.service';
 import { PriceSimulationService, BookRow, TradeRow } from '../../services/price-simulation.service';
-import { Order, Bond } from '../../core/models/api.models';
+import { ToastService } from '../../core/services/toast.service';
+import { Order, Bond, OrderBookEntry } from '../../core/models/api.models';
 
 interface WatchlistBond {
   id:        string;
@@ -45,6 +47,7 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
   private readonly bondSvc    = inject(BondService);
   private readonly route      = inject(ActivatedRoute);
   private readonly sim        = inject(PriceSimulationService);
+  private readonly toast      = inject(ToastService);
 
   orderSide  = signal<'buy' | 'sell'>('buy');
   orderType  = signal('Limit');
@@ -59,6 +62,8 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
   orderSuccess  = signal<string | null>(null);
   orderError    = signal<string | null>(null);
   cancellingId  = signal<string | null>(null);
+  cancellingAll = signal(false);
+  bookLoading   = signal(false);
 
   marketTime = signal(this.formatTime());
   marketOpen = signal(true);
@@ -78,6 +83,7 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
   private tickSub:  Subscription | null = null;
   private tradeSub: Subscription | null = null;
   private clockSub: Subscription | null = null;
+  private bookSub:  Subscription | null = null;
 
   get watchlist() { return this._watchlist(); }
   get myOrders()  {
@@ -96,15 +102,24 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
     this.tickSub?.unsubscribe();
     this.tradeSub?.unsubscribe();
     this.clockSub?.unsubscribe();
+    this.bookSub?.unsubscribe();
     this.sim.stop();
   }
 
   private startClock() {
-    import('rxjs').then(({ interval }) => {
-      this.clockSub = interval(1000).subscribe(() => {
-        this.marketTime.set(this.formatTime());
-      });
+    this.updateMarketStatus();
+    this.clockSub = interval(1000).subscribe(() => {
+      this.marketTime.set(this.formatTime());
+      this.updateMarketStatus();
     });
+  }
+
+  /** GCC market hours: Sun–Thu 09:00–17:00 Asia/Riyadh (UTC+3). */
+  private updateMarketStatus() {
+    const now = new Date();
+    const m = (now.getUTCHours() * 60 + now.getUTCMinutes() + 180) % 1440;
+    const d = now.getUTCDay();
+    this.marketOpen.set(d >= 0 && d <= 4 && m >= 540 && m < 1020);
   }
 
   private formatTime(): string {
@@ -154,9 +169,6 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
           changePct: +tick.changePct.toFixed(3),
         }));
         this.limitPrice = +tick.price.toFixed(2);
-        const { bids, asks } = this.sim.orderBook(tick.price, 5);
-        this.bids.set(bids);
-        this.asks.set(asks);
         // 60% chance of a new trade on each tick
         if (Math.random() < 0.6) {
           const trade = this.sim.randomTrade(tick.price);
@@ -170,14 +182,45 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
     this.selectedBond.set(bond);
     this.limitPrice = parseFloat(bond.price) || 100.25;
     const mid = parseFloat(bond.price) || 100;
-    const { bids, asks } = this.sim.orderBook(mid, 5);
-    this.bids.set(bids);
-    this.asks.set(asks);
-    // Seed with a few initial trades
+    this.startBookPolling(bond.id);
+    // Seed with a few initial trades (simulated demo feed)
     this.recentTrades.set(
       Array.from({ length: 7 }, () => this.sim.randomTrade(mid))
         .sort(() => Math.random() - 0.5)
     );
+  }
+
+  /** Poll the real order book API every 5 seconds for the selected bond. */
+  private startBookPolling(bondId: string) {
+    this.bookSub?.unsubscribe();
+    this.bids.set([]);
+    this.asks.set([]);
+    if (!bondId) return;
+
+    this.bookLoading.set(true);
+    this.bookSub = timer(0, 5000).pipe(
+      switchMap(() => this.tradingSvc.getOrderBook(bondId, 10).pipe(
+        catchError(() => of(null)),
+      )),
+    ).subscribe(res => {
+      this.bookLoading.set(false);
+      const book = res?.data;
+      const bids = book?.bids ?? [];
+      const asks = book?.asks ?? [];
+      const maxQty = Math.max(1, ...bids.map(e => e.quantity), ...asks.map(e => e.quantity));
+      this.bids.set(bids.map(e => this.toBookRow(e, maxQty)));
+      // Best (lowest) ask rendered closest to the mid-price divider
+      this.asks.set(asks.slice().reverse().map(e => this.toBookRow(e, maxQty)));
+    });
+  }
+
+  private toBookRow(e: OrderBookEntry, maxQty: number): BookRow {
+    return {
+      price: e.price.toFixed(2),
+      qty:   e.quantity,
+      depth: Math.max(4, Math.round((e.quantity / maxQty) * 95)),
+      total: ((e.price * e.quantity) / 1_000_000).toFixed(2),
+    };
   }
 
   private loadOrders() {
@@ -223,14 +266,23 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
     this.activateBond(bond);
   }
 
+  /** True when the order form fails basic validation; bound to the submit button + hints. */
+  get orderInvalid(): boolean {
+    if (!this.quantity || this.quantity <= 0) return true;
+    if (this.orderType() !== 'Market' && (!this.limitPrice || this.limitPrice <= 0)) return true;
+    return false;
+  }
+
   placeOrder() {
     const bond = this.selectedBond();
     if (!bond.id) {
       this.orderError.set('No bond selected — please wait for the bond list to load.');
       return;
     }
-    if (this.quantity <= 0) {
-      this.orderError.set('Quantity must be greater than 0.');
+    if (this.orderInvalid) {
+      this.orderError.set(this.quantity <= 0
+        ? 'Quantity must be greater than 0.'
+        : 'Limit price must be greater than 0.');
       return;
     }
 
@@ -250,7 +302,10 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
       next: res => {
         this.submitting.set(false);
         this.orderSuccess.set(`Order #${res.data.id.slice(0, 8)} placed successfully`);
+        this.toast.success(`Order #${res.data.id.slice(0, 8)} placed successfully`, 'Order Placed');
         this.loadOrders();
+        // Refresh the book immediately so the new order shows up
+        this.startBookPolling(bond.id);
         setTimeout(() => this.orderSuccess.set(null), 5000);
       },
       error: err => {
@@ -268,8 +323,38 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
       next: () => {
         this.cancellingId.set(null);
         this._myOrders.update(list => list.filter(o => o.id !== id));
+        this.toast.info('Order cancelled');
       },
-      error: () => this.cancellingId.set(null),
+      error: err => {
+        this.cancellingId.set(null);
+        this.toast.error(
+          err?.error?.error?.message ?? err?.error?.message ?? 'Could not cancel the order'
+        );
+      },
+    });
+  }
+
+  cancelAllOrders() {
+    const orders = this.myOrders;
+    if (orders.length === 0 || this.cancellingAll()) return;
+    if (!confirm(`Cancel all ${orders.length} open order${orders.length > 1 ? 's' : ''}?`)) return;
+
+    this.cancellingAll.set(true);
+    forkJoin(orders.map(o =>
+      this.tradingSvc.cancelOrder(o.id).pipe(
+        map(() => true),
+        catchError(() => of(false)),
+      )
+    )).subscribe(results => {
+      this.cancellingAll.set(false);
+      const failed = results.filter(ok => !ok).length;
+      if (failed === 0) {
+        this.toast.info(`${results.length} order${results.length > 1 ? 's' : ''} cancelled`);
+      } else {
+        this.toast.error(`${failed} of ${results.length} orders could not be cancelled`);
+      }
+      this.loadOrders();
+      this.startBookPolling(this.selectedBond().id);
     });
   }
 
