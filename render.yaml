@@ -70,21 +70,13 @@ services:
         value: 15m
       - key: JWT_REFRESH_EXPIRES_IN
         value: 7d
-      - key: JWT_ACCESS_EXPIRES
-        value: 15m
-      - key: JWT_REFRESH_EXPIRES
-        value: 7d
-      - key: JWT_ALGORITHM
-        value: HS256
       - key: SERVICE_SECRET
         generateValue: true
 
-      # ── Encryption (AES-256) ────────────────────────────────────────────────
-      # ENCRYPTION_KEY: exactly 32 ASCII characters
-      # ENCRYPTION_IV:  exactly 16 ASCII characters
+      # ── Encryption (AES-256-CBC) ────────────────────────────────────────────
+      # ENCRYPTION_KEY: exactly 64 hex characters (32 bytes)
+      # Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
       - key: ENCRYPTION_KEY
-        sync: false
-      - key: ENCRYPTION_IV
         sync: false
 
       # ── .NET microservices — paste full https:// URLs after each service deploys
@@ -107,10 +99,10 @@ services:
       - key: SENDGRID_FROM_NAME
         value: GCC Bond Trading
 
-      - key: UNIFONIC_APP_SID
+      - key: UNIFONIC_API_KEY
         sync: false
-      - key: UNIFONIC_BASE_URL
-        value: https://el.cloud.unifonic.com
+      - key: UNIFONIC_SENDER_ID
+        value: GCCBond
 
       - key: FCM_PROJECT_ID
         sync: false
@@ -126,11 +118,11 @@ services:
       - key: ONFIDO_LIVENESS_THRESHOLD
         value: 0.8
 
-      - key: HYPERPAY_URL
-        value: https://eu-test.oppwa.com
+      - key: HYPERPAY_API_KEY
+        sync: false
       - key: HYPERPAY_ENTITY_ID
         sync: false
-      - key: HYPERPAY_ACCESS_TOKEN
+      - key: HYPERPAY_WEBHOOK_SECRET
         sync: false
 
       # ── OAuth (Google / Microsoft) ───────────────────────────────────────────

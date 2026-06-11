@@ -68,8 +68,11 @@ export function createApp(): Application {
       redis.healthCheck(),
       mongoHealthCheck(),
     ]);
-    const status = pgOk && redisOk && mongoOk ? 'healthy' : 'degraded';
-    res.status(status === 'healthy' ? 200 : 503).json({
+    const allOk = pgOk && redisOk && mongoOk;
+    const status = allOk ? 'healthy' : 'degraded';
+    // Always return 200 so Render's health check doesn't restart the service
+    // on transient Redis/MongoDB blips. Use status field to signal degradation.
+    res.status(200).json({
       status,
       timestamp: new Date().toISOString(),
       services:  { postgresql: pgOk, redis: redisOk, mongodb: mongoOk },

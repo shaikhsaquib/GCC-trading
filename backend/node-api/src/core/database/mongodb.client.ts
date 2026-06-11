@@ -43,7 +43,7 @@ const auditLogSchema = new Schema<IAuditLog>(
     correlation_id:  { type: String },
     ip_address:      { type: String },
     user_agent:      { type: String },
-    created_at:      { type: Date, default: Date.now, index: true },
+    created_at:      { type: Date, default: Date.now },
   },
   { timestamps: false, versionKey: false },
 );
