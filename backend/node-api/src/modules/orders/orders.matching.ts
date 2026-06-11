@@ -30,11 +30,19 @@ export class MatchingEngine {
     const lockKey = `match:${order.bondId}`;
     const lockId  = crypto.randomUUID();
 
-    const acquired = await redis.tryAcquireLock(lockKey, lockId, 10);
-    if (!acquired) {
-      // Another instance is already matching this bond; it will pick up our order
-      logger.debug('Matching lock busy, skipping', { orderId: order.id });
-      return;
+    // If Redis is down, proceed without the distributed lock — we run a single
+    // instance (WEB_CONCURRENCY=1) and PostgreSQL row locks (FOR UPDATE SKIP
+    // LOCKED) still prevent double-fills within the transaction.
+    let lockAcquired = false;
+    try {
+      lockAcquired = await redis.tryAcquireLock(lockKey, lockId, 10);
+      if (!lockAcquired) {
+        // Another instance is already matching this bond; it will pick up our order
+        logger.debug('Matching lock busy, skipping', { orderId: order.id });
+        return;
+      }
+    } catch {
+      logger.warn('Redis unavailable — matching without distributed lock', { orderId: order.id });
     }
 
     try {
@@ -42,7 +50,7 @@ export class MatchingEngine {
     } catch (err) {
       logger.error('Matching engine error', { orderId: order.id, error: (err as Error).message });
     } finally {
-      await redis.releaseLock(lockKey, lockId);
+      if (lockAcquired) await redis.releaseLock(lockKey, lockId).catch(() => {});
     }
   }
 

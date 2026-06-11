@@ -201,8 +201,13 @@ export class AuthService {
 
     if (payload.type !== 'refresh') throw new UnauthorizedError('Invalid token type');
 
-    const revoked = await redis.isTokenRevoked(payload.jti);
-    if (revoked) throw new UnauthorizedError('Refresh token revoked');
+    try {
+      const revoked = await redis.isTokenRevoked(payload.jti);
+      if (revoked) throw new UnauthorizedError('Refresh token revoked');
+    } catch (err) {
+      if (err instanceof UnauthorizedError) throw err;
+      // Redis down — skip revocation check; token signature already verified
+    }
 
     const user = await this.repo.findById(payload.sub);
     if (!user) throw new NotFoundError('User');
@@ -261,8 +266,8 @@ export class AuthService {
       await this.repo.markPasswordResetUsed(tokenHash);
     });
 
-    // Revoke all existing sessions for security
-    await redis.deleteSession(record.user_id);
+    // Revoke all existing sessions for security (best-effort if Redis is down)
+    await redis.deleteSession(record.user_id).catch(() => {});
   }
 
   // ── Google OAuth ───────────────────────────────────────────────────────────
