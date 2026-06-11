@@ -11,8 +11,10 @@ class RedisClient {
 
   constructor() {
     this.client = new Redis(config.redis.url, {
-      maxRetriesPerRequest: 3,
+      maxRetriesPerRequest: null,  // Let ioredis retry indefinitely on transient errors
+      enableReadyCheck:     false, // Upstash doesn't support INFO server used by ready check
       lazyConnect:          true,
+      retryStrategy: (times) => Math.min(times * 500, 10_000), // cap at 10s backoff
     });
 
     this.client.on('connect',        () => logger.info('Redis connected'));
