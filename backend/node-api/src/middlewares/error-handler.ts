@@ -47,11 +47,28 @@ export function errorHandler(
     return;
   }
 
-  // PostgreSQL unique violation (duplicate key)
-  if ((err as NodeJS.ErrnoException).code === '23505') {
+  // PostgreSQL constraint violations — map to client-safe 4xx instead of 500
+  const pgCode = (err as NodeJS.ErrnoException).code;
+  if (pgCode === '23505') { // unique_violation
     res.status(409).json({
       success: false,
       error:   { code: 'CONFLICT', message: 'Duplicate resource' },
+      meta:    { requestId: req.requestId, timestamp: new Date().toISOString() },
+    });
+    return;
+  }
+  if (pgCode === '23514') { // check_violation
+    res.status(422).json({
+      success: false,
+      error:   { code: 'CONSTRAINT_VIOLATION', message: 'Operation would violate a data integrity constraint' },
+      meta:    { requestId: req.requestId, timestamp: new Date().toISOString() },
+    });
+    return;
+  }
+  if (pgCode === '23503') { // foreign_key_violation
+    res.status(422).json({
+      success: false,
+      error:   { code: 'INVALID_REFERENCE', message: 'Referenced resource does not exist' },
       meta:    { requestId: req.requestId, timestamp: new Date().toISOString() },
     });
     return;
