@@ -1,7 +1,10 @@
 import { Component, signal, inject, OnInit } from '@angular/core';
 import { NgClass } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../services/admin.service';
 import { AdminUser } from '../../core/models/api.models';
+import { ToastService } from '../../core/services/toast.service';
+import { exportToCsv } from '../../core/utils/csv-export';
 
 interface UserDisplay {
   id:        string;
@@ -30,16 +33,18 @@ const AVATAR_GRADIENTS = [
 @Component({
   selector: 'app-identity',
   standalone: true,
-  imports: [NgClass],
+  imports: [NgClass, FormsModule],
   templateUrl: './identity.component.html',
   styleUrl: './identity.component.css',
 })
 export class IdentityComponent implements OnInit {
   private readonly adminSvc = inject(AdminService);
+  private readonly toast    = inject(ToastService);
 
   activeTab    = signal('All Users');
   selectedUser = signal<UserDisplay | null>(null);
   loading      = signal(true);
+  searchTerm   = '';
 
   tabs = ['All Users', 'Admins', 'Investors', 'Compliance', 'Suspended'];
 
@@ -74,7 +79,10 @@ export class IdentityComponent implements OnInit {
         this.loading.set(false);
         this._users.set((res.data ?? []).map((u, i) => this.mapUser(u, i)));
       },
-      error: () => this.loading.set(false),
+      error: () => {
+        this.loading.set(false);
+        this.toast.error('Could not load users — please try again');
+      },
     });
     this.adminSvc.getAuditTrail({ eventType: 'USER_LOGGED_IN', limit: 20 }).subscribe({
       next: res => {
@@ -137,13 +145,60 @@ export class IdentityComponent implements OnInit {
   }
 
   filteredUsers() {
-    const tab = this.activeTab();
-    const list = this._users();
-    if (tab === 'All Users')  return list;
-    if (tab === 'Admins')     return list.filter(u => u.role === 'Admin' || u.role === 'KYC Officer');
-    if (tab === 'Investors')  return list.filter(u => u.role === 'Investor');
-    if (tab === 'Compliance') return list.filter(u => u.role === 'Compliance');
-    if (tab === 'Suspended')  return list.filter(u => u.status === 'Suspended');
+    const tab  = this.activeTab();
+    const term = this.searchTerm.trim().toLowerCase();
+    let list   = this._users();
+    if (tab === 'Admins')          list = list.filter(u => u.role === 'Admin' || u.role === 'KYC Officer');
+    else if (tab === 'Investors')  list = list.filter(u => u.role === 'Investor');
+    else if (tab === 'Compliance') list = list.filter(u => u.role === 'Compliance');
+    else if (tab === 'Suspended')  list = list.filter(u => u.status === 'Suspended');
+    if (term) {
+      list = list.filter(u =>
+        u.name.toLowerCase().includes(term) || u.email.toLowerCase().includes(term));
+    }
     return list;
+  }
+
+  suspendUser(u: UserDisplay) {
+    if (!confirm(`Suspend ${u.name}?`)) return;
+    this.adminSvc.suspendUser(u.id).subscribe({
+      next: () => {
+        this._users.update(list => list.map(x => x.id === u.id ? { ...x, status: 'Suspended' } : x));
+        if (this.selectedUser()?.id === u.id) {
+          this.selectedUser.update(x => x ? { ...x, status: 'Suspended' } : x);
+        }
+        this.toast.success(`${u.name} suspended`);
+      },
+      error: () => this.toast.error(`Could not suspend ${u.name} — please try again`),
+    });
+  }
+
+  activateUser(u: UserDisplay) {
+    if (!confirm(`Activate ${u.name}?`)) return;
+    this.adminSvc.activateUser(u.id).subscribe({
+      next: () => {
+        this._users.update(list => list.map(x => x.id === u.id ? { ...x, status: 'Active' } : x));
+        if (this.selectedUser()?.id === u.id) {
+          this.selectedUser.update(x => x ? { ...x, status: 'Active' } : x);
+        }
+        this.toast.success(`${u.name} activated`);
+      },
+      error: () => this.toast.error(`Could not activate ${u.name} — please try again`),
+    });
+  }
+
+  exportUsers() {
+    const rows = this.filteredUsers();
+    if (!rows.length) { this.toast.info('No users to export'); return; }
+    exportToCsv('identity-users', [
+      { label: 'Name',       key: 'name'      },
+      { label: 'Email',      key: 'email'     },
+      { label: 'Role',       key: 'role'      },
+      { label: 'Status',     key: 'status'    },
+      { label: 'KYC',        key: 'kyc'       },
+      { label: 'Last Login', key: 'lastLogin' },
+      { label: 'Created',    key: 'created'   },
+    ], rows as unknown as Record<string, unknown>[]);
+    this.toast.success(`Exported ${rows.length} rows`);
   }
 }

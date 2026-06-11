@@ -6,13 +6,12 @@
         </div>
         <div class="page-actions">
           <span class="badge badge-dotnet">.NET Core</span>
-          <button class="btn btn-secondary"><span class="material-icons-round">filter_list</span> Filters</button>
-          <button class="btn btn-primary"><span class="material-icons-round">file_download</span> Export</button>
+          <button class="btn btn-primary" (click)="exportHoldings()"><span class="material-icons-round">file_download</span> Export</button>
         </div>
       </div>
 
       <!-- KPIs -->
-      <div class="stats-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:24px">
+      <div class="stats-grid" style="margin-bottom:24px">
         @for (k of kpis; track k.label) {
           <div class="stat-card" style="padding:18px">
             <div class="stat-label">{{ k.label }}</div>
@@ -37,9 +36,7 @@
             <!-- Donut Chart -->
             <div class="donut-chart-wrapper">
               @if (holdingsLoading()) {
-                <div style="width:180px;height:180px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:12px">
-                  <span class="material-icons-round" style="animation:spin 1s linear infinite">sync</span>
-                </div>
+                <div class="skeleton skeleton-circle" style="width:180px;height:180px"></div>
               } @else if (donutSegments.length === 0) {
                 <div style="width:180px;height:180px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:12px;text-align:center">
                   No holdings
@@ -160,9 +157,10 @@
             </div>
 
             @if (holdingsLoading()) {
-              <div style="padding:40px;text-align:center;color:var(--text-muted)">
-                <span class="material-icons-round" style="font-size:32px;animation:spin 1s linear infinite;display:block;margin-bottom:12px">sync</span>
-                Loading holdings...
+              <div style="padding:20px">
+                @for (i of [1,2,3,4,5]; track i) {
+                  <div class="skeleton skeleton-row"></div>
+                }
               </div>
             } @else {
               <table class="data-table">

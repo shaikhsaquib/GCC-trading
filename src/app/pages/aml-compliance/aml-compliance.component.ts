@@ -3,6 +3,8 @@ import { NgClass, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AmlService } from '../../services/aml.service';
 import { AmlAlert } from '../../core/models/api.models';
+import { ToastService } from '../../core/services/toast.service';
+import { exportToCsv } from '../../core/utils/csv-export';
 
 interface AlertDisplay {
   id:         string;
@@ -27,6 +29,7 @@ interface AlertDisplay {
 })
 export class AmlComplianceComponent implements OnInit {
   private readonly amlSvc = inject(AmlService);
+  private readonly toast  = inject(ToastService);
 
   alertFilter   = signal('All');
   selectedAlert = signal<AlertDisplay | null>(null);
@@ -68,8 +71,17 @@ export class AmlComplianceComponent implements OnInit {
         this.updateStats(items);
         this.updateRiskDist(items);
       },
-      error: () => this.loading.set(false),
+      error: () => {
+        this.loading.set(false);
+        this.toast.error('Could not load AML alerts — please try again');
+      },
     });
+  }
+
+  highRiskOpenCount(): number {
+    return this._alerts().filter(a =>
+      (a.risk === 'HIGH' || a.risk === 'CRITICAL') &&
+      (a.status === 'Open' || a.status === 'Under Review')).length;
   }
 
   private mapAlert(a: AmlAlert): AlertDisplay {
@@ -165,8 +177,36 @@ export class AmlComplianceComponent implements OnInit {
         if (this.selectedAlert()?.id === id) {
           this.selectedAlert.update(a => a ? { ...a, status: this.mapStatus(status) } : a);
         }
+        const msg: Record<string, string> = {
+          Cleared:   'Alert cleared',
+          Escalated: 'Alert escalated for review',
+          SarFiled:  sarRef ? `SAR filed (${sarRef})` : 'SAR filed',
+        };
+        this.toast.success(msg[status] ?? 'Alert updated');
       },
+      error: () => this.toast.error('Could not update alert — please try again'),
     });
+  }
+
+  fileSar(id: string) {
+    this.updateAlertStatus(id, 'SarFiled', `SAR-${Date.now()}`);
+  }
+
+  exportAlerts() {
+    const rows = this.filteredAlerts();
+    if (!rows.length) { this.toast.info('No alerts to export'); return; }
+    exportToCsv('aml-alerts', [
+      { label: 'Case ID',     key: 'id'       },
+      { label: 'Risk',        key: 'risk'     },
+      { label: 'Title',       key: 'title'    },
+      { label: 'Description', key: 'desc'     },
+      { label: 'User',        key: 'user'     },
+      { label: 'Amount',      key: 'amount'   },
+      { label: 'Currency',    key: 'currency' },
+      { label: 'Detected',    key: 'time'     },
+      { label: 'Status',      key: 'status'   },
+    ], rows as unknown as Record<string, unknown>[]);
+    this.toast.success(`Exported ${rows.length} rows`);
   }
 
   alertDetailItems() {

@@ -10,13 +10,13 @@
             <span class="material-icons-round">verified</span>
             Log Integrity: <strong>Verified</strong>
           </div>
-          <button class="btn btn-secondary"><span class="material-icons-round">file_download</span> Export Logs</button>
-          <button class="btn btn-secondary"><span class="material-icons-round">refresh</span> Refresh</button>
+          <button class="btn btn-secondary" (click)="exportLogs()"><span class="material-icons-round">file_download</span> Export Logs</button>
+          <button class="btn btn-secondary" (click)="refresh()"><span class="material-icons-round">refresh</span> Refresh</button>
         </div>
       </div>
 
       <!-- Stats -->
-      <div class="stats-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:24px">
+      <div class="stats-grid" style="margin-bottom:24px">
         @for (s of auditStats; track s.label) {
           <div class="stat-card" style="padding:14px">
             <div class="stat-label">{{ s.label }}</div>
@@ -48,12 +48,6 @@
           <option>Warning</option>
           <option>Critical</option>
         </select>
-        <div class="date-range">
-          <input class="form-control" type="date" style="width:145px" name="fd"/>
-          <span style="color:var(--text-muted)">→</span>
-          <input class="form-control" type="date" style="width:145px" name="td"/>
-        </div>
-        <button class="btn btn-primary btn-sm">Apply</button>
       </div>
 
       <!-- Log Table -->
@@ -67,6 +61,13 @@
             Last Block Hash: <code>{{ blockHash }}</code>
           </div>
         </div>
+        @if (loading()) {
+          <div style="padding:20px">
+            @for (i of [1,2,3,4,5,6]; track i) {
+              <div class="skeleton skeleton-row"></div>
+            }
+          </div>
+        } @else {
         <table class="data-table">
           <thead>
             <tr>
@@ -116,13 +117,14 @@
             }
           </tbody>
         </table>
+        }
 
         <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
           <span class="text-muted">Showing {{ filteredLogs().length }} of {{ total() }} total log entries</span>
-          <div class="pagination" style="display:flex;gap:6px">
-            @for (p of [1,2,3,'...',127]; track p) {
-              <button class="btn btn-secondary btn-sm" [class.active]="p === 1">{{ p }}</button>
-            }
+          <div class="pagination" style="display:flex;align-items:center;gap:10px">
+            <button class="btn btn-secondary btn-sm" [disabled]="page() === 1 || loading()" (click)="prevPage()">Prev</button>
+            <span class="text-muted" style="font-size:12px">Page {{ page() }}</span>
+            <button class="btn btn-secondary btn-sm" [disabled]="!hasNextPage() || loading()" (click)="nextPage()">Next</button>
           </div>
         </div>
       </div>

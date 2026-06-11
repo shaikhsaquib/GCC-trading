@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { BondService } from '../../services/bond.service';
 import { Bond } from '../../core/models/api.models';
+import { ToastService } from '../../core/services/toast.service';
 
 interface BondDisplay {
   id:           string;
@@ -34,6 +35,7 @@ interface BondDisplay {
 })
 export class BondMarketplaceComponent implements OnInit {
   private readonly bondSvc = inject(BondService);
+  private readonly toast   = inject(ToastService);
 
   viewMode      = signal<'table' | 'grid'>('table');
   searchTerm    = '';
@@ -80,7 +82,10 @@ export class BondMarketplaceComponent implements OnInit {
         this._bonds.set(items.map(b => this.mapBond(b)));
         this.updateMarketStats(items);
       },
-      error: () => this.loading.set(false),
+      error: () => {
+        this.loading.set(false);
+        this.toast.error('Could not load bonds — please try again');
+      },
     });
   }
 

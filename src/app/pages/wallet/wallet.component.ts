@@ -3,6 +3,8 @@ import { NgClass, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { WalletService } from '../../services/wallet.service';
 import { WalletBalance, WalletTransaction } from '../../core/models/api.models';
+import { ToastService } from '../../core/services/toast.service';
+import { exportToCsv } from '../../core/utils/csv-export';
 
 @Component({
   selector: 'app-wallet',
@@ -13,6 +15,7 @@ import { WalletBalance, WalletTransaction } from '../../core/models/api.models';
 })
 export class WalletComponent implements OnInit {
   private readonly walletSvc = inject(WalletService);
+  private readonly toast     = inject(ToastService);
 
   activeAction   = signal<'deposit' | 'withdraw'>('deposit');
   selectedMethod = signal('bank');
@@ -123,8 +126,24 @@ export class WalletComponent implements OnInit {
         this.generateChart(res?.data ?? []);
         this.computeMonthChange(res?.data ?? []);
       },
-      error: () => this.txLoading.set(false),
+      error: () => {
+        this.txLoading.set(false);
+        this.toast.error('Could not load transactions — please try again');
+      },
     });
+  }
+
+  exportTransactions() {
+    const rows = this.filteredTx.map(tx => this.mapTx(tx));
+    if (!rows.length) { this.toast.info('No transactions to export'); return; }
+    exportToCsv('wallet-transactions', [
+      { label: 'Description', key: 'desc'   },
+      { label: 'Reference',   key: 'ref'    },
+      { label: 'Date',        key: 'date'   },
+      { label: 'Status',      key: 'status' },
+      { label: 'Amount',      key: 'amount' },
+    ], rows);
+    this.toast.success(`Exported ${rows.length} rows`);
   }
 
   private syncSubBalances(b: WalletBalance) {

@@ -3,6 +3,7 @@ import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
 import { KycService } from '../../services/kyc.service';
+import { ToastService } from '../../core/services/toast.service';
 import {
   KycSubmission, KycDocument, KycQueueItem, RiskLevel, DocumentType,
 } from '../../core/models/api.models';
@@ -43,6 +44,7 @@ const POLL_INTERVAL = 30_000; // 30 s
 export class KycComponent implements OnInit, OnDestroy {
   private readonly auth   = inject(AuthService);
   private readonly kycSvc = inject(KycService);
+  private readonly toast  = inject(ToastService);
 
   // ── Role ──────────────────────────────────────────────────────────────────────
   readonly isAdmin = this.auth.isAdmin;
@@ -121,7 +123,10 @@ export class KycComponent implements OnInit, OnDestroy {
         this.computeStats(result.data, result.total);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: () => {
+        this.loading.set(false);
+        this.toast.error('Could not load KYC queue — please try again');
+      },
     });
   }
 
@@ -176,8 +181,12 @@ export class KycComponent implements OnInit, OnDestroy {
           );
           this.showApproveForm.set(false);
           this.actionLoading.set(false);
+          this.toast.success('KYC application approved');
         },
-        error: () => this.actionLoading.set(false),
+        error: () => {
+          this.actionLoading.set(false);
+          this.toast.error('Could not approve KYC — please try again');
+        },
       });
   }
 
@@ -193,8 +202,12 @@ export class KycComponent implements OnInit, OnDestroy {
         this.selectedItem.update(i => i ? { ...i, status: 'Rejected' as const } : i);
         this.showRejectForm.set(false);
         this.actionLoading.set(false);
+        this.toast.success('KYC application rejected');
       },
-      error: () => this.actionLoading.set(false),
+      error: () => {
+        this.actionLoading.set(false);
+        this.toast.error('Could not reject KYC — please try again');
+      },
     });
   }
 
@@ -262,7 +275,10 @@ export class KycComponent implements OnInit, OnDestroy {
         if (sub?.status === 'Draft') this.loadExistingDocs(sub.id);
         if (sub?.status === 'Submitted' || sub?.status === 'UnderReview') this.startPolling();
       },
-      error: () => this.investorLoading.set(false),
+      error: () => {
+        this.investorLoading.set(false);
+        this.toast.error('Could not load your KYC status — please try again');
+      },
     });
   }
 
@@ -283,7 +299,10 @@ export class KycComponent implements OnInit, OnDestroy {
     this.investorLoading.set(true);
     this.kycSvc.startSubmission().subscribe({
       next: sub => { this.submission.set(sub); this.investorLoading.set(false); },
-      error: () => this.investorLoading.set(false),
+      error: () => {
+        this.investorLoading.set(false);
+        this.toast.error('Could not start KYC submission — please try again');
+      },
     });
   }
 
@@ -373,8 +392,12 @@ export class KycComponent implements OnInit, OnDestroy {
         this.submission.update(s => s ? { ...s, status: 'Submitted' } : s);
         this.investorLoading.set(false);
         this.startPolling();
+        this.toast.success('KYC submitted for review');
       },
-      error: () => this.investorLoading.set(false),
+      error: () => {
+        this.investorLoading.set(false);
+        this.toast.error('Could not submit KYC — please try again');
+      },
     });
   }
 
@@ -388,7 +411,10 @@ export class KycComponent implements OnInit, OnDestroy {
         this.uploadErrors.set({});
         this.investorLoading.set(false);
       },
-      error: () => this.investorLoading.set(false),
+      error: () => {
+        this.investorLoading.set(false);
+        this.toast.error('Could not restart KYC — please try again');
+      },
     });
   }
 
