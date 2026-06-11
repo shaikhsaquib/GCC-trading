@@ -2,8 +2,9 @@ import { z } from 'zod';
 
 const currencySchema = z.enum(['AED', 'SAR', 'KWD', 'QAR', 'OMR', 'BHD', 'USD']);
 
+// Max must match WalletService.MAX_DEPOSIT so validation and service agree
 export const depositSchema = z.object({
-  amount:   z.number().positive('Amount must be positive').max(1_000_000),
+  amount:   z.number().positive('Amount must be positive').max(500_000, 'Maximum deposit is 500,000'),
   currency: currencySchema.default('AED'),
 });
 

@@ -111,15 +111,28 @@
 
             <!-- Live Order Summary -->
             <div class="order-summary">
-              <div class="os-row"><span>Estimated Value</span><span>SAR {{ estimatedValue | number:'1.2-2' }}</span></div>
-              <div class="os-row"><span>Commission (0.10%)</span><span>SAR {{ commission | number:'1.2-2' }}</span></div>
-              <div class="os-row"><span>VAT (15% of comm.)</span><span>SAR {{ vat | number:'1.2-2' }}</span></div>
+              @if (availableBalance() !== null) {
+                <div class="os-row">
+                  <span>Available Balance</span>
+                  <span [style.color]="orderSide() === 'buy' && availableBalance()! < orderTotal ? 'var(--danger)' : 'var(--accent-cyan)'">
+                    {{ walletCurrency() }} {{ availableBalance() | number:'1.2-2' }}
+                  </span>
+                </div>
+              }
+              <div class="os-row"><span>Estimated Value</span><span>{{ walletCurrency() }} {{ estimatedValue | number:'1.2-2' }}</span></div>
+              <div class="os-row"><span>Commission (0.10%)</span><span>{{ walletCurrency() }} {{ commission | number:'1.2-2' }}</span></div>
+              <div class="os-row"><span>VAT (15% of comm.)</span><span>{{ walletCurrency() }} {{ vat | number:'1.2-2' }}</span></div>
               <div class="os-row total">
                 <span>Total</span>
                 <span [style.color]="orderSide() === 'buy' ? 'var(--success)' : 'var(--danger)'">
-                  SAR {{ orderTotal | number:'1.2-2' }}
+                  {{ walletCurrency() }} {{ orderTotal | number:'1.2-2' }}
                 </span>
               </div>
+              @if (orderSide() === 'buy' && availableBalance() !== null && availableBalance()! < orderTotal) {
+                <div class="os-row" style="color:var(--danger);font-size:12px">
+                  <span>Insufficient balance for this order</span>
+                </div>
+              }
             </div>
 
             @if (orderSuccess()) {

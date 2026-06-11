@@ -116,7 +116,7 @@ export class AmlComplianceComponent implements OnInit {
   private mapStatus(s: string): string {
     const map: Record<string, string> = {
       Open: 'Open', UnderReview: 'Under Review',
-      Escalated: 'Under Review', Cleared: 'Cleared', SarFiled: 'SAR Filed',
+      Escalated: 'Escalated', Cleared: 'Cleared', SarFiled: 'SAR Filed',
     };
     return map[s] ?? s;
   }
@@ -158,7 +158,7 @@ export class AmlComplianceComponent implements OnInit {
       { label: 'Critical', color: '#ff2d4b', count: critical, pct: Math.round((critical / total) * 100) },
       { label: 'High',     color: '#ff4757', count: high,     pct: Math.round((high     / total) * 100) },
       { label: 'Medium',   color: '#ffa502', count: medium,   pct: Math.round((medium   / total) * 100) },
-      { label: 'Low',      color: '#2ed573', count: low,      pct: 100 },
+      { label: 'Low',      color: '#2ed573', count: low,      pct: Math.round((low      / total) * 100) },
     ];
   }
 
@@ -223,5 +223,5 @@ export class AmlComplianceComponent implements OnInit {
   }
 
   riskBadge(risk: string) { return { 'risk-high': risk === 'HIGH' || risk === 'CRITICAL', 'risk-medium': risk === 'MEDIUM', 'risk-low': risk === 'LOW' }; }
-  caseBadge(s: string)    { return { 'badge-warning': s === 'Open', 'badge-info': s === 'Under Review', 'badge-success': s === 'Cleared', 'badge-danger': s === 'SAR Filed' }; }
+  caseBadge(s: string)    { return { 'badge-warning': s === 'Open' || s === 'Escalated', 'badge-info': s === 'Under Review', 'badge-success': s === 'Cleared', 'badge-danger': s === 'SAR Filed' }; }
 }

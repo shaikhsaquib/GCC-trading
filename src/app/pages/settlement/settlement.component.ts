@@ -212,7 +212,7 @@ export class SettlementComponent implements OnInit {
         this.settlements = items.map((s: Settlement) => ({
           id:             s.id,
           bond:           s.bondName,
-          issuer:         s.buyerId,
+          issuer:         s.issuerName || '—',
           isin:           s.isin,
           side:           s.side.toUpperCase(),
           qty:            s.quantity,
@@ -228,7 +228,7 @@ export class SettlementComponent implements OnInit {
         this.settlStats[1].value = String(stats.processing);
         this.settlStats[2].value = String(stats.completed);
         this.settlStats[3].value = String(stats.failed);
-        this.settlStats[4].value = 'SAR ' + (stats.totalValue >= 1e9
+        this.settlStats[4].value = 'AED ' + (stats.totalValue >= 1e9
           ? (stats.totalValue / 1e9).toFixed(1) + 'B'
           : stats.totalValue >= 1e6
             ? (stats.totalValue / 1e6).toFixed(0) + 'M'

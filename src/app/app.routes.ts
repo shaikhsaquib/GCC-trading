@@ -126,6 +126,7 @@ export const routes: Routes = [
       },
       {
         path: 'audit',
+        canActivate: [adminGuard],
         loadComponent: () =>
           import('./pages/audit-trail/audit-trail.component').then(m => m.AuditTrailComponent),
       },

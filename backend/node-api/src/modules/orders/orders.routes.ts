@@ -7,6 +7,8 @@ import { MatchingEngine }    from './orders.matching';
 import { eventBus }          from '../../core/events/event-bus';
 import { authenticate }      from '../../middlewares/authenticate';
 import { requireActive }     from '../../middlewares/authorize';
+import { validate }          from '../../middlewares/validate';
+import { placeOrderSchema }  from './orders.validator';
 
 export function createOrdersRouter(): Router {
   const repo           = new OrdersRepository();
@@ -21,7 +23,7 @@ export function createOrdersRouter(): Router {
 
   router.get('/book/:bondId', ctrl.getOrderBook);
 
-  router.post('/',    ctrl.placeOrder);
+  router.post('/',    validate(placeOrderSchema), ctrl.placeOrder);
   router.get('/',     ctrl.getMyOrders);
   router.delete('/:id', ctrl.cancelOrder);
 

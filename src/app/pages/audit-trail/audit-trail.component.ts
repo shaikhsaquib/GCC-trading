@@ -84,6 +84,9 @@ export class AuditTrailComponent implements OnInit {
   }
 
   hasNextPage(): boolean {
+    // Prefer the authoritative total from the backend; fall back to the
+    // page-full heuristic only when the total is unknown.
+    if (this.total() > 0) return this.page() * this.pageSize < this.total();
     return this.lastFetchCount === this.pageSize;
   }
 

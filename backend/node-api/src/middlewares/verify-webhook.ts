@@ -9,7 +9,16 @@ import { config } from '../config';
  */
 export function verifyOnfidoSignature(req: Request, res: Response, next: NextFunction): void {
   const secret = config.onfido.webhookSecret;
-  if (!secret) { next(); return; }
+  if (!secret) {
+    // Fail closed in production: an unsigned webhook endpoint would let anyone
+    // drive KYC submissions through review transitions.
+    if (config.isProd) {
+      res.status(503).json({ error: 'Webhook signature verification is not configured' });
+      return;
+    }
+    next();
+    return;
+  }
 
   const signature = req.headers['x-sha2-signature'] as string | undefined;
   if (!signature) {
@@ -48,7 +57,16 @@ export async function verifyHyperpayPayment(
   res: Response,
   next: NextFunction,
 ): Promise<void> {
-  if (!config.hyperpay.apiKey) { next(); return; }
+  if (!config.hyperpay.apiKey) {
+    // Fail closed in production: an unverified payment webhook would let
+    // anyone credit arbitrary wallets.
+    if (config.isProd) {
+      res.status(503).json({ error: 'Payment verification is not configured' });
+      return;
+    }
+    next();
+    return;
+  }
 
   const { id: hyperpayId } = req.body as { id?: string };
   if (!hyperpayId) {

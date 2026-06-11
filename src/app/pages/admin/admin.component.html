@@ -146,9 +146,18 @@
                 <span style="font-size:12px;font-weight:700" [style.color]="app.risk === 'LOW' ? 'var(--success)' : app.risk === 'MEDIUM' ? 'var(--warning)' : 'var(--danger)'">{{ app.risk }}</span>
                 <span style="font-size:11px;color:var(--text-muted);margin-left:auto">{{ app.submitted }}</span>
               </div>
-              <div style="display:flex;gap:8px;margin-top:12px">
+              <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
+                <label style="font-size:11px;color:var(--text-muted);white-space:nowrap">Approve as:</label>
+                <select [(ngModel)]="app.selectedRisk" [name]="'risk-' + app.id"
+                        style="flex:1;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px">
+                  <option value="LOW">LOW — 10K AED limit</option>
+                  <option value="MEDIUM">MEDIUM — 50K AED limit</option>
+                  <option value="HIGH">HIGH — 200K AED limit</option>
+                </select>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:10px">
                 <button class="btn btn-danger btn-sm" style="flex:1;justify-content:center" (click)="rejectKyc(app.id)">Reject</button>
-                <button class="btn btn-success btn-sm" style="flex:1;justify-content:center" (click)="approveKyc(app.id)">Approve</button>
+                <button class="btn btn-success btn-sm" style="flex:1;justify-content:center" (click)="approveKyc(app.id, app.selectedRisk)">Approve</button>
               </div>
             </div>
           }

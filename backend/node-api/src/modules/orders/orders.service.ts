@@ -25,7 +25,23 @@ export class OrdersService {
   ) {}
 
   async placeOrder(userId: string, input: PlaceOrderInput): Promise<Order> {
-    // ── 1. Risk-tier validation ─────────────────────────────────────────────
+    if (input.orderType === 'Limit' && !input.price) {
+      throw new ValidationError('Limit orders require a price');
+    }
+
+    // Market orders are priced from the best opposite book level. Without any
+    // opposite liquidity there is nothing to price/match against, so reject —
+    // this also prevents Market-vs-Market fills executing at price 0.
+    if (input.orderType === 'Market') {
+      const { bids, asks } = await this.repo.getOrderBook(input.bondId, 1);
+      const best = input.side === 'Buy' ? asks[0] : bids[0];
+      if (!best || best.price <= 0) {
+        throw new ValidationError('No liquidity available for a market order on this bond');
+      }
+      input.price = best.price;
+    }
+
+    // ── 1. Risk-tier validation (applies to both Limit and Market) ──────────
     const kycRow = await db.query<{ risk_level: string | null }>(
       `SELECT risk_level FROM kyc.submissions
        WHERE user_id = $1 AND status = 'Approved'
@@ -35,19 +51,31 @@ export class OrdersService {
     const riskLevel  = kycRow.rows[0]?.risk_level ?? 'LOW';
     const maxValue   = RISK_LIMITS[riskLevel] ?? RISK_LIMITS.LOW;
 
-    if (input.orderType === 'Limit' && input.price) {
-      const orderValue = input.quantity * input.price;
-      if (orderValue > maxValue) {
+    const orderValueForRisk = input.quantity * (input.price ?? 0);
+    if (orderValueForRisk > maxValue) {
+      throw new ValidationError(
+        `Order value (${orderValueForRisk.toFixed(2)} AED) exceeds your ${riskLevel} risk tier limit of ${maxValue.toLocaleString()} AED`,
+      );
+    }
+
+    // ── 1b. Sell orders: must actually hold the bonds being sold ────────────
+    if (input.side === 'Sell') {
+      const holdingRow = await db.query<{ quantity: string }>(
+        'SELECT quantity FROM portfolio.holdings WHERE user_id = $1 AND bond_id = $2',
+        [userId, input.bondId],
+      );
+      const held = parseFloat(holdingRow.rows[0]?.quantity ?? '0');
+      if (held < input.quantity) {
         throw new ValidationError(
-          `Order value (${orderValue.toFixed(2)} AED) exceeds your ${riskLevel} risk tier limit of ${maxValue.toLocaleString()} AED`,
+          `Insufficient holdings. You hold ${held} units of this bond, cannot sell ${input.quantity}`,
         );
       }
     }
 
-    // ── 2. Buy Limit: check balance and freeze funds ─────────────────────────
+    // ── 2. Buy orders: check balance and freeze funds ────────────────────────
     let order: Order;
 
-    if (input.side === 'Buy' && input.orderType === 'Limit' && input.price) {
+    if (input.side === 'Buy' && input.price) {
       const orderValue   = input.quantity * input.price;
       const reservedFee  = orderValue * BUYER_FEE_RATE;
       const totalReserve = orderValue + reservedFee;
@@ -80,7 +108,7 @@ export class OrdersService {
         order = await this.repo.create(userId, input, client);
       });
     } else {
-      // Sell orders and Market orders — no upfront freeze
+      // Sell orders — no upfront freeze (holdings already validated above)
       order = await this.repo.create(userId, input);
     }
 

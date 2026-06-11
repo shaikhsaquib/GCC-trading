@@ -25,16 +25,17 @@ interface UserDisplay {
 const AVATAR_COLORS = ['#7c4dff', '#00d4ff', '#17c3b2', '#ff4757', '#ffc107', '#00e676'];
 
 interface KycDisplay {
-  id:          string;
-  name:        string;
-  initials:    string;
-  avatarColor: string;
-  type:        string;
-  nationality: string;
-  status:      string;
-  risk:        string;
-  submitted:   string;
-  docs:        Array<{ label: string; verified: boolean }>;
+  id:           string;
+  name:         string;
+  initials:     string;
+  avatarColor:  string;
+  type:         string;
+  nationality:  string;
+  status:       string;
+  risk:         string;
+  selectedRisk: 'LOW' | 'MEDIUM' | 'HIGH';
+  submitted:    string;
+  docs:         Array<{ label: string; verified: boolean }>;
 }
 
 @Component({
@@ -140,8 +141,9 @@ export class AdminComponent implements OnInit {
       type:        'Individual',
       nationality: (k as any).nationality ?? '—',
       status:      statusMap[k.status] ?? k.status,
-      risk:        k.risk_level ?? '—',
-      submitted:   submittedAt,
+      risk:         k.risk_level ?? '—',
+      selectedRisk: (k.risk_level as KycDisplay['selectedRisk']) ?? 'LOW',
+      submitted:    submittedAt,
       docs: [
         { label: 'National ID', verified: false },
         { label: 'Selfie',      verified: false },
@@ -152,11 +154,11 @@ export class AdminComponent implements OnInit {
 
   get kycApplications() { return this.kycQueue(); }
 
-  approveKyc(id: string) {
-    this.kycSvc.approve(id, 'LOW').subscribe({
+  approveKyc(id: string, riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW') {
+    this.kycSvc.approve(id, riskLevel).subscribe({
       next: () => {
         this.kycQueue.update(q => q.filter(k => k.id !== id));
-        this.kycActionMsg.set('KYC approved successfully');
+        this.kycActionMsg.set(`KYC approved (${riskLevel} risk tier)`);
         setTimeout(() => this.kycActionMsg.set(null), 4000);
       },
       error: () => this.toast.error('Could not approve KYC — please try again'),
@@ -226,9 +228,11 @@ export class AdminComponent implements OnInit {
   }
 
   private mapKyc(status: string): string {
+    // Suspended/deactivated accounts may or may not have completed KYC —
+    // the user status alone cannot tell us, so show a neutral dash.
     const map: Record<string, string> = {
       PENDING_KYC: 'Pending', ACTIVE: 'Approved',
-      SUSPENDED: 'Approved', DEACTIVATED: 'Approved',
+      SUSPENDED: '—', DEACTIVATED: '—',
     };
     return map[status] ?? 'Pending';
   }

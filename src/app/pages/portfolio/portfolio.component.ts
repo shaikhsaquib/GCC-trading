@@ -59,6 +59,7 @@ export class PortfolioComponent implements OnInit {
   holdingsLoading = signal(true);
   activeType      = signal<string>('All');
   totalValue      = signal(0);
+  currency        = signal('AED');
 
   kpis: PortfolioKpi[] = [
     { label: 'Total Portfolio Value', value: '—', raw: null, color: 'var(--text-primary)', sub: null, up: true },
@@ -93,7 +94,8 @@ export class PortfolioComponent implements OnInit {
       next: res => {
         this.loading.set(false);
         const s: PortfolioSummary = res.data;
-        const currency = s.currency ?? 'SAR';
+        const currency = s.currency ?? 'AED';
+        this.currency.set(currency);
         const pnlUp    = s.unrealizedPnl >= 0;
         const pnlPct   = s.totalCost > 0
           ? ((s.unrealizedPnl / s.totalCost) * 100).toFixed(2)
@@ -220,7 +222,11 @@ export class PortfolioComponent implements OnInit {
 
   private updateAvgYtm(holdings: HoldingDisplay[]) {
     if (!holdings.length) return;
-    const avg = holdings.reduce((s, h) => s + h.ytm, 0) / holdings.length;
+    // Value-weighted average — a small position must not skew the portfolio YTM
+    const totalMv = holdings.reduce((s, h) => s + h.mktValue, 0);
+    const avg = totalMv > 0
+      ? holdings.reduce((s, h) => s + h.ytm * h.mktValue, 0) / totalMv
+      : holdings.reduce((s, h) => s + h.ytm, 0) / holdings.length;
     this.kpis = this.kpis.map((k, i) => i === 2
       ? { ...k, value: `${avg.toFixed(2)}%`, raw: avg, suffix: '%', decimals: 2 }
       : k);
@@ -267,7 +273,7 @@ export class PortfolioComponent implements OnInit {
       y: ev.clientY - box.top - 12,
       lines: [
         seg.label,
-        `${seg.pct}% · SAR ${seg.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+        `${seg.pct}% · ${this.currency()} ${seg.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
       ],
     });
   }

@@ -153,11 +153,14 @@ export class WalletRepository {
     client?:     PoolClient,
   ): Promise<void> {
     const q: Queryable = client ?? db;
+    // GREATEST guards mirror unfreezeBalance: rounding drift between the
+    // freeze at placement and the fill amounts must never push a column
+    // negative (CHECK constraint violation → failed settlement).
     await q.query(
       `UPDATE wallet.wallets
-       SET frozen_balance    = frozen_balance    - $1,
-           balance           = balance           - ($1 + $2),
-           available_balance = available_balance - $2,
+       SET frozen_balance    = GREATEST(frozen_balance    - $1, 0),
+           balance           = GREATEST(balance           - ($1 + $2), 0),
+           available_balance = GREATEST(available_balance - $2, 0),
            updated_at        = NOW()
        WHERE user_id = $3`,
       [tradeAmount, fee, userId],
