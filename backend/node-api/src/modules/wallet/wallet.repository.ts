@@ -62,10 +62,12 @@ export class WalletRepository {
 
   async unfreezeBalance(userId: string, amount: number, client?: PoolClient): Promise<void> {
     const q: Queryable = client ?? db;
+    // Use LEAST/GREATEST so rounding differences between placement and cancel
+    // never push frozen_balance below zero (which would violate the CHECK constraint).
     await q.query(
       `UPDATE wallet.wallets
-       SET available_balance = available_balance + $1,
-           frozen_balance    = frozen_balance    - $1,
+       SET frozen_balance    = GREATEST(frozen_balance    - $1, 0),
+           available_balance = available_balance + LEAST($1, frozen_balance),
            updated_at        = NOW()
        WHERE user_id = $2`,
       [amount, userId],
