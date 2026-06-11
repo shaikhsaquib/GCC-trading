@@ -65,7 +65,15 @@
               <span class="material-icons-round" [style.color]="stat.iconColor">{{ stat.icon }}</span>
             </div>
             <div class="stat-label">{{ stat.label }}</div>
-            <div class="stat-value">{{ stat.value }}</div>
+            @if (stat.raw !== null) {
+              <div class="stat-value"
+                   [appCountUp]="stat.raw"
+                   [countUpPrefix]="stat.prefix ?? ''"
+                   [countUpSuffix]="stat.suffix ?? ''"
+                   [countUpDecimals]="stat.decimals ?? 0">{{ stat.value }}</div>
+            } @else {
+              <div class="stat-value">{{ stat.value }}</div>
+            }
             @if (stat.change) {
               <div class="stat-change" [class.up]="stat.up" [class.down]="!stat.up">
                 {{ stat.up ? '▲' : '▼' }} {{ stat.change }} vs yesterday
@@ -141,10 +149,19 @@
                   [attr.width]="bar.width"
                   [attr.height]="bar.height"
                   class="chart-bar"
+                  [class.hovered]="hoveredBar() === bar.date"
                   rx="2"
+                  (mouseenter)="onBarHover($event, bar)"
+                  (mousemove)="onBarHover($event, bar)"
+                  (mouseleave)="onBarLeave()"
                 />
               }
             </svg>
+            @if (chartTooltip(); as tt) {
+              <div class="chart-tooltip" [style.left.px]="tt.x" [style.top.px]="tt.y">
+                @for (line of tt.lines; track $index) { <div>{{ line }}</div> }
+              </div>
+            }
             <div class="chart-x-labels">
               <span>30d ago</span>
               <span>15d ago</span>
@@ -348,7 +365,13 @@
             <span class="material-icons-round" [style.color]="kpi.iconColor">{{ kpi.icon }}</span>
           </div>
           <div class="stat-label">{{ kpi.label }}</div>
-          <div class="stat-value">{{ kpi.value }}</div>
+          @if (kpi.raw !== null) {
+            <div class="stat-value"
+                 [appCountUp]="kpi.raw"
+                 [countUpPrefix]="kpi.prefix">{{ kpi.value }}</div>
+          } @else {
+            <div class="stat-value">{{ kpi.value }}</div>
+          }
           <div class="stat-change" style="color:var(--text-muted)">{{ kpi.sub }}</div>
         </div>
       }

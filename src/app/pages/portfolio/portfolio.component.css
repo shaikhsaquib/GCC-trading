@@ -2,7 +2,28 @@
 
     .side-panel { display: flex; flex-direction: column; }
 
-    .donut-chart-wrapper { display: flex; justify-content: center; margin-bottom: 16px; }
+    .donut-chart-wrapper { display: flex; justify-content: center; margin-bottom: 16px; position: relative; }
+
+    .donut-segment { transition: stroke-width 0.15s, opacity 0.15s; cursor: pointer; }
+
+    /* Shared chart tooltip */
+    .chart-tooltip {
+      position: absolute;
+      z-index: 10;
+      background: rgba(14,26,45,0.95);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 12px;
+      color: var(--text-primary);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+      pointer-events: none;
+      white-space: nowrap;
+      transform: translate(-50%, -100%);
+      transition: left 0.08s ease-out, top 0.08s ease-out;
+      div:first-child { color: var(--text-muted); font-size: 11px; }
+      div + div { font-weight: 600; }
+    }
 
     .allocation-legend { display: flex; flex-direction: column; gap: 8px; }
 
