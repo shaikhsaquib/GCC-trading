@@ -6,13 +6,12 @@
         </div>
         <div class="page-actions">
           <span class="badge badge-node">Node.js</span>
-          <button class="btn btn-secondary"><span class="material-icons-round">file_download</span> Export Users</button>
-          <button class="btn btn-primary"><span class="material-icons-round">person_add</span> Add User</button>
+          <button class="btn btn-secondary" (click)="exportUsers()"><span class="material-icons-round">file_download</span> Export Users</button>
         </div>
       </div>
 
       <!-- Stats -->
-      <div class="stats-grid" style="grid-template-columns:repeat(6,1fr);margin-bottom:24px">
+      <div class="stats-grid" style="margin-bottom:24px">
         @for (s of adminStats; track s.label) {
           <div class="stat-card" style="padding:14px">
             <div class="stat-label">{{ s.label }}</div>
@@ -52,6 +51,13 @@
           </div>
 
           <div class="card" style="padding:0;overflow:hidden">
+            @if (usersLoading()) {
+              <div style="padding:20px">
+                @for (i of [1,2,3,4,5,6]; track i) {
+                  <div class="skeleton skeleton-row"></div>
+                }
+              </div>
+            } @else {
             <table class="data-table">
               <thead>
                 <tr>
@@ -91,21 +97,22 @@
                     <td><span class="status-badge" [ngClass]="userStatusBadge(u.status)">{{ u.status }}</span></td>
                     <td>
                       <div style="display:flex;gap:6px">
-                        <button class="btn btn-secondary btn-sm" title="Edit">
-                          <span class="material-icons-round" style="font-size:14px">edit</span>
-                        </button>
-                        <button class="btn btn-secondary btn-sm" title="View">
-                          <span class="material-icons-round" style="font-size:14px">visibility</span>
-                        </button>
-                        <button class="btn btn-danger btn-sm" title="Suspend">
-                          <span class="material-icons-round" style="font-size:14px">block</span>
-                        </button>
+                        @if (u.status === 'Suspended') {
+                          <button class="btn btn-success btn-sm" title="Activate" (click)="activateUser(u.id, u.name)">
+                            <span class="material-icons-round" style="font-size:14px">check_circle</span>
+                          </button>
+                        } @else {
+                          <button class="btn btn-danger btn-sm" title="Suspend" (click)="suspendUser(u.id, u.name)">
+                            <span class="material-icons-round" style="font-size:14px">block</span>
+                          </button>
+                        }
                       </div>
                     </td>
                   </tr>
                 }
               </tbody>
             </table>
+            }
           </div>
         </div>
       }
@@ -158,10 +165,6 @@
               </div>
               <h4>{{ report.name }}</h4>
               <p>{{ report.desc }}</p>
-              <div style="display:flex;gap:8px;margin-top:auto;padding-top:14px">
-                <button class="btn btn-secondary btn-sm"><span class="material-icons-round" style="font-size:14px">visibility</span> Preview</button>
-                <button class="btn btn-primary btn-sm"><span class="material-icons-round" style="font-size:14px">file_download</span> Download</button>
-              </div>
             </div>
           }
         </div>

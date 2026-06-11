@@ -1,6 +1,7 @@
 import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { AdminService, SchedulerJob } from '../../services/admin.service';
+import { ToastService } from '../../core/services/toast.service';
 
 interface DisplayJob {
   id:          number;
@@ -48,6 +49,7 @@ const JOB_META: Record<string, { icon: string; iconBg: string; iconColor: string
 })
 export class SchedulerComponent implements OnInit {
   private readonly adminSvc = inject(AdminService);
+  private readonly toast    = inject(ToastService);
 
   loading      = signal(true);
   jobFilter    = signal('All');
@@ -75,7 +77,10 @@ export class SchedulerComponent implements OnInit {
         this.updateStats(data);
         this.buildTimeline(display);
       },
-      error: () => this.loading.set(false),
+      error: () => {
+        this.loading.set(false);
+        this.toast.error('Could not load scheduler jobs — please try again');
+      },
     });
   }
 

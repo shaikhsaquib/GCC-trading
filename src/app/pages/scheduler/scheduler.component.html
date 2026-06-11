@@ -6,7 +6,6 @@
         </div>
         <div class="page-actions">
           <span class="badge badge-cron">Node-cron</span>
-          <button class="btn btn-secondary"><span class="material-icons-round">history</span> Run History</button>
         </div>
       </div>
 
@@ -24,9 +23,10 @@
       </div>
 
       @if (loading()) {
-        <div style="padding:60px;text-align:center;color:var(--text-muted)">
-          <span class="material-icons-round" style="font-size:40px;display:block;margin-bottom:12px;animation:spin 1s linear infinite">sync</span>
-          Loading scheduler status...
+        <div class="card" style="padding:20px">
+          @for (i of [1,2,3,4,5]; track i) {
+            <div class="skeleton skeleton-row"></div>
+          }
         </div>
       } @else {
         <div class="scheduler-layout">
@@ -84,9 +84,6 @@
                     <div class="job-actions" (click)="$event.stopPropagation()">
                       <button class="btn btn-success btn-sm" title="Run Now" (click)="runJob(job)">
                         <span class="material-icons-round" style="font-size:14px">play_arrow</span>
-                      </button>
-                      <button class="btn btn-secondary btn-sm" title="Edit">
-                        <span class="material-icons-round" style="font-size:14px">edit</span>
                       </button>
                     </div>
                   </div>
@@ -166,9 +163,6 @@
                 <div style="display:flex;gap:10px">
                   <button class="btn btn-success" style="flex:1;justify-content:center" (click)="runJob(selectedJob()!)">
                     <span class="material-icons-round">play_arrow</span> Run Now
-                  </button>
-                  <button class="btn btn-secondary" style="flex:1;justify-content:center">
-                    <span class="material-icons-round">edit</span> Edit Schedule
                   </button>
                 </div>
               </div>

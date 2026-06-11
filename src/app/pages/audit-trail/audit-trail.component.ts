@@ -3,6 +3,8 @@ import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../services/admin.service';
 import { AuditEntry } from '../../core/models/api.models';
+import { ToastService } from '../../core/services/toast.service';
+import { exportToCsv } from '../../core/utils/csv-export';
 
 interface LogDisplay {
   id:       string;
@@ -30,6 +32,7 @@ interface LogDisplay {
 })
 export class AuditTrailComponent implements OnInit {
   private readonly adminSvc = inject(AdminService);
+  private readonly toast    = inject(ToastService);
 
   searchTerm     = '';
   categoryFilter = '';
@@ -37,7 +40,10 @@ export class AuditTrailComponent implements OnInit {
   selectedLog    = signal<LogDisplay | null>(null);
   loading        = signal(true);
   total          = signal(0);
+  page           = signal(1);
   blockHash      = '—';
+  readonly pageSize = 50;
+  private lastFetchCount = 0;
 
   auditStats = [
     { label: 'Total Log Entries', value: '—', color: 'var(--text-primary)' },
@@ -53,10 +59,12 @@ export class AuditTrailComponent implements OnInit {
 
   private loadLogs(offset = 0) {
     this.loading.set(true);
-    this.adminSvc.getAuditTrail({ limit: 50, offset }).subscribe({
+    this.selectedLog.set(null);
+    this.adminSvc.getAuditTrail({ limit: this.pageSize, offset }).subscribe({
       next: res => {
         this.loading.set(false);
         const entries = res.data?.data ?? [];
+        this.lastFetchCount = entries.length;
         this.total.set(res.data?.total ?? 0);
         this._logs.set(entries.map((e, i) => this.mapEntry(e, offset + i)));
         this.updateStats(entries, res.data?.total ?? 0);
@@ -64,8 +72,49 @@ export class AuditTrailComponent implements OnInit {
           this.blockHash = entries[0]._id.slice(-16);
         }
       },
-      error: () => this.loading.set(false),
+      error: () => {
+        this.loading.set(false);
+        this.toast.error('Could not load audit logs — please try again');
+      },
     });
+  }
+
+  refresh() {
+    this.loadLogs((this.page() - 1) * this.pageSize);
+  }
+
+  hasNextPage(): boolean {
+    return this.lastFetchCount === this.pageSize;
+  }
+
+  nextPage() {
+    if (!this.hasNextPage()) return;
+    this.page.update(p => p + 1);
+    this.loadLogs((this.page() - 1) * this.pageSize);
+  }
+
+  prevPage() {
+    if (this.page() === 1) return;
+    this.page.update(p => p - 1);
+    this.loadLogs((this.page() - 1) * this.pageSize);
+  }
+
+  exportLogs() {
+    const rows = this.filteredLogs();
+    if (!rows.length) { this.toast.info('No log entries to export'); return; }
+    exportToCsv('audit-trail', [
+      { label: 'Date',      key: 'date'     },
+      { label: 'Time',      key: 'time'     },
+      { label: 'Severity',  key: 'severity' },
+      { label: 'Category',  key: 'category' },
+      { label: 'Action',    key: 'action'   },
+      { label: 'User',      key: 'user'     },
+      { label: 'Entity',    key: 'entity'   },
+      { label: 'IP',        key: 'ip'       },
+      { label: 'Result',    key: 'result'   },
+      { label: 'Hash',      key: 'fullHash' },
+    ], rows as unknown as Record<string, unknown>[]);
+    this.toast.success(`Exported ${rows.length} rows`);
   }
 
   private mapEntry(e: AuditEntry, idx: number): LogDisplay {

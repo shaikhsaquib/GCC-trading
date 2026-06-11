@@ -6,7 +6,7 @@
         </div>
         <div class="page-actions">
           <span class="badge badge-node">Node.js</span>
-          <button class="btn btn-secondary"><span class="material-icons-round">history</span> History</button>
+          <button class="btn btn-secondary" (click)="exportTransactions()"><span class="material-icons-round">file_download</span> Export</button>
           <button class="btn btn-primary" (click)="activeAction.set('deposit')">
             <span class="material-icons-round">add</span> Add Funds
           </button>
@@ -170,9 +170,7 @@
           <div class="card mini-chart-card">
             <h4 style="margin-bottom:16px">Balance Trend (30 days)</h4>
             @if (txLoading()) {
-              <div style="height:100px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)">
-                <span class="material-icons-round" style="animation:spin 1s linear infinite">sync</span>
-              </div>
+              <div class="skeleton" style="height:100px"></div>
             } @else {
               <svg width="100%" height="100" viewBox="0 0 300 100" preserveAspectRatio="none">
                 <defs>
@@ -212,9 +210,10 @@
           </div>
 
           @if (txLoading()) {
-            <div style="padding:40px;text-align:center;color:var(--text-muted)">
-              <span class="material-icons-round" style="font-size:32px;animation:spin 1s linear infinite;display:block;margin-bottom:12px">sync</span>
-              Loading transactions...
+            <div style="padding:8px 0">
+              @for (i of [1,2,3,4,5,6]; track i) {
+                <div class="skeleton skeleton-row"></div>
+              }
             </div>
           } @else {
             <table class="data-table">

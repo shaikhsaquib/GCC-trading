@@ -6,8 +6,7 @@
         </div>
         <div class="page-actions">
           <span class="badge badge-node">Node.js</span>
-          <button class="btn btn-secondary"><span class="material-icons-round">filter_list</span> Filters</button>
-          <button class="btn btn-primary"><span class="material-icons-round">person_add</span> Invite User</button>
+          <button class="btn btn-secondary" (click)="exportUsers()"><span class="material-icons-round">file_download</span> Export</button>
         </div>
       </div>
 
@@ -39,9 +38,16 @@
               <h4 style="font-size:14px;font-weight:700">Users ({{ filteredUsers().length }})</h4>
               <div class="search-bar" style="width:240px">
                 <span class="material-icons-round search-icon">search</span>
-                <input class="form-control" style="width:100%;padding-left:36px" placeholder="Search users..." name="us"/>
+                <input class="form-control" style="width:100%;padding-left:36px" placeholder="Search users..." [(ngModel)]="searchTerm" name="us"/>
               </div>
             </div>
+            @if (loading()) {
+              <div style="padding:20px">
+                @for (i of [1,2,3,4,5,6]; track i) {
+                  <div class="skeleton skeleton-row"></div>
+                }
+              </div>
+            } @else {
             <table class="data-table">
               <thead>
                 <tr>
@@ -81,11 +87,10 @@
                     <td style="font-size:13px;font-weight:600;color:var(--accent-cyan)">{{ u.sessions }}</td>
                     <td (click)="$event.stopPropagation()">
                       <div style="display:flex;gap:6px">
-                        <button class="btn btn-secondary btn-sm">Edit</button>
                         @if (u.status === 'Active') {
-                          <button class="btn btn-danger btn-sm">Suspend</button>
+                          <button class="btn btn-danger btn-sm" (click)="suspendUser(u)">Suspend</button>
                         } @else {
-                          <button class="btn btn-success btn-sm">Activate</button>
+                          <button class="btn btn-success btn-sm" (click)="activateUser(u)">Activate</button>
                         }
                       </div>
                     </td>
@@ -93,6 +98,7 @@
                 }
               </tbody>
             </table>
+            }
           </div>
         </div>
 
@@ -121,14 +127,6 @@
                 <div class="detail-field"><span>KYC</span>
                   <span class="badge" [ngClass]="selectedUser()!.kyc === 'Approved' ? 'badge-success' : 'badge-warning'">{{ selectedUser()!.kyc }}</span>
                 </div>
-              </div>
-              <div style="display:flex;gap:8px;margin-top:16px">
-                <button class="btn btn-secondary btn-sm" style="flex:1;justify-content:center">
-                  <span class="material-icons-round" style="font-size:15px">key</span> Reset Password
-                </button>
-                <button class="btn btn-secondary btn-sm" style="flex:1;justify-content:center">
-                  <span class="material-icons-round" style="font-size:15px">logout</span> Revoke Sessions
-                </button>
               </div>
             </div>
           }

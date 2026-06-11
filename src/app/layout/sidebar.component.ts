@@ -1,8 +1,9 @@
-import { Component, signal, inject, computed } from '@angular/core';
+import { Component, signal, inject, computed, OnInit } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NgClass } from '@angular/common';
 import { LayoutService } from './layout.service';
 import { AuthService } from '../core/services/auth.service';
+import { AmlService } from '../services/aml.service';
 
 interface NavItem {
   label: string;
@@ -24,10 +25,22 @@ interface NavGroup {
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.css',
 })
-export class SidebarComponent {
+export class SidebarComponent implements OnInit {
   collapsed   = signal(false);
   readonly layout = inject(LayoutService);
   readonly auth   = inject(AuthService);
+  private readonly amlSvc = inject(AmlService);
+
+  private readonly openAmlAlerts = signal(0);
+
+  ngOnInit(): void {
+    if (this.auth.isAdmin()) {
+      this.amlSvc.getAlerts('Open', 50, 0).subscribe({
+        next:  res => this.openAmlAlerts.set((res.data ?? []).length),
+        error: () => this.openAmlAlerts.set(0),
+      });
+    }
+  }
 
   readonly userInitials = computed(() => {
     const u = this.auth.user();
@@ -73,7 +86,7 @@ export class SidebarComponent {
     {
       title: 'Compliance',
       items: [
-        { label: 'AML & Compliance', icon: 'security', route: '/aml',   badge: '3', badgeClass: 'alert' },
+        { label: 'AML & Compliance', icon: 'security', route: '/aml' },
         { label: 'Audit Trail',      icon: 'storage',  route: '/audit' },
       ],
     },
@@ -129,7 +142,17 @@ export class SidebarComponent {
   ];
 
   get navGroups(): NavGroup[] {
-    if (this.auth.isAdmin())  return this.adminNavGroups;
+    if (this.auth.isAdmin()) {
+      const open = this.openAmlAlerts();
+      if (!open) return this.adminNavGroups;
+      // Live AML alert count badge instead of a hardcoded number
+      return this.adminNavGroups.map(g => ({
+        ...g,
+        items: g.items.map(it => it.route === '/aml'
+          ? { ...it, badge: open > 9 ? '9+' : String(open), badgeClass: 'alert' }
+          : it),
+      }));
+    }
     if (this.auth.isActive()) return this.investorNavGroups;
     return this.pendingNavGroups;
   }

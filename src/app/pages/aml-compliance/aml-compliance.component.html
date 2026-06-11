@@ -6,21 +6,20 @@
         </div>
         <div class="page-actions">
           <span class="badge badge-dotnet">.NET Core</span>
-          <button class="btn btn-secondary"><span class="material-icons-round">assessment</span> Generate Report</button>
-          <button class="btn btn-primary"><span class="material-icons-round">add_alert</span> New Case</button>
+          <button class="btn btn-secondary" (click)="exportAlerts()"><span class="material-icons-round">file_download</span> Export</button>
         </div>
       </div>
 
       <!-- Alert Banner -->
-      <div class="alert-banner">
-        <span class="material-icons-round">warning</span>
-        <strong>3 HIGH-RISK alerts require immediate review.</strong>
-        <span>Last scan: 2 minutes ago · Next scan: in 8 minutes</span>
-        <button class="btn btn-danger btn-sm" style="margin-left:auto">Review Now</button>
-      </div>
+      @if (highRiskOpenCount() > 0) {
+        <div class="alert-banner">
+          <span class="material-icons-round">warning</span>
+          <strong>{{ highRiskOpenCount() }} HIGH-RISK {{ highRiskOpenCount() === 1 ? 'alert requires' : 'alerts require' }} immediate review.</strong>
+        </div>
+      }
 
       <!-- Stats -->
-      <div class="stats-grid" style="grid-template-columns:repeat(6,1fr);margin-bottom:24px">
+      <div class="stats-grid" style="margin-bottom:24px">
         @for (s of amlStats; track s.label) {
           <div class="stat-card" style="padding:14px">
             <div class="stat-label">{{ s.label }}</div>
@@ -42,6 +41,11 @@
           </div>
 
           <div class="alert-list">
+            @if (loading()) {
+              @for (i of [1,2,3,4,5]; track i) {
+                <div class="skeleton skeleton-row" style="height:80px"></div>
+              }
+            }
             @for (alert of filteredAlerts(); track alert.id) {
               <div class="alert-card" [class.selected]="selectedAlert()?.id === alert.id" [class]="'risk-' + alert.risk.toLowerCase()" (click)="selectedAlert.set(alert)">
                 <div class="alert-top">
@@ -116,10 +120,15 @@
               <div class="divider"></div>
 
               <div class="action-row">
-                <button class="btn btn-success"><span class="material-icons-round">check</span> Clear Alert</button>
-                <button class="btn btn-warning-btn"><span class="material-icons-round">escalate</span> Escalate</button>
-                <button class="btn btn-danger"><span class="material-icons-round">block</span> Freeze Account</button>
-                <button class="btn btn-secondary"><span class="material-icons-round">description</span> File SAR</button>
+                <button class="btn btn-success" (click)="updateAlertStatus(selectedAlert()!.id, 'Cleared')">
+                  <span class="material-icons-round">check</span> Clear Alert
+                </button>
+                <button class="btn btn-warning-btn" (click)="updateAlertStatus(selectedAlert()!.id, 'Escalated')">
+                  <span class="material-icons-round">north_east</span> Escalate
+                </button>
+                <button class="btn btn-secondary" (click)="fileSar(selectedAlert()!.id)">
+                  <span class="material-icons-round">description</span> File SAR
+                </button>
               </div>
             </div>
           } @else {

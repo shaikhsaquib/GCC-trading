@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../services/admin.service';
 import { KycService } from '../../services/kyc.service';
 import { AdminStats, AdminUser, KycQueueItem } from '../../core/models/api.models';
+import { ToastService } from '../../core/services/toast.service';
+import { exportToCsv } from '../../core/utils/csv-export';
 
 interface UserDisplay {
   id:          string;
@@ -45,6 +47,7 @@ interface KycDisplay {
 export class AdminComponent implements OnInit {
   private readonly adminSvc = inject(AdminService);
   private readonly kycSvc   = inject(KycService);
+  private readonly toast    = inject(ToastService);
 
   activeTab    = signal('User Management');
   userSearch   = '';
@@ -53,7 +56,7 @@ export class AdminComponent implements OnInit {
   usersLoading = signal(true);
   error        = signal<string | null>(null);
 
-  tabs = ['User Management', 'KYC Review', 'System Reports', 'Permissions'];
+  tabs = ['User Management', 'KYC Review', 'System Reports'];
 
   adminStats = [
     { label: 'Total Users',    value: '—', color: 'var(--text-primary)' },
@@ -99,7 +102,10 @@ export class AdminComponent implements OnInit {
           { label: 'Admins',        value: '—',                            color: 'var(--accent-purple)' },
         ];
       },
-      error: () => this.loading.set(false),
+      error: () => {
+        this.loading.set(false);
+        this.toast.error('Could not load admin stats — please try again');
+      },
     });
   }
 
@@ -109,7 +115,10 @@ export class AdminComponent implements OnInit {
         this.kycLoading.set(false);
         this.kycQueue.set((res.data ?? []).map((k, i) => this.mapKycItem(k, i)));
       },
-      error: () => this.kycLoading.set(false),
+      error: () => {
+        this.kycLoading.set(false);
+        this.toast.error('Could not load KYC queue — please try again');
+      },
     });
   }
 
@@ -150,6 +159,7 @@ export class AdminComponent implements OnInit {
         this.kycActionMsg.set('KYC approved successfully');
         setTimeout(() => this.kycActionMsg.set(null), 4000);
       },
+      error: () => this.toast.error('Could not approve KYC — please try again'),
     });
   }
 
@@ -160,6 +170,7 @@ export class AdminComponent implements OnInit {
         this.kycActionMsg.set('KYC rejected');
         setTimeout(() => this.kycActionMsg.set(null), 4000);
       },
+      error: () => this.toast.error('Could not reject KYC — please try again'),
     });
   }
 
@@ -180,7 +191,10 @@ export class AdminComponent implements OnInit {
         this.usersLoading.set(false);
         this._users.set((res.data ?? []).map((u, i) => this.mapUser(u, i)));
       },
-      error: () => this.usersLoading.set(false),
+      error: () => {
+        this.usersLoading.set(false);
+        this.toast.error('Could not load users — please try again');
+      },
     });
   }
 
@@ -227,24 +241,45 @@ export class AdminComponent implements OnInit {
     return map[status] ?? status;
   }
 
-  suspendUser(id: string) {
+  suspendUser(id: string, name?: string) {
+    if (!confirm(`Suspend ${name ?? 'this user'}?`)) return;
     this.adminSvc.suspendUser(id).subscribe({
       next: () => {
         this._users.update(list =>
           list.map(u => u.id === id ? { ...u, status: 'Suspended' } : u)
         );
+        this.toast.success(`${name ?? 'User'} suspended`);
       },
+      error: () => this.toast.error('Could not suspend user — please try again'),
     });
   }
 
-  activateUser(id: string) {
+  activateUser(id: string, name?: string) {
+    if (!confirm(`Activate ${name ?? 'this user'}?`)) return;
     this.adminSvc.activateUser(id).subscribe({
       next: () => {
         this._users.update(list =>
           list.map(u => u.id === id ? { ...u, status: 'Active', kyc: 'Approved' } : u)
         );
+        this.toast.success(`${name ?? 'User'} activated`);
       },
+      error: () => this.toast.error('Could not activate user — please try again'),
     });
+  }
+
+  exportUsers() {
+    const rows = this.filteredUsers();
+    if (!rows.length) { this.toast.info('No users to export'); return; }
+    exportToCsv('admin-users', [
+      { label: 'Name',       key: 'name'      },
+      { label: 'Email',      key: 'email'     },
+      { label: 'Role',       key: 'role'      },
+      { label: 'KYC',        key: 'kyc'       },
+      { label: 'Status',     key: 'status'    },
+      { label: 'Joined',     key: 'joined'    },
+      { label: 'Last Login', key: 'lastLogin' },
+    ], rows as unknown as Record<string, unknown>[]);
+    this.toast.success(`Exported ${rows.length} rows`);
   }
 
   get users() {

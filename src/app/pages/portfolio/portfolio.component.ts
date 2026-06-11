@@ -2,6 +2,8 @@ import { Component, signal, inject, OnInit } from '@angular/core';
 import { NgClass, DecimalPipe } from '@angular/common';
 import { PortfolioService } from '../../services/portfolio.service';
 import { PortfolioHolding, PortfolioSummary, CouponEvent } from '../../core/models/api.models';
+import { ToastService } from '../../core/services/toast.service';
+import { exportToCsv } from '../../core/utils/csv-export';
 
 interface HoldingDisplay {
   name:      string;
@@ -37,6 +39,7 @@ interface DonutSegment {
 })
 export class PortfolioComponent implements OnInit {
   private readonly portfolioSvc = inject(PortfolioService);
+  private readonly toast        = inject(ToastService);
 
   loading         = signal(true);
   holdingsLoading = signal(true);
@@ -90,7 +93,10 @@ export class PortfolioComponent implements OnInit {
           { label: 'Holdings Count',         value: s.holdingsCount.toString(),                      color: 'var(--text-primary)', sub: null, up: true },
         ];
       },
-      error: () => this.loading.set(false),
+      error: () => {
+        this.loading.set(false);
+        this.toast.error('Could not load portfolio summary — please try again');
+      },
     });
   }
 
@@ -105,8 +111,32 @@ export class PortfolioComponent implements OnInit {
         this.updateAvgYtm(mapped);
         this.updateDonutFromHoldings(items);
       },
-      error: () => this.holdingsLoading.set(false),
+      error: () => {
+        this.holdingsLoading.set(false);
+        this.toast.error('Could not load holdings — please try again');
+      },
     });
+  }
+
+  exportHoldings() {
+    const rows = this.filteredHoldings();
+    if (!rows.length) { this.toast.info('No holdings to export'); return; }
+    exportToCsv('portfolio-holdings', [
+      { label: 'Bond',           key: 'name'     },
+      { label: 'Issuer',         key: 'issuer'   },
+      { label: 'ISIN',           key: 'isin'     },
+      { label: 'Type',           key: 'type'     },
+      { label: 'Units',          key: 'units'    },
+      { label: 'Avg Cost',       key: 'avgCost'  },
+      { label: 'Market Price',   key: 'mktPrice' },
+      { label: 'Market Value',   key: 'mktValue' },
+      { label: 'Unrealized P&L', key: 'pnl'      },
+      { label: 'P&L %',          key: 'pnlPct'   },
+      { label: 'YTM %',          key: 'ytm'      },
+      { label: 'Maturity',       key: 'maturity' },
+      { label: 'Weight %',       key: 'weight'   },
+    ], rows as unknown as Record<string, unknown>[]);
+    this.toast.success(`Exported ${rows.length} rows`);
   }
 
   private loadCouponCalendar() {

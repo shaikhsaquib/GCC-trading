@@ -2,6 +2,8 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { NgClass, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SettlementService, Settlement } from '../../services/settlement.service';
+import { ToastService } from '../../core/services/toast.service';
+import { exportToCsv } from '../../core/utils/csv-export';
 
 @Component({
   selector: 'app-settlement',
@@ -16,13 +18,13 @@ import { SettlementService, Settlement } from '../../services/settlement.service
         </div>
         <div class="page-actions">
           <span class="badge badge-dotnet">.NET Core</span>
-          <button class="btn btn-secondary"><span class="material-icons-round">file_download</span> Export</button>
-          <button class="btn btn-primary"><span class="material-icons-round">sync</span> Refresh</button>
+          <button class="btn btn-secondary" (click)="exportSettlements()"><span class="material-icons-round">file_download</span> Export</button>
+          <button class="btn btn-primary" (click)="loadSettlements()"><span class="material-icons-round">sync</span> Refresh</button>
         </div>
       </div>
 
       <!-- Stats -->
-      <div class="stats-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:24px">
+      <div class="stats-grid" style="margin-bottom:24px">
         @for (s of settlStats; track s.label) {
           <div class="stat-card" style="padding:16px">
             <div class="stat-icon" [style.background]="s.iconBg" style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:10px">
@@ -45,27 +47,22 @@ import { SettlementService, Settlement } from '../../services/settlement.service
       <div class="toolbar" style="margin-bottom:16px">
         <div class="search-bar" style="flex:1">
           <span class="material-icons-round search-icon">search</span>
-          <input class="form-control" style="width:100%;padding-left:36px" placeholder="Search by trade ID, ISIN, counterparty..." name="ss"/>
+          <input class="form-control" style="width:100%;padding-left:36px" placeholder="Search by trade ID, ISIN, counterparty..." name="ss" [(ngModel)]="searchTerm"/>
         </div>
-        <select class="form-control form-select" style="width:160px" name="sf">
-          <option>All Dates</option>
-          <option>Today</option>
-          <option>This Week</option>
-        </select>
-        <select class="form-control form-select" style="width:140px" name="sc">
-          <option>All Currencies</option>
-          <option>SAR</option>
-          <option>USD</option>
-          <option>AED</option>
-        </select>
       </div>
 
       <!-- Settlement Table -->
       <div class="card" style="padding:0;overflow:hidden">
+        @if (loading()) {
+          <div style="padding:20px">
+            @for (i of [1,2,3,4,5,6]; track i) {
+              <div class="skeleton skeleton-row"></div>
+            }
+          </div>
+        } @else {
         <table class="data-table">
           <thead>
             <tr>
-              <th><input type="checkbox" style="accent-color:var(--accent-cyan)"/></th>
               <th>Trade ID</th>
               <th>Bond</th>
               <th>ISIN</th>
@@ -77,15 +74,11 @@ import { SettlementService, Settlement } from '../../services/settlement.service
               <th>Trade Date</th>
               <th>Settlement Date</th>
               <th>Status</th>
-              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             @for (s of filteredSettlements(); track s.id) {
               <tr [class.selected-row]="selectedSettlement()?.id === s.id" (click)="selectedSettlement.set(s)">
-                <td (click)="$event.stopPropagation()">
-                  <input type="checkbox" style="accent-color:var(--accent-cyan)"/>
-                </td>
                 <td><code style="font-size:11px;color:var(--accent-cyan)">{{ s.id }}</code></td>
                 <td>
                   <div>
@@ -104,22 +97,11 @@ import { SettlementService, Settlement } from '../../services/settlement.service
                 <td style="color:var(--text-secondary)">{{ s.tradeDate }}</td>
                 <td style="color:var(--accent-cyan);font-weight:600">{{ s.settlementDate }}</td>
                 <td><span class="badge" [ngClass]="statusBadge(s.status)">{{ s.status }}</span></td>
-                <td (click)="$event.stopPropagation()">
-                  @if (s.status === 'Pending') {
-                    <div style="display:flex;gap:6px">
-                      <button class="btn btn-success btn-sm">Confirm</button>
-                      <button class="btn btn-danger btn-sm">Fail</button>
-                    </div>
-                  } @else if (s.status === 'Failed') {
-                    <button class="btn btn-secondary btn-sm">Retry</button>
-                  } @else {
-                    <button class="btn btn-secondary btn-sm">Details</button>
-                  }
-                </td>
               </tr>
             }
           </tbody>
         </table>
+        }
       </div>
 
       <!-- Settlement Detail Modal (side panel) -->
@@ -159,16 +141,6 @@ import { SettlementService, Settlement } from '../../services/settlement.service
             }
           </div>
 
-          @if (selectedSettlement()!.status === 'Pending') {
-            <div style="display:flex;gap:10px;margin-top:16px">
-              <button class="btn btn-success" style="flex:1;justify-content:center">
-                <span class="material-icons-round">check</span> Confirm Settlement
-              </button>
-              <button class="btn btn-danger" style="flex:1;justify-content:center">
-                <span class="material-icons-round">close</span> Mark Failed
-              </button>
-            </div>
-          }
         </div>
       }
     </div>
@@ -206,11 +178,13 @@ import { SettlementService, Settlement } from '../../services/settlement.service
 })
 export class SettlementComponent implements OnInit {
   private readonly settlSvc = inject(SettlementService);
+  private readonly toast    = inject(ToastService);
 
   activeTab = signal('Pending T+1');
   selectedSettlement = signal<any>(null);
   loading = signal(true);
   error = signal<string | null>(null);
+  searchTerm = '';
 
   tabs = ['Pending T+1', 'In Progress', 'Settled', 'Failed', 'All'];
 
@@ -225,6 +199,11 @@ export class SettlementComponent implements OnInit {
   settlements: any[] = [];
 
   ngOnInit() {
+    this.loadSettlements();
+  }
+
+  loadSettlements() {
+    this.loading.set(true);
     this.settlSvc.getAll().subscribe({
       next: (res) => {
         const items = res.data.items;
@@ -257,11 +236,31 @@ export class SettlementComponent implements OnInit {
 
         this.loading.set(false);
       },
-      error: (err) => {
+      error: () => {
         this.error.set('Failed to load settlements');
         this.loading.set(false);
+        this.toast.error('Could not load settlements — please try again');
       },
     });
+  }
+
+  exportSettlements() {
+    const rows = this.filteredSettlements();
+    if (!rows.length) { this.toast.info('No settlements to export'); return; }
+    exportToCsv('settlements', [
+      { label: 'Trade ID',        key: 'id'             },
+      { label: 'Bond',            key: 'bond'           },
+      { label: 'ISIN',            key: 'isin'           },
+      { label: 'Side',            key: 'side'           },
+      { label: 'Quantity',        key: 'qty'            },
+      { label: 'Price',           key: 'price'          },
+      { label: 'Value (SAR)',     key: 'value'          },
+      { label: 'Counterparty',    key: 'counterparty'   },
+      { label: 'Trade Date',      key: 'tradeDate'      },
+      { label: 'Settlement Date', key: 'settlementDate' },
+      { label: 'Status',          key: 'status'         },
+    ], rows);
+    this.toast.success(`Exported ${rows.length} rows`);
   }
 
   get settlSteps() {
@@ -288,13 +287,21 @@ export class SettlementComponent implements OnInit {
   }
 
   filteredSettlements() {
-    const tab = this.activeTab();
-    if (tab === 'All') return this.settlements;
-    if (tab === 'Pending T+1') return this.settlements.filter(s => s.status === 'Pending');
-    if (tab === 'In Progress') return this.settlements.filter(s => s.status === 'Processing');
-    if (tab === 'Settled') return this.settlements.filter(s => s.status === 'Settled');
-    if (tab === 'Failed') return this.settlements.filter(s => s.status === 'Failed');
-    return this.settlements;
+    const tab  = this.activeTab();
+    const term = this.searchTerm.trim().toLowerCase();
+    let list   = this.settlements;
+    if (tab === 'Pending T+1')      list = list.filter(s => s.status === 'Pending');
+    else if (tab === 'In Progress') list = list.filter(s => s.status === 'Processing');
+    else if (tab === 'Settled')     list = list.filter(s => s.status === 'Settled');
+    else if (tab === 'Failed')      list = list.filter(s => s.status === 'Failed');
+    if (term) {
+      list = list.filter(s =>
+        s.id.toLowerCase().includes(term) ||
+        s.isin.toLowerCase().includes(term) ||
+        s.bond.toLowerCase().includes(term) ||
+        s.counterparty.toLowerCase().includes(term));
+    }
+    return list;
   }
 
   statusBadge(s: string) { return { 'badge-warning': s === 'Pending', 'badge-info': s === 'Processing', 'badge-success': s === 'Settled', 'badge-danger': s === 'Failed' }; }

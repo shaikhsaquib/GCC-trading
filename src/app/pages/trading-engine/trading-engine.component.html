@@ -7,8 +7,8 @@
         <div class="page-actions">
           <span class="badge badge-dotnet">.NET Core</span>
           <div class="market-status-pill">
-            <span class="status-dot active"></span>
-            Market Open · {{ marketTime() }} AST
+            <span class="status-dot" [class.active]="marketOpen()" [class.error]="!marketOpen()"></span>
+            {{ marketOpen() ? 'Market Open' : 'Market Closed' }} · {{ marketTime() }} AST
           </div>
         </div>
       </div>
@@ -78,7 +78,10 @@
 
             <div class="form-group">
               <label>Quantity (Units)</label>
-              <input class="form-control" type="number" [(ngModel)]="quantity" name="qty" placeholder="0"/>
+              <input class="form-control" type="number" min="1" required [(ngModel)]="quantity" name="qty" placeholder="0"/>
+              @if (quantity == null || quantity <= 0) {
+                <small style="display:block;margin-top:4px;color:var(--danger);font-size:11px">Quantity must be at least 1</small>
+              }
               <div class="quick-amounts">
                 @for (q of [100,500,1000,5000]; track q) {
                   <span class="chip" (click)="quantity = q">{{ q | number }}</span>
@@ -89,7 +92,10 @@
             @if (orderType() !== 'Market') {
               <div class="form-group">
                 <label>Limit Price (SAR per unit)</label>
-                <input class="form-control" type="number" [(ngModel)]="limitPrice" name="lp" step="0.01" placeholder="100.00"/>
+                <input class="form-control" type="number" min="0.01" required [(ngModel)]="limitPrice" name="lp" step="0.01" placeholder="100.00"/>
+                @if (limitPrice == null || limitPrice <= 0) {
+                  <small style="display:block;margin-top:4px;color:var(--danger);font-size:11px">Limit price must be greater than 0</small>
+                }
               </div>
             }
 
@@ -130,7 +136,7 @@
             <button class="btn btn-lg submit-order-btn"
               [class.buy-btn]="orderSide() === 'buy'"
               [class.sell-btn]="orderSide() === 'sell'"
-              [disabled]="submitting()"
+              [disabled]="submitting() || orderInvalid"
               (click)="placeOrder()"
               style="width:100%;justify-content:center">
               @if (submitting()) {
@@ -161,34 +167,45 @@
             <span>Ask</span>
           </div>
 
-          <!-- Asks (sell side — shown above mid, reversed) -->
-          <div class="asks-list">
-            @for (ask of asks(); track ask.price) {
-              <div class="book-row ask-row">
-                <div class="book-depth ask-depth" [style.width]="ask.depth + '%'"></div>
-                <span class="book-price ask-price">{{ ask.price }}</span>
-                <span class="book-qty">{{ ask.qty | number }}</span>
-                <span class="book-total">SAR {{ ask.total }}M</span>
-              </div>
-            }
-          </div>
+          @if (bookLoading() && asks().length === 0 && bids().length === 0) {
+            <div style="text-align:center;padding:28px;color:var(--text-muted);font-size:12px">
+              <span class="material-icons-round" style="animation:spin 1s linear infinite">sync</span>
+            </div>
+          } @else if (asks().length === 0 && bids().length === 0) {
+            <div style="text-align:center;padding:28px 16px;color:var(--text-muted);font-size:12px">
+              <span class="material-icons-round" style="font-size:28px;display:block;margin-bottom:6px">menu_book</span>
+              No open orders for this bond — place the first one
+            </div>
+          } @else {
+            <!-- Asks (sell side — best ask closest to mid) -->
+            <div class="asks-list">
+              @for (ask of asks(); track ask.price) {
+                <div class="book-row ask-row">
+                  <div class="book-depth ask-depth" [style.width]="ask.depth + '%'"></div>
+                  <span class="book-price ask-price">{{ ask.price }}</span>
+                  <span class="book-qty">{{ ask.qty | number }}</span>
+                  <span class="book-total">SAR {{ ask.total }}M</span>
+                </div>
+              }
+            </div>
 
-          <div class="book-divider">
-            <span class="mid-price">{{ selectedBond().price }}</span>
-            <span class="mid-label">Mid Price</span>
-          </div>
+            <div class="book-divider">
+              <span class="mid-price">{{ selectedBond().price }}</span>
+              <span class="mid-label">Mid Price</span>
+            </div>
 
-          <!-- Bids (buy side) -->
-          <div class="bids-list">
-            @for (bid of bids(); track bid.price) {
-              <div class="book-row bid-row">
-                <div class="book-depth bid-depth" [style.width]="bid.depth + '%'"></div>
-                <span class="book-price bid-price">{{ bid.price }}</span>
-                <span class="book-qty">{{ bid.qty | number }}</span>
-                <span class="book-total">SAR {{ bid.total }}M</span>
-              </div>
-            }
-          </div>
+            <!-- Bids (buy side) -->
+            <div class="bids-list">
+              @for (bid of bids(); track bid.price) {
+                <div class="book-row bid-row">
+                  <div class="book-depth bid-depth" [style.width]="bid.depth + '%'"></div>
+                  <span class="book-price bid-price">{{ bid.price }}</span>
+                  <span class="book-qty">{{ bid.qty | number }}</span>
+                  <span class="book-total">SAR {{ bid.total }}M</span>
+                </div>
+              }
+            </div>
+          }
         </div>
 
         <!-- ── Right panel: Recent Trades + My Orders ────────────────── -->
@@ -196,15 +213,16 @@
 
           <div class="card trades-card">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-shrink:0">
-              <h4>Recent Trades</h4>
-              <span style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px">
-                <span class="status-dot active" style="width:6px;height:6px"></span> Live
-              </span>
+              <h4 style="display:flex;align-items:center;gap:8px">
+                Recent Trades
+                <span class="demo-feed-tag">demo feed</span>
+              </h4>
             </div>
             <div class="trades-list">
               @if (recentTrades().length === 0) {
                 <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">
-                  <span class="material-icons-round" style="animation:spin 1s linear infinite">sync</span>
+                  <span class="material-icons-round" style="font-size:28px;display:block;margin-bottom:6px">receipt_long</span>
+                  No trades yet for this bond
                 </div>
               }
               @for (trade of recentTrades(); track trade.id) {
@@ -221,7 +239,15 @@
           <div class="card my-orders-card">
             <div style="display:flex;justify-content:space-between;margin-bottom:14px">
               <h4>My Open Orders</h4>
-              <button class="btn btn-secondary btn-sm">Cancel All</button>
+              <button class="btn btn-secondary btn-sm"
+                      [disabled]="cancellingAll() || myOrders.length === 0"
+                      (click)="cancelAllOrders()">
+                @if (cancellingAll()) {
+                  <span class="material-icons-round" style="font-size:13px;animation:spin 1s linear infinite">sync</span> Cancelling...
+                } @else {
+                  Cancel All
+                }
+              </button>
             </div>
             @if (ordersLoading()) {
               <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">
