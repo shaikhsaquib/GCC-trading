@@ -3,7 +3,7 @@
     .sidebar {
       width: var(--sidebar-width);
       height: 100%;
-      background: rgba(9, 15, 29, 0.82);
+      background: rgba(19, 30, 54, 0.78);
       backdrop-filter: blur(16px);
       border-right: 1px solid var(--border);
       display: flex;
