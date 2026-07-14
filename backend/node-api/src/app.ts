@@ -35,8 +35,30 @@ export function createApp(): Application {
   }));
 
   // ── CORS ──────────────────────────────────────────────────────────────────
+  // Allowlist comes from ALLOWED_ORIGINS, but we always include the known
+  // production frontend and localhost so a misconfigured env var can't lock
+  // out the app. Vercel preview deploys (*.vercel.app) are matched by pattern
+  // since their subdomain changes on every deploy.
+  const staticOrigins = new Set(
+    [
+      ...config.cors.origins,
+      'https://gcc-trading.vercel.app',
+      'http://localhost:4200',
+    ].map(o => o.replace(/\/$/, '')), // tolerate trailing slashes
+  );
+
   app.use(cors({
-    origin:      config.cors.origins,
+    origin(origin, callback) {
+      // Non-browser clients (curl, health checks, mobile apps) send no Origin.
+      if (!origin) return callback(null, true);
+      const normalized = origin.replace(/\/$/, '');
+      const allowed =
+        staticOrigins.has(normalized) ||
+        /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(normalized);
+      if (allowed) return callback(null, true);
+      logger.warn('CORS origin rejected', { origin });
+      return callback(null, false);
+    },
     credentials: true,
     methods:     ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   }));
