@@ -7,6 +7,10 @@ import { logger } from '../logger';
 // ---------------------------------------------------------------------------
 
 export async function connectMongoDB(): Promise<void> {
+  if (!config.mongodb.uri) {
+    logger.warn('MONGODB_URI not set — audit logs and KYC document storage disabled');
+    return;
+  }
   await mongoose.connect(config.mongodb.uri);
   logger.info('MongoDB connected');
 }
