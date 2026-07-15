@@ -1,4 +1,4 @@
-import { Component, signal, inject, OnInit } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { NgClass, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -32,16 +32,17 @@ interface BondDisplay {
   imports: [NgClass, FormsModule, RouterLink, DecimalPipe],
   templateUrl: './bond-marketplace.component.html',
   styleUrl: './bond-marketplace.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BondMarketplaceComponent implements OnInit {
   private readonly bondSvc = inject(BondService);
   private readonly toast   = inject(ToastService);
 
   viewMode      = signal<'table' | 'grid'>('table');
-  searchTerm    = '';
-  sortBy        = 'yield';
-  minCoupon     = null as number | null;
-  maxCoupon     = null as number | null;
+  searchTerm    = signal('');
+  sortBy        = signal('yield');
+  minCoupon     = signal<number | null>(null);
+  maxCoupon     = signal<number | null>(null);
   selectedBond  = signal<BondDisplay | null>(null);
   compareList   = signal<string[]>([]);
   activeRatings = signal<string[]>([]);
@@ -150,13 +151,17 @@ export class BondMarketplaceComponent implements OnInit {
     ];
   }
 
-  filteredBonds(): BondDisplay[] {
-    const term      = this.searchTerm.toLowerCase();
+  // Memoized: recomputes only when the search term, sort, coupon bounds, active
+  // rating/type/maturity filters, or the bond list itself change — instead of
+  // re-filtering and re-sorting on every change-detection tick (it is read
+  // ~5× per render in the template).
+  readonly filteredBonds = computed<BondDisplay[]>(() => {
+    const term      = this.searchTerm().toLowerCase();
     const ratings   = this.activeRatings();
     const types     = this.activeTypes();
     const mats      = this.activeMaturities();
-    const minC      = this.minCoupon;
-    const maxC      = this.maxCoupon;
+    const minC      = this.minCoupon();
+    const maxC      = this.maxCoupon();
     const now       = Date.now();
 
     let list = this._bonds().filter(b => {
@@ -176,7 +181,7 @@ export class BondMarketplaceComponent implements OnInit {
       return true;
     });
 
-    switch (this.sortBy) {
+    switch (this.sortBy()) {
       case 'yield':    list = [...list].sort((a, b) => b.ytm     - a.ytm);     break;
       case 'price':    list = [...list].sort((a, b) => b.priceNum - a.priceNum); break;
       case 'coupon':   list = [...list].sort((a, b) => b.coupon  - a.coupon);  break;
@@ -184,7 +189,7 @@ export class BondMarketplaceComponent implements OnInit {
     }
 
     return list;
-  }
+  });
 
   toggleCompare(isin: string) {
     const list = [...this.compareList()];
@@ -216,10 +221,10 @@ export class BondMarketplaceComponent implements OnInit {
   }
 
   resetFilters() {
-    this.searchTerm = '';
-    this.sortBy     = 'yield';
-    this.minCoupon  = null;
-    this.maxCoupon  = null;
+    this.searchTerm.set('');
+    this.sortBy.set('yield');
+    this.minCoupon.set(null);
+    this.maxCoupon.set(null);
     this.activeRatings.set([]);
     this.activeTypes.set([]);
     this.activeMaturities.set(this.maturities.map(m => m.label));

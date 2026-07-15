@@ -52,9 +52,9 @@
           <div class="filter-section">
             <div class="filter-label">Coupon Rate (%)</div>
             <div class="range-inputs">
-              <input class="form-control" type="number" placeholder="Min" style="font-size:12px" [(ngModel)]="minCoupon" name="minc"/>
+              <input class="form-control" type="number" placeholder="Min" style="font-size:12px" [ngModel]="minCoupon()" (ngModelChange)="minCoupon.set($event)" name="minc"/>
               <span style="color:var(--text-muted)">—</span>
-              <input class="form-control" type="number" placeholder="Max" style="font-size:12px" [(ngModel)]="maxCoupon" name="maxc"/>
+              <input class="form-control" type="number" placeholder="Max" style="font-size:12px" [ngModel]="maxCoupon()" (ngModelChange)="maxCoupon.set($event)" name="maxc"/>
             </div>
           </div>
 
@@ -95,9 +95,9 @@
               <span class="material-icons-round search-icon">search</span>
               <input class="form-control" style="width:100%;padding-left:36px"
                      placeholder="Search by name, ISIN, issuer..."
-                     [(ngModel)]="searchTerm" name="bs"/>
+                     [ngModel]="searchTerm()" (ngModelChange)="searchTerm.set($event)" name="bs"/>
             </div>
-            <select class="form-control form-select" style="width:180px" [(ngModel)]="sortBy" name="sb">
+            <select class="form-control form-select" style="width:180px" [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)" name="sb">
               <option value="yield">Sort: YTM ↓</option>
               <option value="coupon">Sort: Coupon ↓</option>
               <option value="price">Sort: Price ↓</option>
