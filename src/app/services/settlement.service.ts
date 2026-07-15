@@ -7,6 +7,7 @@ export interface Settlement {
   id:             string;
   tradeId:        string;
   bondName:       string;
+  issuerName:     string;
   isin:           string;
   side:           string;
   quantity:       number;

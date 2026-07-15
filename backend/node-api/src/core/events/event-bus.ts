@@ -28,6 +28,10 @@ class RabbitMqEventBus implements IEventBus {
   private reconnecting: boolean = false;
 
   async connect(): Promise<void> {
+    if (!config.rabbitmq.url) {
+      logger.warn('RABBITMQ_URL not set — event publishing disabled');
+      return;
+    }
     // Append heartbeat=30 so CloudAMQP/broker keeps the connection alive
     const url = config.rabbitmq.url;
     const urlWithHeartbeat = url.includes('?') ? `${url}&heartbeat=30` : `${url}?heartbeat=30`;

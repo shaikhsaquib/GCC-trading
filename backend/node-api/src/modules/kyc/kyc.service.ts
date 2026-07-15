@@ -44,9 +44,10 @@ export class KycService {
     return this.repo.createSubmission(userId);
   }
 
-  async uploadDocument(dto: UploadDocumentDto): Promise<void> {
+  async uploadDocument(dto: UploadDocumentDto, userId: string): Promise<void> {
     const submission = await this.repo.findSubmissionById(dto.submissionId);
     if (!submission) throw new NotFoundError('KYC submission');
+    if (submission.user_id !== userId) throw new ForbiddenError('Not your submission');
     if (submission.status !== 'Draft') throw new ForbiddenError('Cannot upload to a non-draft submission');
 
     if (!ALLOWED_MIME_TYPES.includes(dto.file.mimetype)) {
@@ -98,6 +99,14 @@ export class KycService {
     const documents = await this.repo.getDocumentsBySubmission(submissionId);
     if (documents.length < 2) throw new ValidationError('At least 2 documents required');
 
+    // An identity document plus a selfie are mandatory — two arbitrary files
+    // (e.g. two selfies) must not pass review readiness.
+    const types  = new Set(documents.map((d) => d.document_type));
+    const hasId  = types.has('PASSPORT') || types.has('NATIONAL_ID') || types.has('DRIVING_LICENSE');
+    const hasSelfie = types.has('SELFIE') || types.has('LIVENESS_VIDEO');
+    if (!hasId)     throw new ValidationError('An identity document (passport, national ID or driving license) is required');
+    if (!hasSelfie) throw new ValidationError('A selfie or liveness video is required');
+
     let applicantId: string | undefined;
     if (config.onfido.apiKey) {
       try {
@@ -132,24 +141,28 @@ export class KycService {
     );
     if (!submission.rows[0]) return;
 
-    const { id, user_id, risk_level } = submission.rows[0];
+    const { id } = submission.rows[0];
 
-    // Fetch check result from Onfido
-    const livenessScore = 0.9; // In production: parse from Onfido check result
-    const autoApprove   = livenessScore >= LIVENESS_THRESHOLD && risk_level === 'LOW';
-
-    if (autoApprove) {
-      await this.approve(id, user_id, { riskLevel: 'LOW' }); // use user_id as fallback; reviewer_id must be a valid UUID
-    } else {
-      await this.repo.updateSubmissionStatus(id, 'UnderReview', {
-        liveness_score: livenessScore,
-      });
-    }
+    // The Onfido check result is not parsed in this environment, so a real
+    // liveness score is unavailable. Auto-approval on a hardcoded score would
+    // bypass identity verification entirely — route every completed check to
+    // manual review instead. (LIVENESS_THRESHOLD applies once real Onfido
+    // result parsing is implemented.)
+    void LIVENESS_THRESHOLD;
+    await this.repo.updateSubmissionStatus(id, 'UnderReview', {
+      onfido_check_id: checkId,
+    });
   }
 
   async approve(submissionId: string, reviewerId: string, dto: ApproveKycDto): Promise<void> {
     const submission = await this.repo.findSubmissionById(submissionId);
     if (!submission) throw new NotFoundError('KYC submission');
+    if (!['Submitted', 'UnderReview'].includes(submission.status)) {
+      throw new ConflictError(`Cannot approve a submission in status '${submission.status}'`);
+    }
+    if (!['LOW', 'MEDIUM', 'HIGH'].includes(dto.riskLevel)) {
+      throw new ValidationError('riskLevel must be LOW, MEDIUM or HIGH');
+    }
 
     await db.transaction(async (client) => {
       await client.query(
@@ -175,6 +188,12 @@ export class KycService {
   async reject(submissionId: string, reviewerId: string, dto: RejectKycDto): Promise<void> {
     const submission = await this.repo.findSubmissionById(submissionId);
     if (!submission) throw new NotFoundError('KYC submission');
+    if (!['Submitted', 'UnderReview'].includes(submission.status)) {
+      throw new ConflictError(`Cannot reject a submission in status '${submission.status}'`);
+    }
+    if (!dto.reason || dto.reason.trim().length < 3) {
+      throw new ValidationError('A rejection reason is required');
+    }
 
     const count     = await this.repo.countSubmissions(submission.user_id);
     const remaining = MAX_SUBMISSIONS - count;

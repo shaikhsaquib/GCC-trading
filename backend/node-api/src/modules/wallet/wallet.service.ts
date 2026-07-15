@@ -4,7 +4,7 @@ import { config } from '../../config';
 import { db } from '../../core/database/postgres.client';
 import { IEventBus } from '../../core/events/event-bus';
 import { EventRoutes } from '../../core/events/event.types';
-import { NotFoundError, UnprocessableError, ValidationError } from '../../core/errors';
+import { ForbiddenError, NotFoundError, UnprocessableError, ValidationError } from '../../core/errors';
 import { WalletRepository } from './wallet.repository';
 import {
   DepositDto, WithdrawDto, BalanceResponse,
@@ -94,13 +94,26 @@ export class WalletService {
   }
 
   async completeDemoDeposit(transactionId: string, userId: string): Promise<void> {
+    // Demo completion is only valid when no real payment gateway is configured
+    if (config.hyperpay.apiKey) {
+      throw new ForbiddenError('Demo payment completion is disabled when a payment gateway is configured');
+    }
+
     const existing = await this.repo.findTransactionById(transactionId);
     if (!existing) throw new NotFoundError('Transaction');
     if (existing.status === 'COMPLETED') return;
+    if (existing.status !== 'PENDING') {
+      throw new ValidationError(`Transaction is in status ${existing.status} and cannot be completed`);
+    }
 
     await db.transaction(async (client) => {
       const wallet = await this.repo.findByUserId(userId, client);
       if (!wallet) throw new NotFoundError('Wallet');
+
+      // Ownership check — the transaction must belong to the caller's wallet
+      if (existing.wallet_id !== wallet.id) {
+        throw new ForbiddenError('Transaction does not belong to your wallet');
+      }
 
       const credited = await this.repo.creditWithVersion(
         wallet.id, parseFloat(existing.amount), wallet.version, client,
@@ -123,27 +136,33 @@ export class WalletService {
     if (existing?.status === 'COMPLETED') return;
 
     for (let attempt = 0; attempt < MAX_RETRY; attempt++) {
-      await db.transaction(async (client) => {
-        const tx = await this.repo.findTransactionByIdempotencyKey(transactionId);
-        if (!tx) throw new NotFoundError('Transaction');
+      try {
+        await db.transaction(async (client) => {
+          const tx = await this.repo.findTransactionByIdempotencyKey(transactionId);
+          if (!tx) throw new NotFoundError('Transaction');
 
-        const wallet = await this.repo.findByUserId(
-          await getUserIdFromWalletId(tx.wallet_id),
-          client,
-        );
-        if (!wallet) throw new NotFoundError('Wallet');
+          const wallet = await this.repo.findByUserId(
+            await getUserIdFromWalletId(tx.wallet_id),
+            client,
+          );
+          if (!wallet) throw new NotFoundError('Wallet');
 
-        const credited = await this.repo.creditWithVersion(
-          wallet.id,
-          parseFloat(tx.amount),
-          wallet.version,
-          client,
-        );
+          const credited = await this.repo.creditWithVersion(
+            wallet.id,
+            parseFloat(tx.amount),
+            wallet.version,
+            client,
+          );
 
-        if (!credited) throw new Error('Version conflict — retry');
+          if (!credited) throw new Error('Version conflict — retry');
 
-        await this.repo.updateTransactionStatus(tx.id, 'COMPLETED', client);
-      });
+          await this.repo.updateTransactionStatus(tx.id, 'COMPLETED', client);
+        });
+      } catch (err) {
+        // Only optimistic-lock conflicts are retryable; everything else is fatal
+        if ((err as Error).message !== 'Version conflict — retry') throw err;
+        continue;
+      }
 
       // Publish event for notifications
       const tx = await this.repo.findTransactionByIdempotencyKey(transactionId);
@@ -189,13 +208,15 @@ export class WalletService {
       });
       requestId = request.id;
 
+      // Large withdrawals are held PENDING until an admin approves them
+      // (funds are already debited so they cannot be double-spent meanwhile).
       await this.repo.insertTransaction({
         walletId:       wallet.id,
         type:           'DEBIT',
         amount:         dto.amount,
         currency:       dto.currency,
-        status:         'PROCESSING',
-        description:    `Withdrawal — ${dto.bankName}`,
+        status:         requiresApproval ? 'PENDING' : 'PROCESSING',
+        description:    `Withdrawal — ${dto.bankName}${requiresApproval ? ' (awaiting approval)' : ''}`,
         referenceId:    `WDR-${request.id.slice(0, 8).toUpperCase()}`,
         idempotencyKey: `wdr-${idempotencyKey}`,
       }, client);

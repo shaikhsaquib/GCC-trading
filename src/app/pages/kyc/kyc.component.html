@@ -63,7 +63,7 @@
                 <strong>{{ item.first_name }} {{ item.last_name }}</strong>
                 <span>{{ item.email }}</span>
                 <span class="text-muted" style="font-size:11px">
-                  Submitted {{ relativeTime(item.submitted_at) }}
+                  Submitted {{ item.submitted_at | timeAgo }}
                 </span>
               </div>
               <span class="badge" [ngClass]="statusBadge(item.status)">

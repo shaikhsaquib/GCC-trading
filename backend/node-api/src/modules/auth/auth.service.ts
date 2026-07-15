@@ -217,13 +217,20 @@ export class AuthService {
 
   // ── Logout ─────────────────────────────────────────────────────────────────
 
-  async logout(accessToken: string): Promise<void> {
-    try {
-      const payload = jwt.decode(accessToken) as { jti?: string; exp?: number };
+  async logout(accessToken: string, refreshToken?: string): Promise<void> {
+    const revoke = async (token: string) => {
+      const payload = jwt.decode(token) as { jti?: string; exp?: number } | null;
       if (payload?.jti && payload?.exp) {
         const ttl = payload.exp - Math.floor(Date.now() / 1000);
         if (ttl > 0) await redis.revokeToken(payload.jti, ttl);
       }
+    };
+
+    try {
+      await revoke(accessToken);
+      // Revoke the refresh token as well — otherwise a captured refresh token
+      // can keep minting new access tokens for up to 7 days after logout.
+      if (refreshToken) await revoke(refreshToken);
     } catch {
       // best-effort
     }

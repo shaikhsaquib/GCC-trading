@@ -55,7 +55,7 @@ export class AuthController {
   logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const token = req.headers.authorization?.slice(7) ?? '';
-      await this.service.logout(token);
+      await this.service.logout(token, req.body?.refreshToken);
       sendSuccess(res, { loggedOut: true });
     } catch (err) { next(err); }
   };

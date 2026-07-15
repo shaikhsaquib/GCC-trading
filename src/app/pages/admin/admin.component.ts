@@ -6,6 +6,8 @@ import { KycService } from '../../services/kyc.service';
 import { AdminStats, AdminUser, KycQueueItem } from '../../core/models/api.models';
 import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
+import { timeAgo } from '../../core/utils/time';
+import { avatarColor } from '../../core/utils/avatar';
 
 interface UserDisplay {
   id:          string;
@@ -22,19 +24,19 @@ interface UserDisplay {
   status:      string;
 }
 
-const AVATAR_COLORS = ['#7c4dff', '#00d4ff', '#17c3b2', '#ff4757', '#ffc107', '#00e676'];
 
 interface KycDisplay {
-  id:          string;
-  name:        string;
-  initials:    string;
-  avatarColor: string;
-  type:        string;
-  nationality: string;
-  status:      string;
-  risk:        string;
-  submitted:   string;
-  docs:        Array<{ label: string; verified: boolean }>;
+  id:           string;
+  name:         string;
+  initials:     string;
+  avatarColor:  string;
+  type:         string;
+  nationality:  string;
+  status:       string;
+  risk:         string;
+  selectedRisk: 'LOW' | 'MEDIUM' | 'HIGH';
+  submitted:    string;
+  docs:         Array<{ label: string; verified: boolean }>;
 }
 
 @Component({
@@ -123,7 +125,6 @@ export class AdminComponent implements OnInit {
   }
 
   private mapKycItem(k: KycQueueItem, idx: number): KycDisplay {
-    const COLORS = ['#7c4dff', '#00d4ff', '#17c3b2', '#ff4757', '#ffc107', '#00e676'];
     const name   = `${k.first_name} ${k.last_name}`.trim();
     const initials = `${k.first_name?.[0] ?? ''}${k.last_name?.[0] ?? ''}`.toUpperCase();
     const statusMap: Record<string, string> = {
@@ -136,12 +137,13 @@ export class AdminComponent implements OnInit {
       id:          k.id,
       name,
       initials,
-      avatarColor: COLORS[idx % COLORS.length],
+      avatarColor: avatarColor(idx),
       type:        'Individual',
       nationality: (k as any).nationality ?? '—',
       status:      statusMap[k.status] ?? k.status,
-      risk:        k.risk_level ?? '—',
-      submitted:   submittedAt,
+      risk:         k.risk_level ?? '—',
+      selectedRisk: (k.risk_level as KycDisplay['selectedRisk']) ?? 'LOW',
+      submitted:    submittedAt,
       docs: [
         { label: 'National ID', verified: false },
         { label: 'Selfie',      verified: false },
@@ -152,11 +154,11 @@ export class AdminComponent implements OnInit {
 
   get kycApplications() { return this.kycQueue(); }
 
-  approveKyc(id: string) {
-    this.kycSvc.approve(id, 'LOW').subscribe({
+  approveKyc(id: string, riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW') {
+    this.kycSvc.approve(id, riskLevel).subscribe({
       next: () => {
         this.kycQueue.update(q => q.filter(k => k.id !== id));
-        this.kycActionMsg.set('KYC approved successfully');
+        this.kycActionMsg.set(`KYC approved (${riskLevel} risk tier)`);
         setTimeout(() => this.kycActionMsg.set(null), 4000);
       },
       error: () => this.toast.error('Could not approve KYC — please try again'),
@@ -174,16 +176,7 @@ export class AdminComponent implements OnInit {
     });
   }
 
-  private relativeTime(iso: string): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1)  return 'just now';
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24)  return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    return days === 1 ? 'Yesterday' : `${days} days ago`;
-  }
+  private relativeTime = timeAgo;
 
   private loadUsers() {
     this.adminSvc.listUsers({ limit: 100 }).subscribe({
@@ -206,7 +199,7 @@ export class AdminComponent implements OnInit {
       name:        fullName,
       email:       u.email ?? '—',
       initials,
-      avatarColor: AVATAR_COLORS[idx % AVATAR_COLORS.length],
+      avatarColor: avatarColor(idx),
       role:        this.mapRole(u.role),
       kyc:         this.mapKyc(u.status),
       accountType: 'Individual',
@@ -226,9 +219,11 @@ export class AdminComponent implements OnInit {
   }
 
   private mapKyc(status: string): string {
+    // Suspended/deactivated accounts may or may not have completed KYC —
+    // the user status alone cannot tell us, so show a neutral dash.
     const map: Record<string, string> = {
       PENDING_KYC: 'Pending', ACTIVE: 'Approved',
-      SUSPENDED: 'Approved', DEACTIVATED: 'Approved',
+      SUSPENDED: '—', DEACTIVATED: '—',
     };
     return map[status] ?? 'Pending';
   }

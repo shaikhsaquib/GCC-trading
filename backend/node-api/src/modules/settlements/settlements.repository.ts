@@ -31,6 +31,7 @@ export class SettlementsRepository {
       db.query<Record<string, unknown>>(
         `SELECT st.id, st.trade_id, t.bond_id,
                 COALESCE(b.name, '') AS bond_name,
+                COALESCE(b.issuer_name, '') AS issuer_name,
                 COALESCE(b.isin, '') AS isin,
                 t.quantity, t.price,
                 t.quantity * t.price AS value,
@@ -97,6 +98,7 @@ export class SettlementsRepository {
       tradeId:        String(r['trade_id'] ?? r['id']),
       bondId:         String(r['bond_id']),
       bondName:       String(r['bond_name'] ?? ''),
+      issuerName:     String(r['issuer_name'] ?? ''),
       isin:           String(r['isin'] ?? ''),
       // Side is relative to the viewer; for admin views (no filter) show Buy
       side:           viewerId && sellerId === viewerId ? 'Sell' : 'Buy',

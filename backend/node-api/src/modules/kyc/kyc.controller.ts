@@ -1,7 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { KycService } from './kyc.service';
-import { KycStatus } from './kyc.types';
+import { KycStatus, DocumentType } from './kyc.types';
+import { ValidationError } from '../../core/errors';
 import { sendSuccess, sendCreated } from '../../middlewares/error-handler';
+
+const DOCUMENT_TYPES: DocumentType[] = [
+  'PASSPORT', 'NATIONAL_ID', 'DRIVING_LICENSE',
+  'PROOF_OF_ADDRESS', 'SELFIE', 'LIVENESS_VIDEO',
+];
 
 export class KycController {
   constructor(private readonly service: KycService) {}
@@ -22,11 +28,15 @@ export class KycController {
 
   uploadDocument = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+      if (!req.file) throw new ValidationError('No file uploaded (multipart field "file" is required)');
+      if (!DOCUMENT_TYPES.includes(req.body.documentType)) {
+        throw new ValidationError(`documentType must be one of: ${DOCUMENT_TYPES.join(', ')}`);
+      }
       await this.service.uploadDocument({
         submissionId: req.params.kycId,
         documentType: req.body.documentType,
-        file:         req.file!,
-      });
+        file:         req.file,
+      }, req.user!.id);
       sendCreated(res, { uploaded: true });
     } catch (err) { next(err); }
   };

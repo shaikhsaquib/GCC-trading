@@ -5,6 +5,7 @@ import { AmlService } from '../../services/aml.service';
 import { AmlAlert } from '../../core/models/api.models';
 import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
+import { timeAgo } from '../../core/utils/time';
 
 interface AlertDisplay {
   id:         string;
@@ -116,21 +117,12 @@ export class AmlComplianceComponent implements OnInit {
   private mapStatus(s: string): string {
     const map: Record<string, string> = {
       Open: 'Open', UnderReview: 'Under Review',
-      Escalated: 'Under Review', Cleared: 'Cleared', SarFiled: 'SAR Filed',
+      Escalated: 'Escalated', Cleared: 'Cleared', SarFiled: 'SAR Filed',
     };
     return map[s] ?? s;
   }
 
-  private relativeTime(iso: string): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1)   return 'just now';
-    if (mins < 60)  return `${mins} min ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24)   return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    return days === 1 ? 'Yesterday' : `${days} days ago`;
-  }
+  private relativeTime = timeAgo;
 
   private updateStats(alerts: AmlAlert[]) {
     const high   = alerts.filter(a => a.severity === 'High' || a.severity === 'Critical').length;
@@ -158,7 +150,7 @@ export class AmlComplianceComponent implements OnInit {
       { label: 'Critical', color: '#ff2d4b', count: critical, pct: Math.round((critical / total) * 100) },
       { label: 'High',     color: '#ff4757', count: high,     pct: Math.round((high     / total) * 100) },
       { label: 'Medium',   color: '#ffa502', count: medium,   pct: Math.round((medium   / total) * 100) },
-      { label: 'Low',      color: '#2ed573', count: low,      pct: 100 },
+      { label: 'Low',      color: '#2ed573', count: low,      pct: Math.round((low      / total) * 100) },
     ];
   }
 
@@ -223,5 +215,5 @@ export class AmlComplianceComponent implements OnInit {
   }
 
   riskBadge(risk: string) { return { 'risk-high': risk === 'HIGH' || risk === 'CRITICAL', 'risk-medium': risk === 'MEDIUM', 'risk-low': risk === 'LOW' }; }
-  caseBadge(s: string)    { return { 'badge-warning': s === 'Open', 'badge-info': s === 'Under Review', 'badge-success': s === 'Cleared', 'badge-danger': s === 'SAR Filed' }; }
+  caseBadge(s: string)    { return { 'badge-warning': s === 'Open' || s === 'Escalated', 'badge-info': s === 'Under Review', 'badge-success': s === 'Cleared', 'badge-danger': s === 'SAR Filed' }; }
 }

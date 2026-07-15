@@ -20,11 +20,11 @@ const envSchema = z.object({
   REDIS_TTL_SESSION:   z.coerce.number().default(604_800), // 7 days
   REDIS_TTL_OTP:       z.coerce.number().default(300),     // 5 min
 
-  // MongoDB
-  MONGODB_URI: z.string().min(1, 'MONGODB_URI is required'),
+  // MongoDB (optional — KYC document upload and audit logs degrade gracefully if unset)
+  MONGODB_URI: z.string().default(''),
 
-  // RabbitMQ
-  RABBITMQ_URL: z.string().min(1, 'RABBITMQ_URL is required'),
+  // RabbitMQ (optional — event publishing degrades gracefully if unset)
+  RABBITMQ_URL: z.string().default(''),
 
   // JWT
   JWT_SECRET:              z.string().min(32, 'JWT_SECRET must be ≥32 chars'),

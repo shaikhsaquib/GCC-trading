@@ -6,6 +6,7 @@ import { Subscription, interval, timer, forkJoin, of } from 'rxjs';
 import { switchMap, map, catchError } from 'rxjs/operators';
 import { TradingService, PlaceOrderDto } from '../../services/trading.service';
 import { BondService } from '../../services/bond.service';
+import { WalletService } from '../../services/wallet.service';
 import { PriceSimulationService, BookRow, TradeRow } from '../../services/price-simulation.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Order, Bond, OrderBookEntry } from '../../core/models/api.models';
@@ -45,6 +46,7 @@ interface OrderDisplay {
 export class TradingEngineComponent implements OnInit, OnDestroy {
   private readonly tradingSvc = inject(TradingService);
   private readonly bondSvc    = inject(BondService);
+  private readonly walletSvc  = inject(WalletService);
   private readonly route      = inject(ActivatedRoute);
   private readonly sim        = inject(PriceSimulationService);
   private readonly toast      = inject(ToastService);
@@ -67,6 +69,9 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
 
   marketTime = signal(this.formatTime());
   marketOpen = signal(true);
+
+  availableBalance = signal<number | null>(null);
+  walletCurrency   = signal('AED');
 
   selectedBond = signal<WatchlistBond>({
     id: '', name: '—', isin: '—', shortName: '—',
@@ -95,7 +100,18 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.loadBonds();
     this.loadOrders();
+    this.loadBalance();
     this.startClock();
+  }
+
+  private loadBalance() {
+    this.walletSvc.getBalance().subscribe({
+      next: b => {
+        this.availableBalance.set(b.availableBalance);
+        this.walletCurrency.set(b.currency ?? 'AED');
+      },
+      error: () => this.availableBalance.set(null),
+    });
   }
 
   ngOnDestroy() {
@@ -304,6 +320,7 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
         this.orderSuccess.set(`Order #${res.data.id.slice(0, 8)} placed successfully`);
         this.toast.success(`Order #${res.data.id.slice(0, 8)} placed successfully`, 'Order Placed');
         this.loadOrders();
+        this.loadBalance();
         // Refresh the book immediately so the new order shows up
         this.startBookPolling(bond.id);
         setTimeout(() => this.orderSuccess.set(null), 5000);
@@ -324,6 +341,7 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
         this.cancellingId.set(null);
         this._myOrders.update(list => list.filter(o => o.id !== id));
         this.toast.info('Order cancelled');
+        this.loadBalance();
       },
       error: err => {
         this.cancellingId.set(null);
@@ -354,6 +372,7 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
         this.toast.error(`${failed} of ${results.length} orders could not be cancelled`);
       }
       this.loadOrders();
+      this.loadBalance();
       this.startBookPolling(this.selectedBond().id);
     });
   }

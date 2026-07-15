@@ -63,8 +63,9 @@
     }
 
     @media (max-width: 900px) {
+      /* Stack the settings/preferences panel below the list instead of hiding
+         it — on mobile it was previously unreachable (display:none). */
       .notif-layout { grid-template-columns: 1fr; }
-      .settings-col { display: none; }
     }
 
     @media (max-width: 768px) {

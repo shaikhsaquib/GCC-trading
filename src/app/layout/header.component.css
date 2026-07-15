@@ -1,6 +1,6 @@
 .header {
   height: var(--header-height);
-  background: rgba(9, 15, 29, 0.78);
+  background: rgba(19, 30, 54, 0.75);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
   display: flex;

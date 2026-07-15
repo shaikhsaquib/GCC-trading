@@ -76,6 +76,10 @@ export class MatchingEngine {
         const fillQty  = Math.min(incomingUnfilled, counterpartyUnfilled);
         const fillPrice = this.tradePrice(fresh, counterparty);
 
+        // Never execute a fill without a positive price (e.g. two legacy
+        // market orders that both carry NULL prices).
+        if (fillPrice <= 0 || fillQty <= 0) return;
+
         await this.executeFill(fresh, counterparty, fillQty, fillPrice, client);
         matched = true;
       });
@@ -171,6 +175,7 @@ export class MatchingEngine {
 
     // 6. Publish event for notifications
     await this.eventBus.publish(EventRoutes.TRADE_EXECUTED, {
+      trade_id:   trade.id,
       buyer_id:   buyOrder.userId,
       seller_id:  sellOrder.userId,
       bond_id:    incoming.bondId,

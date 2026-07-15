@@ -3,13 +3,13 @@
    ========================================== */
 
 :root {
-  --bg-darkest:    #05080f;
-  --bg-dark:       #090f1d;
-  --bg-card:       rgba(15, 26, 45, 0.72);
-  --bg-card-solid: #0e1a2d;
-  --bg-card-hover: #15243d;
-  --bg-surface:    #1a2c4a;
-  --bg-input:      rgba(9, 17, 32, 0.85);
+  --bg-darkest:    #0d1526;
+  --bg-dark:       #131e36;
+  --bg-card:       rgba(32, 47, 79, 0.62);
+  --bg-card-solid: #1c2a4a;
+  --bg-card-hover: #283a63;
+  --bg-surface:    #2e4170;
+  --bg-input:      rgba(19, 30, 54, 0.8);
 
   --accent-cyan:   #22d3ee;
   --accent-teal:   #2dd4bf;
@@ -19,12 +19,12 @@
   --accent-amber:  #fbbf24;
   --accent-pink:   #f472b6;
 
-  --text-primary:   #f1f6fc;
-  --text-secondary: #94a9c4;
-  --text-muted:     #54688a;
+  --text-primary:   #f4f8fd;
+  --text-secondary: #a8bcd8;
+  --text-muted:     #6e84a8;
 
-  --border:        rgba(56, 93, 148, 0.32);
-  --border-light:  rgba(86, 130, 196, 0.45);
+  --border:        rgba(102, 144, 210, 0.30);
+  --border-light:  rgba(130, 170, 235, 0.45);
 
   --danger:  #fb5d6e;
   --warning: #fbbf24;
@@ -43,10 +43,10 @@
   --gradient-primary: linear-gradient(135deg, #22d3ee 0%, #3b82f6 55%, #8b5cf6 100%);
   --gradient-accent:  linear-gradient(135deg, #2dd4bf, #22d3ee);
   --gradient-text:    linear-gradient(120deg, #e8f4ff 20%, #7dd3fc 60%, #a78bfa 100%);
-  --shadow-card: 0 8px 32px rgba(2, 6, 16, 0.55);
-  --shadow-glow: 0 0 24px rgba(34, 211, 238, 0.18);
-  --glow-cyan:   0 6px 24px rgba(34, 211, 238, 0.28);
-  --glow-purple: 0 6px 24px rgba(167, 139, 250, 0.25);
+  --shadow-card: 0 8px 32px rgba(5, 10, 24, 0.45);
+  --shadow-glow: 0 0 24px rgba(34, 211, 238, 0.22);
+  --glow-cyan:   0 6px 24px rgba(34, 211, 238, 0.32);
+  --glow-purple: 0 6px 24px rgba(167, 139, 250, 0.3);
 }
 
 *, *::before, *::after {
@@ -73,10 +73,11 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 50% 38% at 12% -4%,  rgba(34, 211, 238, 0.13), transparent 70%),
-    radial-gradient(ellipse 44% 36% at 96% 12%,  rgba(139, 92, 246, 0.12), transparent 70%),
-    radial-gradient(ellipse 60% 44% at 50% 110%, rgba(45, 212, 191, 0.08), transparent 70%),
-    var(--bg-darkest);
+    radial-gradient(ellipse 55% 42% at 10% -6%,  rgba(34, 211, 238, 0.22), transparent 70%),
+    radial-gradient(ellipse 48% 40% at 98% 8%,   rgba(139, 92, 246, 0.22), transparent 70%),
+    radial-gradient(ellipse 50% 36% at 75% 105%, rgba(244, 114, 182, 0.12), transparent 70%),
+    radial-gradient(ellipse 62% 46% at 28% 108%, rgba(45, 212, 191, 0.16), transparent 70%),
+    linear-gradient(160deg, #101b33 0%, #0d1526 45%, #131c38 100%);
   animation: auroraDrift 24s ease-in-out infinite alternate;
 }
 

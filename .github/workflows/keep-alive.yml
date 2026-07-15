@@ -1,0 +1,40 @@
+name: Keep API & database warm
+
+# Pings the API health endpoint on a schedule so that:
+#   1. Render's free-tier web service does not spin down after 15 min idle
+#      (a cold start returns 502 for ~50s, which the browser reports as a
+#       "CORS error").
+#   2. The Supabase free-tier project does not auto-pause after 7 days of no
+#      database activity (/health runs a `SELECT 1`, counting as activity).
+#
+# NOTE: GitHub cron is best-effort and can be delayed 10-15 min under load, and
+# the schedule is auto-disabled after 60 days of no repo commits. For rock-solid
+# uptime against Render's 15-min window, also add a free monitor at
+# cron-job.org or uptimerobot.com pointing at the same /health URL every 5 min.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'   # every 10 minutes
+  workflow_dispatch:          # allow manual runs from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health
+        run: |
+          URL="https://gcc-trading-api.onrender.com/health"
+          echo "Pinging $URL"
+          # Retry a few times to cover cold-start latency (~50s on free tier).
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -sS -o /tmp/body -w '%{http_code}' --max-time 60 "$URL" || echo 000)
+            echo "Attempt $i → HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "Healthy. Response:"; cat /tmp/body; echo
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "Service did not return 200 after retries (last body):"
+          cat /tmp/body 2>/dev/null || true
+          exit 1

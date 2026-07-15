@@ -2,6 +2,7 @@ import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { AdminService, SchedulerJob } from '../../services/admin.service';
 import { ToastService } from '../../core/services/toast.service';
+import { timeAgo } from '../../core/utils/time';
 
 interface DisplayJob {
   id:          number;
@@ -163,15 +164,7 @@ export class SchedulerComponent implements OnInit {
     return `${(ms / 1000).toFixed(1)}s`;
   }
 
-  private relativeTime(iso: string): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1)  return 'just now';
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24)  return `${hrs}h ago`;
-    return `${Math.floor(hrs / 24)}d ago`;
-  }
+  private relativeTime = timeAgo;
 
   jobStatusBadge(s: string) {
     return { 'badge-info': s === 'Running', 'badge-success': s === 'Success' || s === 'Idle', 'badge-warning': s === 'Disabled', 'badge-danger': s === 'Failed' || s === 'Error' };

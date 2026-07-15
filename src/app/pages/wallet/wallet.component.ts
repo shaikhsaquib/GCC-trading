@@ -41,7 +41,7 @@ export class WalletComponent implements OnInit {
   availableBalance = signal(0);
   totalBalance     = signal(0);
   frozenBalance    = signal(0);
-  balanceCurrency  = signal('SAR');
+  balanceCurrency  = signal('AED');
 
   banks = [
     { name: 'Al Rajhi Bank', iban: 'SA0380000000608010167519' },
