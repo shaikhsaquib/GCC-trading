@@ -38,8 +38,9 @@
     }
 
     @media (max-width: 900px) {
+      /* Stack the detail panel below the main column instead of hiding it —
+         on mobile it was previously unreachable (display:none). */
       .identity-layout { grid-template-columns: 1fr; }
-      .detail-col { display: none; }
     }
 
     @media (max-width: 768px) {

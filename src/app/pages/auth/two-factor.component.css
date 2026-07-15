@@ -2,7 +2,7 @@
     .auth-bg { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
     .bg-circle { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.08; &.c1 { width: 500px; height: 500px; background: var(--accent-cyan); top: 50%; left: 50%; transform: translate(-50%,-50%); } }
 
-    .twofa-container { position: relative; z-index: 1; width: 440px; }
+    .twofa-container { position: relative; z-index: 1; width: 440px; max-width: calc(100vw - 32px); }
 
     .twofa-card {
       background: var(--bg-card); border: 1px solid var(--border);

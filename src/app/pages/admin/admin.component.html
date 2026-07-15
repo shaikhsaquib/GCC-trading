@@ -35,14 +35,14 @@
               <span class="material-icons-round search-icon">search</span>
               <input class="form-control" style="width:100%;padding-left:36px" placeholder="Search by name, email, ID..." [(ngModel)]="userSearch" name="us"/>
             </div>
-            <select class="form-control form-select" style="width:150px" [(ngModel)]="statusFilter" name="sf">
+            <select class="form-control form-select" style="width:150px" [(ngModel)]="statusFilter" name="sf" aria-label="Filter by status">
               <option value="">All Status</option>
               <option>Active</option>
               <option>Pending KYC</option>
               <option>Suspended</option>
               <option>Blocked</option>
             </select>
-            <select class="form-control form-select" style="width:140px" name="rf">
+            <select class="form-control form-select" style="width:140px" name="rf" aria-label="Filter by role">
               <option>All Roles</option>
               <option>Investor</option>
               <option>Trader</option>
@@ -61,7 +61,7 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th><input type="checkbox" style="accent-color:var(--accent-cyan)"/></th>
+                  <th><input type="checkbox" style="accent-color:var(--accent-cyan)" aria-label="Select all users"/></th>
                   <th>User</th>
                   <th>Role</th>
                   <th>KYC</th>
@@ -98,15 +98,22 @@
                     <td>
                       <div style="display:flex;gap:6px">
                         @if (u.status === 'Suspended') {
-                          <button class="btn btn-success btn-sm" title="Activate" (click)="activateUser(u.id, u.name)">
-                            <span class="material-icons-round" style="font-size:14px">check_circle</span>
+                          <button class="btn btn-success btn-sm" title="Activate" aria-label="Activate user" (click)="activateUser(u.id, u.name)">
+                            <span class="material-icons-round" aria-hidden="true" style="font-size:14px">check_circle</span>
                           </button>
                         } @else {
-                          <button class="btn btn-danger btn-sm" title="Suspend" (click)="suspendUser(u.id, u.name)">
-                            <span class="material-icons-round" style="font-size:14px">block</span>
+                          <button class="btn btn-danger btn-sm" title="Suspend" aria-label="Suspend user" (click)="suspendUser(u.id, u.name)">
+                            <span class="material-icons-round" aria-hidden="true" style="font-size:14px">block</span>
                           </button>
                         }
                       </div>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="10" style="text-align:center;padding:36px 16px;color:var(--text-muted);font-size:13px">
+                      <span class="material-icons-round" aria-hidden="true" style="font-size:30px;display:block;margin-bottom:8px;opacity:.6">group_off</span>
+                      No users match your search
                     </td>
                   </tr>
                 }
