@@ -5,6 +5,7 @@ import { AdminService } from '../../services/admin.service';
 import { AdminUser } from '../../core/models/api.models';
 import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
+import { timeAgo } from '../../core/utils/time';
 
 interface UserDisplay {
   id:        string;
@@ -133,16 +134,7 @@ export class IdentityComponent implements OnInit {
     return map[status] ?? status;
   }
 
-  private relativeTime(iso: string): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1)  return 'just now';
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24)  return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    return days === 1 ? 'Yesterday' : `${days} days ago`;
-  }
+  private relativeTime = timeAgo;
 
   filteredUsers() {
     const tab  = this.activeTab();

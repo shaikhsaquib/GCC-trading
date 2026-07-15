@@ -5,6 +5,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { NotificationsService } from '../../services/notifications.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Notification } from '../../core/models/api.models';
+import { timeAgo } from '../../core/utils/time';
 
 interface NotifDisplay {
   id:        string;
@@ -139,16 +140,7 @@ export class NotificationsComponent implements OnInit {
     };
   }
 
-  private relativeTime(iso: string): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1)   return 'just now';
-    if (mins < 60)  return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24)   return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    return days === 1 ? 'Yesterday' : `${days} days ago`;
-  }
+  private relativeTime = timeAgo;
 
   private updateTabCounts(notifs: NotifDisplay[]) {
     const total  = notifs.length;

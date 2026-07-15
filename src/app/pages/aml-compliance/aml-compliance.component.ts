@@ -5,6 +5,7 @@ import { AmlService } from '../../services/aml.service';
 import { AmlAlert } from '../../core/models/api.models';
 import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
+import { timeAgo } from '../../core/utils/time';
 
 interface AlertDisplay {
   id:         string;
@@ -121,16 +122,7 @@ export class AmlComplianceComponent implements OnInit {
     return map[s] ?? s;
   }
 
-  private relativeTime(iso: string): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1)   return 'just now';
-    if (mins < 60)  return `${mins} min ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24)   return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    return days === 1 ? 'Yesterday' : `${days} days ago`;
-  }
+  private relativeTime = timeAgo;
 
   private updateStats(alerts: AmlAlert[]) {
     const high   = alerts.filter(a => a.severity === 'High' || a.severity === 'Critical').length;
