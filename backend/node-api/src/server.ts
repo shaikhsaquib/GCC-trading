@@ -54,10 +54,30 @@ async function bootstrap(): Promise<void> {
     logger.warn(`PostgreSQL not ready (attempt ${attempt}/5) — retrying in ${wait / 1000}s`);
     await new Promise(r => setTimeout(r, wait));
   }
-  if (!pgOk) throw new Error('PostgreSQL is unreachable at startup');
 
-  // 2. Register domain event consumers
-  await registerEventHandlers(eventBus, notifService, walletService, auditService);
+  // IMPORTANT: do NOT exit if Postgres is down. On a paused/cold Supabase (free
+  // tier auto-pauses after 7 days of inactivity), exiting kills the whole
+  // service — Render then serves a 502 with no CORS headers, which the browser
+  // reports as a "CORS error" on every request. Instead we start the HTTP
+  // server anyway: /health keeps responding (so Render keeps the instance
+  // alive), CORS headers are always sent, and the pg pool reconnects on the
+  // next query — so the API self-heals once Supabase wakes, with no redeploy.
+  if (!pgOk) {
+    logger.error(
+      'PostgreSQL unreachable at startup — starting in DEGRADED mode. ' +
+      'Data endpoints will fail until the database is reachable (it will ' +
+      'recover automatically). If using Supabase free tier, the project may be paused.',
+    );
+  }
+
+  // 2. Register domain event consumers (needs the broker; skip if it failed)
+  try {
+    await registerEventHandlers(eventBus, notifService, walletService, auditService);
+  } catch (err) {
+    logger.warn('Event handler registration skipped — broker unavailable', {
+      error: (err as Error).message,
+    });
+  }
 
   // 3. Create Express app + HTTP server
   const app    = createApp();
