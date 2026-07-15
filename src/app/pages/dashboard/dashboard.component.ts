@@ -185,7 +185,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       y: rect.top - wrap.top - 8,
       lines: [
         new Date(bar.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        `SAR ${bar.volume.toLocaleString(undefined, { maximumFractionDigits: 0 })} · ${bar.count} trade${bar.count !== 1 ? 's' : ''}`,
+        `AED ${bar.volume.toLocaleString(undefined, { maximumFractionDigits: 0 })} · ${bar.count} trade${bar.count !== 1 ? 's' : ''}`,
       ],
     });
   }
@@ -286,8 +286,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       {
         label: 'Total AUM', icon: 'account_balance',
         iconBg: 'rgba(0,212,255,0.1)', iconColor: 'var(--accent-cyan)',
-        value: `SAR ${aumM.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}M`,
-        raw: aumM, prefix: 'SAR ', suffix: 'M', decimals: 2,
+        value: `AED ${aumM.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}M`,
+        raw: aumM, prefix: 'AED ', suffix: 'M', decimals: 2,
         change: null, up: true,
       },
       {
@@ -314,8 +314,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       {
         label: "Today's Volume", icon: 'bar_chart',
         iconBg: 'rgba(46,213,115,0.1)', iconColor: 'var(--success)',
-        value: `SAR ${s.tradeVolumeToday.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-        raw: s.tradeVolumeToday, prefix: 'SAR ',
+        value: `AED ${s.tradeVolumeToday.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+        raw: s.tradeVolumeToday, prefix: 'AED ',
         change: volDelta,
         up: s.tradeVolumeToday >= s.volumeYesterday,
       },

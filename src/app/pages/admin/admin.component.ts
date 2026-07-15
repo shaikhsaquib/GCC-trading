@@ -7,6 +7,7 @@ import { AdminStats, AdminUser, KycQueueItem } from '../../core/models/api.model
 import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
 import { timeAgo } from '../../core/utils/time';
+import { avatarColor } from '../../core/utils/avatar';
 
 interface UserDisplay {
   id:          string;
@@ -23,7 +24,6 @@ interface UserDisplay {
   status:      string;
 }
 
-const AVATAR_COLORS = ['#7c4dff', '#00d4ff', '#17c3b2', '#ff4757', '#ffc107', '#00e676'];
 
 interface KycDisplay {
   id:           string;
@@ -125,7 +125,6 @@ export class AdminComponent implements OnInit {
   }
 
   private mapKycItem(k: KycQueueItem, idx: number): KycDisplay {
-    const COLORS = ['#7c4dff', '#00d4ff', '#17c3b2', '#ff4757', '#ffc107', '#00e676'];
     const name   = `${k.first_name} ${k.last_name}`.trim();
     const initials = `${k.first_name?.[0] ?? ''}${k.last_name?.[0] ?? ''}`.toUpperCase();
     const statusMap: Record<string, string> = {
@@ -138,7 +137,7 @@ export class AdminComponent implements OnInit {
       id:          k.id,
       name,
       initials,
-      avatarColor: COLORS[idx % COLORS.length],
+      avatarColor: avatarColor(idx),
       type:        'Individual',
       nationality: (k as any).nationality ?? '—',
       status:      statusMap[k.status] ?? k.status,
@@ -200,7 +199,7 @@ export class AdminComponent implements OnInit {
       name:        fullName,
       email:       u.email ?? '—',
       initials,
-      avatarColor: AVATAR_COLORS[idx % AVATAR_COLORS.length],
+      avatarColor: avatarColor(idx),
       role:        this.mapRole(u.role),
       kyc:         this.mapKyc(u.status),
       accountType: 'Individual',

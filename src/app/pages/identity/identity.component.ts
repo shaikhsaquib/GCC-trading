@@ -6,6 +6,7 @@ import { AdminUser } from '../../core/models/api.models';
 import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
 import { timeAgo } from '../../core/utils/time';
+import { avatarGradient } from '../../core/utils/avatar';
 
 interface UserDisplay {
   id:        string;
@@ -22,14 +23,6 @@ interface UserDisplay {
   kyc:       string;
 }
 
-const AVATAR_GRADIENTS = [
-  'linear-gradient(135deg,#00d4ff,#17c3b2)',
-  'linear-gradient(135deg,#7c4dff,#00d4ff)',
-  'linear-gradient(135deg,#17c3b2,#7c4dff)',
-  'linear-gradient(135deg,#ffc107,#ff9800)',
-  'linear-gradient(135deg,#00d4ff,#7c4dff)',
-  'linear-gradient(135deg,#8fa3b8,#4a5568)',
-];
 
 @Component({
   selector: 'app-identity',
@@ -107,7 +100,7 @@ export class IdentityComponent implements OnInit {
       name:      fullName,
       email:     u.email ?? '—',
       initials,
-      avatarBg:  AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length],
+      avatarBg:  avatarGradient(idx),
       role:      this.mapRole(u.role),
       status:    this.mapStatus(u.status),
       twoFa:     false,
