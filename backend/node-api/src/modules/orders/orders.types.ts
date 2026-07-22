@@ -40,6 +40,14 @@ export interface OrderBookEntry {
   orderCount: number;
 }
 
+export interface RecentTrade {
+  id:         string;
+  side:       'BUY' | 'SELL';   // aggressor heuristic (price vs current mid)
+  price:      number;
+  quantity:   number;
+  executedAt: string;
+}
+
 export interface OrderBookResponse {
   bondId: string;
   bids:   OrderBookEntry[];

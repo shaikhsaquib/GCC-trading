@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { db } from '../../core/database/postgres.client';
-import { Order, PlaceOrderInput, OrderBookEntry, TradeRecord } from './orders.types';
+import { Order, PlaceOrderInput, OrderBookEntry, TradeRecord, RecentTrade } from './orders.types';
 
 type Queryable = { query<T extends QueryResultRow = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<QueryResult<T>> };
 
@@ -254,6 +254,30 @@ export class OrdersRepository {
       bids: bidsResult.rows.map(mapEntry),
       asks: asksResult.rows.map(mapEntry),
     };
+  }
+
+  /** Recent executed trades for a bond, newest first, with an aggressor-side hint. */
+  async getRecentTrades(bondId: string, limit: number): Promise<RecentTrade[]> {
+    const r = await db.query<Record<string, unknown>>(
+      `SELECT t.id,
+              t.price,
+              t.quantity,
+              t.executed_at,
+              CASE WHEN t.price >= b.current_price THEN 'BUY' ELSE 'SELL' END AS side
+       FROM trading.trades t
+       JOIN bonds.listings b ON b.id = t.bond_id
+       WHERE t.bond_id = $1
+       ORDER BY t.executed_at DESC
+       LIMIT $2`,
+      [bondId, limit],
+    );
+    return r.rows.map(row => ({
+      id:         String(row['id']),
+      side:       (row['side'] === 'BUY' ? 'BUY' : 'SELL') as RecentTrade['side'],
+      price:      parseFloat(String(row['price'] ?? 0)),
+      quantity:   parseFloat(String(row['quantity'] ?? 0)),
+      executedAt: new Date(String(row['executed_at'])).toISOString(),
+    }));
   }
 
   private mapRow(row: Record<string, unknown>): Order {

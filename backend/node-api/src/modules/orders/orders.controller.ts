@@ -57,4 +57,15 @@ export class OrdersController {
       next(err);
     }
   };
+
+  getRecentTrades = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const bondId = req.params['bondId']!;
+      const limit  = Math.min(50, parseInt(String(req.query['limit'] ?? 20), 10) || 20);
+      const trades = await this.svc.getRecentTrades(bondId, limit);
+      res.json({ success: true, data: trades });
+    } catch (err) {
+      next(err);
+    }
+  };
 }

@@ -176,4 +176,8 @@ export class OrdersService {
     const { bids, asks } = await this.repo.getOrderBook(bondId, depth);
     return { bondId, bids, asks };
   }
+
+  async getRecentTrades(bondId: string, limit: number) {
+    return this.repo.getRecentTrades(bondId, limit);
+  }
 }
