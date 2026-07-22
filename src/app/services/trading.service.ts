@@ -11,6 +11,14 @@ export interface PlaceOrderDto {
   price?:    number;
 }
 
+export interface RecentTradeDto {
+  id:         string;
+  side:       'BUY' | 'SELL';
+  price:      number;
+  quantity:   number;
+  executedAt: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class TradingService {
   private readonly http = inject(HttpClient);
@@ -34,6 +42,13 @@ export class TradingService {
     const params = new HttpParams().set('depth', depth);
     return this.http.get<ApiResponse<OrderBookResponse>>(
       `${this.base}/book/${bondId}`, { params },
+    );
+  }
+
+  getRecentTrades(bondId: string, limit = 15) {
+    const params = new HttpParams().set('limit', limit);
+    return this.http.get<ApiResponse<RecentTradeDto[]>>(
+      `${this.base}/trades/${bondId}`, { params },
     );
   }
 }

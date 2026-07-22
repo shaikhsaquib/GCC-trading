@@ -21,7 +21,8 @@ export function createOrdersRouter(): Router {
 
   router.use(authenticate, requireActive);
 
-  router.get('/book/:bondId', ctrl.getOrderBook);
+  router.get('/book/:bondId',   ctrl.getOrderBook);
+  router.get('/trades/:bondId', ctrl.getRecentTrades);
 
   router.post('/',    validate(placeOrderSchema), ctrl.placeOrder);
   router.get('/',     ctrl.getMyOrders);

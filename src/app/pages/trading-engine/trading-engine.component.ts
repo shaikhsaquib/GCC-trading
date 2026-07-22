@@ -7,7 +7,7 @@ import { switchMap, map, catchError } from 'rxjs/operators';
 import { TradingService, PlaceOrderDto } from '../../services/trading.service';
 import { BondService } from '../../services/bond.service';
 import { WalletService } from '../../services/wallet.service';
-import { PriceSimulationService, BookRow, TradeRow } from '../../services/price-simulation.service';
+import { BookRow, TradeRow } from '../../services/price-simulation.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Order, Bond, OrderBookEntry } from '../../core/models/api.models';
 
@@ -48,7 +48,6 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
   private readonly bondSvc    = inject(BondService);
   private readonly walletSvc  = inject(WalletService);
   private readonly route      = inject(ActivatedRoute);
-  private readonly sim        = inject(PriceSimulationService);
   private readonly toast      = inject(ToastService);
 
   orderSide  = signal<'buy' | 'sell'>('buy');
@@ -85,10 +84,13 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
   bids         = signal<BookRow[]>([]);
   recentTrades = signal<TradeRow[]>([]);
 
-  private tickSub:  Subscription | null = null;
-  private tradeSub: Subscription | null = null;
-  private clockSub: Subscription | null = null;
-  private bookSub:  Subscription | null = null;
+  private tradeSub:     Subscription | null = null;
+  private clockSub:     Subscription | null = null;
+  private bookSub:      Subscription | null = null;
+  private watchlistSub: Subscription | null = null;
+
+  /** First-seen price per bond, used to compute the day's change %. */
+  private openPrices = new Map<string, number>();
 
   get watchlist() { return this._watchlist(); }
   get myOrders()  {
@@ -115,11 +117,10 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    this.tickSub?.unsubscribe();
     this.tradeSub?.unsubscribe();
     this.clockSub?.unsubscribe();
     this.bookSub?.unsubscribe();
-    this.sim.stop();
+    this.watchlistSub?.unsubscribe();
   }
 
   private startClock() {
@@ -148,62 +149,73 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
       next: res => {
         this.loading.set(false);
         const bonds = (res.data?.items ?? []).map(b => this.mapWatchlistBond(b));
+        bonds.forEach(b => this.rememberOpen(b.id, parseFloat(b.price)));
         this._watchlist.set(bonds);
-
-        // Register all bonds with the simulation engine
-        bonds.forEach(b => this.sim.registerBond(b.id, parseFloat(b.price) || 100));
-        this.sim.start();
-        this.subscribeToTicks();
 
         const target = preselectedId
           ? bonds.find(b => b.id === preselectedId) ?? bonds[0]
           : bonds[0];
-        if (target) {
-          this.activateBond(target);
-        }
+        if (target) this.activateBond(target);
+
+        this.startWatchlistRefresh();
       },
       error: () => this.loading.set(false),
     });
   }
 
-  private subscribeToTicks() {
-    this.tickSub?.unsubscribe();
-    this.tickSub = this.sim.ticks$.subscribe(tick => {
-      // Update watchlist price for this bond
-      this._watchlist.update(list =>
-        list.map(b => b.id === tick.bondId
-          ? { ...b, price: tick.price.toFixed(2), change: tick.change, changePct: +tick.changePct.toFixed(3) }
-          : b
-        )
-      );
-      // If it's the selected bond, update price display + order book
-      if (this.selectedBond().id === tick.bondId) {
-        this.selectedBond.update(b => ({
-          ...b,
-          price:     tick.price.toFixed(2),
-          change:    tick.change,
-          changePct: +tick.changePct.toFixed(3),
-        }));
-        this.limitPrice = +tick.price.toFixed(2);
-        // 60% chance of a new trade on each tick
-        if (Math.random() < 0.6) {
-          const trade = this.sim.randomTrade(tick.price);
-          this.recentTrades.update(list => [trade, ...list].slice(0, 12));
-        }
-      }
+  /** Refresh all watchlist prices from the backend (the market-sim moves them). */
+  private startWatchlistRefresh() {
+    this.watchlistSub?.unsubscribe();
+    this.watchlistSub = timer(15000, 15000).pipe(
+      switchMap(() => this.bondSvc.search({ page: 1, pageSize: 20, status: 'Active' }).pipe(
+        catchError(() => of(null)),
+      )),
+    ).subscribe(res => {
+      const items = res?.data?.items;
+      if (!items) return;
+      this._watchlist.update(list => list.map(row => {
+        const fresh = items.find(i => i.id === row.id);
+        if (!fresh?.currentPrice) return row;
+        const open = this.rememberOpen(row.id, fresh.currentPrice);
+        return { ...row, price: fresh.currentPrice.toFixed(2),
+                 change: fresh.currentPrice - open,
+                 changePct: +(((fresh.currentPrice - open) / open) * 100).toFixed(3) };
+      }));
     });
+  }
+
+  private rememberOpen(id: string, price: number): number {
+    if (price > 0 && !this.openPrices.has(id)) this.openPrices.set(id, price);
+    return this.openPrices.get(id) ?? price ?? 100;
   }
 
   private activateBond(bond: WatchlistBond) {
     this.selectedBond.set(bond);
     this.limitPrice = parseFloat(bond.price) || 100.25;
-    const mid = parseFloat(bond.price) || 100;
+    this.recentTrades.set([]);
     this.startBookPolling(bond.id);
-    // Seed with a few initial trades (simulated demo feed)
-    this.recentTrades.set(
-      Array.from({ length: 7 }, () => this.sim.randomTrade(mid))
-        .sort(() => Math.random() - 0.5)
-    );
+    this.startTradesPolling(bond.id);
+  }
+
+  /** Poll the real recent-trades feed every 5s for the selected bond. */
+  private startTradesPolling(bondId: string) {
+    this.tradeSub?.unsubscribe();
+    if (!bondId) return;
+    this.tradeSub = timer(0, 5000).pipe(
+      switchMap(() => this.tradingSvc.getRecentTrades(bondId, 15).pipe(
+        catchError(() => of(null)),
+      )),
+    ).subscribe(res => {
+      const trades = res?.data;
+      if (!trades) return;
+      this.recentTrades.set(trades.map(t => ({
+        id:    t.id,
+        side:  t.side,
+        price: t.price.toFixed(2),
+        qty:   t.quantity,
+        time:  new Date(t.executedAt).toTimeString().slice(0, 8),
+      })));
+    });
   }
 
   /** Poll the real order book API every 5 seconds for the selected bond. */
@@ -227,6 +239,21 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
       this.bids.set(bids.map(e => this.toBookRow(e, maxQty)));
       // Best (lowest) ask rendered closest to the mid-price divider
       this.asks.set(asks.slice().reverse().map(e => this.toBookRow(e, maxQty)));
+
+      // Derive the live mid-price from the real book so the price display moves
+      // with the backend (asks ascending → asks[0] is best ask; bids[0] best bid)
+      const bestBid = bids[0]?.price;
+      const bestAsk = asks[0]?.price;
+      const mid = bestBid && bestAsk ? (bestBid + bestAsk) / 2 : (bestBid ?? bestAsk);
+      if (mid && this.selectedBond().id === bondId) {
+        const open = this.rememberOpen(bondId, mid);
+        this.selectedBond.update(b => ({
+          ...b,
+          price:     mid.toFixed(2),
+          change:    mid - open,
+          changePct: +(((mid - open) / open) * 100).toFixed(3),
+        }));
+      }
     });
   }
 

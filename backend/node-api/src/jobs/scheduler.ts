@@ -3,6 +3,7 @@ import { logger } from '../core/logger';
 import { expiredOrdersJob } from './handlers/expired-orders.job';
 import { priceSnapshotJob } from './handlers/price-snapshot.job';
 import { maturityAlertJob } from './handlers/maturity-alert.job';
+import { marketSimJob }     from './handlers/market-sim.job';
 
 interface JobStatus {
   name:          string;
@@ -28,6 +29,11 @@ const jobStatus = new Map<string, JobStatus>([
   ['maturity-alerts', {
     name: 'maturity-alerts', schedule: '0 7 * * *',
     description: 'Notify holders of bonds maturing within 30 days',
+    lastRunAt: null, lastStatus: null, lastDurationMs: null, runsToday: 0,
+  }],
+  ['market-sim', {
+    name: 'market-sim', schedule: '*/20 * * * * *',
+    description: 'Move prices & reshape the order book so the market looks live',
     lastRunAt: null, lastStatus: null, lastDurationMs: null, runsToday: 0,
   }],
 ]);
@@ -67,6 +73,7 @@ export function startScheduler(): void {
   cron.schedule('*/5 * * * *',  safeRun('expired-orders', expiredOrdersJob));
   cron.schedule('0 * * * *',    safeRun('price-snapshot', priceSnapshotJob));
   cron.schedule('0 7 * * *',    safeRun('maturity-alerts', maturityAlertJob));
+  cron.schedule('*/20 * * * * *', safeRun('market-sim', marketSimJob));
 
-  logger.info('Scheduler started: 3 cron jobs active');
+  logger.info('Scheduler started: 4 cron jobs active');
 }

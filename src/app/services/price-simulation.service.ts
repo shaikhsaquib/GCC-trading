@@ -16,7 +16,7 @@ export interface BookRow {
 }
 
 export interface TradeRow {
-  id:    number;
+  id:    number | string;
   side:  'BUY' | 'SELL';
   price: string;
   qty:   number;
