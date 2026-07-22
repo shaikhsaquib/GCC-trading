@@ -13,7 +13,8 @@
     "lint":        "eslint 'src/**/*.ts' --max-warnings 0",
     "typecheck":   "tsc --noEmit",
     "create-admin":    "ts-node --transpile-only scripts/create-admin.ts",
-    "seed-test-users": "ts-node --transpile-only scripts/seed-test-users.ts"
+    "seed-test-users": "ts-node --transpile-only scripts/seed-test-users.ts",
+    "seed-orderbook":  "ts-node --transpile-only scripts/seed-orderbook.ts"
   },
   "dependencies": {
     "express": "^4.18.2",
