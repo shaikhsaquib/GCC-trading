@@ -201,7 +201,7 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
   private startTradesPolling(bondId: string) {
     this.tradeSub?.unsubscribe();
     if (!bondId) return;
-    this.tradeSub = timer(0, 5000).pipe(
+    this.tradeSub = timer(0, 2000).pipe(
       switchMap(() => this.tradingSvc.getRecentTrades(bondId, 15).pipe(
         catchError(() => of(null)),
       )),
@@ -226,7 +226,7 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
     if (!bondId) return;
 
     this.bookLoading.set(true);
-    this.bookSub = timer(0, 5000).pipe(
+    this.bookSub = timer(0, 1000).pipe(
       switchMap(() => this.tradingSvc.getOrderBook(bondId, 10).pipe(
         catchError(() => of(null)),
       )),

@@ -32,7 +32,7 @@ const jobStatus = new Map<string, JobStatus>([
     lastRunAt: null, lastStatus: null, lastDurationMs: null, runsToday: 0,
   }],
   ['market-sim', {
-    name: 'market-sim', schedule: '*/20 * * * * *',
+    name: 'market-sim', schedule: '* * * * * *',
     description: 'Move prices & reshape the order book so the market looks live',
     lastRunAt: null, lastStatus: null, lastDurationMs: null, runsToday: 0,
   }],
@@ -73,7 +73,7 @@ export function startScheduler(): void {
   cron.schedule('*/5 * * * *',  safeRun('expired-orders', expiredOrdersJob));
   cron.schedule('0 * * * *',    safeRun('price-snapshot', priceSnapshotJob));
   cron.schedule('0 7 * * *',    safeRun('maturity-alerts', maturityAlertJob));
-  cron.schedule('*/20 * * * * *', safeRun('market-sim', marketSimJob));
+  cron.schedule('* * * * * *', safeRun('market-sim', marketSimJob));
 
   logger.info('Scheduler started: 4 cron jobs active');
 }
