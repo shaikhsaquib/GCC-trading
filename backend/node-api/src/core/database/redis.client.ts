@@ -22,7 +22,17 @@ class RedisClient {
     this.client = new Redis(url, {
       maxRetriesPerRequest: 1,     // Fail fast so callers don't hang when Redis is unavailable
       enableReadyCheck:     false, // Upstash doesn't support INFO server used by ready check
-      lazyConnect:          true,
+      // Eager connect (lazyConnect:false) so the socket is ready before the
+      // first request. Required to pair safely with enableOfflineQueue:false.
+      lazyConnect:          false,
+      // CRITICAL: when Redis is down, reject commands immediately instead of
+      // queuing them through reconnect backoff. Otherwise every Redis-touching
+      // request (auth revocation check, maintenance flag) hangs ~10s waiting to
+      // reconnect — two per request stacks to a ~20s stall that Render turns
+      // into a 502, which the browser mislabels as a "CORS error". Callers all
+      // wrap Redis in try/catch and degrade gracefully, so failing fast is safe.
+      enableOfflineQueue:   false,
+      connectTimeout:       3_000, // don't spend 10s on a dead connection
       retryStrategy: (times) => Math.min(times * 500, 10_000), // cap at 10s backoff
     });
 
