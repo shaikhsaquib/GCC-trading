@@ -1,5 +1,6 @@
 using GccBond.Settlement.DTOs;
 using GccBond.Settlement.Interfaces;
+using GccBond.Shared.Constants;
 using GccBond.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -39,7 +40,7 @@ public class SettlementController : ControllerBase
 
     // POST /api/v1/settlement/batch  (admin — manual trigger)
     [HttpPost("batch")]
-    [Authorize(Roles = "ADMIN")]
+    [Authorize(Roles = Roles.Admin)]
     public IActionResult TriggerBatch()
     {
         _ = Task.Run(() => _settlement.RunDailyBatchAsync());

@@ -1,17 +1,12 @@
     <div class="wallet-page fade-in">
-      <div class="page-header">
-        <div class="page-title">
-          <h2>Wallet & Payments</h2>
-          <p>Manage your funds — deposit, withdraw and track transactions</p>
-        </div>
-        <div class="page-actions">
-          <span class="badge badge-node">Node.js</span>
-          <button class="btn btn-secondary" (click)="exportTransactions()"><span class="material-icons-round">file_download</span> Export</button>
-          <button class="btn btn-primary" (click)="activeAction.set('deposit')">
-            <span class="material-icons-round">add</span> Add Funds
-          </button>
-        </div>
-      </div>
+      <app-page-header title="Wallet &amp; Payments"
+                       subtitle="Manage your funds — deposit, withdraw and track transactions">
+        <span actions class="badge badge-node">Node.js</span>
+        <button actions class="btn btn-secondary" (click)="exportTransactions()"><span class="material-icons-round">file_download</span> Export</button>
+        <button actions class="btn btn-primary" (click)="activeAction.set('deposit')">
+          <span class="material-icons-round">add</span> Add Funds
+        </button>
+      </app-page-header>
 
       @if (apiError()) {
         <div class="alert-box alert-danger" style="margin-bottom:16px">
@@ -251,9 +246,8 @@
               <tbody>
                 @if (transactions.length === 0) {
                   <tr>
-                    <td colspan="5" style="text-align:center;padding:40px;color:var(--text-muted)">
-                      <span class="material-icons-round" style="font-size:28px;display:block;margin-bottom:6px">search_off</span>
-                      No transactions match your filter
+                    <td colspan="5">
+                      <app-empty-state icon="search_off" message="No transactions match your filter" />
                     </td>
                   </tr>
                 }
@@ -271,7 +265,7 @@
                       </div>
                     </td>
                     <td style="color:var(--text-secondary)">{{ tx.date }}</td>
-                    <td><span class="badge" [ngClass]="txStatusBadge(tx.status)">{{ tx.status }}</span></td>
+                    <td><app-badge [tone]="txStatusBadge(tx.status)">{{ tx.status }}</app-badge></td>
                     <td style="text-align:right;font-weight:700"
                         [style.color]="tx.amount > 0 ? 'var(--success)' : 'var(--danger)'">
                       {{ tx.amount > 0 ? '+' : '' }}{{ balanceCurrency() }} {{ Math.abs(tx.amount) | number:'1.2-2' }}

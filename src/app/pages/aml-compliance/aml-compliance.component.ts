@@ -6,6 +6,7 @@ import { AmlAlert } from '../../core/models/api.models';
 import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
 import { timeAgo } from '../../core/utils/time';
+import { PageHeaderComponent, StatCardComponent, BadgeComponent } from '../../shared/ui';
 
 interface AlertDisplay {
   id:         string;
@@ -24,7 +25,7 @@ interface AlertDisplay {
 @Component({
   selector: 'app-aml-compliance',
   standalone: true,
-  imports: [NgClass, FormsModule, DecimalPipe],
+  imports: [NgClass, FormsModule, DecimalPipe, PageHeaderComponent, StatCardComponent, BadgeComponent],
   templateUrl: './aml-compliance.component.html',
   styleUrl: './aml-compliance.component.css',
 })
@@ -215,5 +216,11 @@ export class AmlComplianceComponent implements OnInit {
   }
 
   riskBadge(risk: string) { return { 'risk-high': risk === 'HIGH' || risk === 'CRITICAL', 'risk-medium': risk === 'MEDIUM', 'risk-low': risk === 'LOW' }; }
-  caseBadge(s: string)    { return { 'badge-warning': s === 'Open' || s === 'Escalated', 'badge-info': s === 'Under Review', 'badge-success': s === 'Cleared', 'badge-danger': s === 'SAR Filed' }; }
+  caseBadge(s: string): 'success'|'warning'|'info'|'danger'|'neutral' {
+    if (s === 'Open' || s === 'Escalated') return 'warning';
+    if (s === 'Under Review')              return 'info';
+    if (s === 'Cleared')                   return 'success';
+    if (s === 'SAR Filed')                 return 'danger';
+    return 'neutral';
+  }
 }

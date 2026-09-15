@@ -11,6 +11,7 @@ import {
 } from '../../core/models/api.models';
 import { CountUpDirective } from '../../shared/count-up.directive';
 import { timeAgo } from '../../core/utils/time';
+import { PageHeaderComponent, EmptyStateComponent, BadgeComponent } from '../../shared/ui';
 
 interface Kpi {
   label:     string;
@@ -45,7 +46,7 @@ interface ChartBar {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [RouterLink, NgClass, CountUpDirective],
+  imports: [RouterLink, NgClass, CountUpDirective, PageHeaderComponent, EmptyStateComponent, BadgeComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
 })
@@ -445,13 +446,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return map[type] ?? { icon: 'swap_horiz', bg: 'rgba(0,212,255,0.12)', color: '#00d4ff' };
   }
 
-  kycBadgeClass(status: string) {
-    return {
-      'badge-warning': status === 'Draft' || status === 'Submitted',
-      'badge-info':    status === 'UnderReview',
-      'badge-success': status === 'Approved',
-      'badge-danger':  status === 'Rejected',
-    };
+  kycBadgeClass(status: string): 'success'|'warning'|'info'|'danger'|'neutral' {
+    if (status === 'Draft' || status === 'Submitted') return 'warning';
+    if (status === 'UnderReview')                     return 'info';
+    if (status === 'Approved')                        return 'success';
+    if (status === 'Rejected')                        return 'danger';
+    return 'neutral';
   }
 
   formatDate(date: string) {

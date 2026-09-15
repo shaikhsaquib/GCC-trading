@@ -1,14 +1,9 @@
     <div class="portfolio-page fade-in">
-      <div class="page-header">
-        <div class="page-title">
-          <h2>Portfolio Management</h2>
-          <p>Track holdings, monitor P&L and manage coupon schedule</p>
-        </div>
-        <div class="page-actions">
-          <span class="badge badge-dotnet">.NET Core</span>
-          <button class="btn btn-primary" (click)="exportHoldings()"><span class="material-icons-round">file_download</span> Export</button>
-        </div>
-      </div>
+      <app-page-header title="Portfolio Management"
+                       subtitle="Track holdings, monitor P&amp;L and manage coupon schedule">
+        <span actions class="badge badge-dotnet">.NET Core</span>
+        <button actions class="btn btn-primary" (click)="exportHoldings()"><span class="material-icons-round">file_download</span> Export</button>
+      </app-page-header>
 
       <!-- KPIs -->
       <div class="stats-grid" style="margin-bottom:24px">
@@ -95,10 +90,7 @@
             <h4 style="margin-bottom:14px">Upcoming Coupons</h4>
             <div class="coupon-list">
               @if (upcomingCoupons.length === 0) {
-                <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">
-                  <span class="material-icons-round" style="font-size:28px;display:block;margin-bottom:6px">event_available</span>
-                  No upcoming coupons
-                </div>
+                <app-empty-state icon="event_available" message="No upcoming coupons" />
               }
               @for (c of upcomingCoupons; track c.bond) {
                 <div class="coupon-item">
@@ -208,9 +200,8 @@
                 <tbody>
                   @if (filteredHoldings().length === 0) {
                     <tr>
-                      <td colspan="11" style="text-align:center;padding:40px;color:var(--text-muted)">
-                        <span class="material-icons-round" style="font-size:32px;display:block;margin-bottom:8px">inbox</span>
-                        {{ holdings.length === 0 ? 'No holdings in your portfolio' : 'No holdings match the selected filter' }}
+                      <td colspan="11">
+                        <app-empty-state icon="inbox" [message]="holdings.length === 0 ? 'No holdings in your portfolio' : 'No holdings match the selected filter'" />
                       </td>
                     </tr>
                   }

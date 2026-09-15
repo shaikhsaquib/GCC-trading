@@ -1,27 +1,19 @@
     <div class="audit-page fade-in">
-      <div class="page-header">
-        <div class="page-title">
-          <h2>Audit Trail</h2>
-          <p>Immutable log of every action — tamper-proof and cryptographically signed</p>
+      <app-page-header title="Audit Trail"
+                       subtitle="Immutable log of every action — tamper-proof and cryptographically signed">
+        <span actions class="badge badge-node">Node.js</span>
+        <div actions class="integrity-badge">
+          <span class="material-icons-round">verified</span>
+          Log Integrity: <strong>Verified</strong>
         </div>
-        <div class="page-actions">
-          <span class="badge badge-node">Node.js</span>
-          <div class="integrity-badge">
-            <span class="material-icons-round">verified</span>
-            Log Integrity: <strong>Verified</strong>
-          </div>
-          <button class="btn btn-secondary" (click)="exportLogs()"><span class="material-icons-round">file_download</span> Export Logs</button>
-          <button class="btn btn-secondary" (click)="refresh()"><span class="material-icons-round">refresh</span> Refresh</button>
-        </div>
-      </div>
+        <button actions class="btn btn-secondary" (click)="exportLogs()"><span class="material-icons-round">file_download</span> Export Logs</button>
+        <button actions class="btn btn-secondary" (click)="refresh()"><span class="material-icons-round">refresh</span> Refresh</button>
+      </app-page-header>
 
       <!-- Stats -->
       <div class="stats-grid" style="margin-bottom:24px">
         @for (s of auditStats; track s.label) {
-          <div class="stat-card" style="padding:14px">
-            <div class="stat-label">{{ s.label }}</div>
-            <div class="stat-value" style="font-size:20px" [style.color]="s.color">{{ s.value }}</div>
-          </div>
+          <app-stat-card [label]="s.label" [value]="s.value" [accent]="s.color" />
         }
       </div>
 
@@ -116,9 +108,8 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="10" style="text-align:center;padding:36px 16px;color:var(--text-muted);font-size:13px">
-                  <span class="material-icons-round" aria-hidden="true" style="font-size:30px;display:block;margin-bottom:8px;opacity:.6">manage_search</span>
-                  No audit entries match your filters
+                <td colspan="10">
+                  <app-empty-state icon="manage_search" message="No audit entries match your filters" />
                 </td>
               </tr>
             }

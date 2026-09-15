@@ -1,5 +1,6 @@
 using GccBond.Portfolio.DTOs;
 using GccBond.Portfolio.Interfaces;
+using GccBond.Shared.Constants;
 using GccBond.Shared.DTOs;
 using GccBond.Shared.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -45,7 +46,7 @@ public class PortfolioController : ControllerBase
 
     // POST /api/v1/portfolio/coupons/process  (admin)
     [HttpPost("coupons/process")]
-    [Authorize(Roles = "ADMIN")]
+    [Authorize(Roles = Roles.Admin)]
     public IActionResult ProcessCoupons()
     {
         _ = Task.Run(() => _portfolio.ProcessCouponPaymentsAsync());

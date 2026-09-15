@@ -4,24 +4,20 @@ import { FormsModule } from '@angular/forms';
 import { SettlementService, Settlement } from '../../services/settlement.service';
 import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
+import { PageHeaderComponent, BadgeComponent } from '../../shared/ui';
 
 @Component({
   selector: 'app-settlement',
   standalone: true,
-  imports: [NgClass, FormsModule, DecimalPipe],
+  imports: [NgClass, FormsModule, DecimalPipe, PageHeaderComponent, BadgeComponent],
   template: `
     <div class="settlement-page fade-in">
-      <div class="page-header">
-        <div class="page-title">
-          <h2>Settlement</h2>
-          <p>Finalize trades — T+1 settlement queue and history</p>
-        </div>
-        <div class="page-actions">
-          <span class="badge badge-dotnet">.NET Core</span>
-          <button class="btn btn-secondary" (click)="exportSettlements()"><span class="material-icons-round">file_download</span> Export</button>
-          <button class="btn btn-primary" (click)="loadSettlements()"><span class="material-icons-round">sync</span> Refresh</button>
-        </div>
-      </div>
+      <app-page-header title="Settlement"
+                       subtitle="Finalize trades — T+1 settlement queue and history">
+        <span actions class="badge badge-dotnet">.NET Core</span>
+        <button actions class="btn btn-secondary" (click)="exportSettlements()"><span class="material-icons-round">file_download</span> Export</button>
+        <button actions class="btn btn-primary" (click)="loadSettlements()"><span class="material-icons-round">sync</span> Refresh</button>
+      </app-page-header>
 
       <!-- Stats -->
       <div class="stats-grid" style="margin-bottom:24px">
@@ -96,7 +92,7 @@ import { exportToCsv } from '../../core/utils/csv-export';
                 <td style="color:var(--text-secondary)">{{ s.counterparty }}</td>
                 <td style="color:var(--text-secondary)">{{ s.tradeDate }}</td>
                 <td style="color:var(--accent-cyan);font-weight:600">{{ s.settlementDate }}</td>
-                <td><span class="badge" [ngClass]="statusBadge(s.status)">{{ s.status }}</span></td>
+                <td><app-badge [tone]="statusBadge(s.status)">{{ s.status }}</app-badge></td>
               </tr>
             }
           </tbody>
@@ -116,7 +112,7 @@ import { exportToCsv } from '../../core/utils/csv-export';
 
           <div class="detail-info-grid">
             <div class="detail-item"><span>Trade ID</span><code style="color:var(--accent-cyan)">{{ selectedSettlement()!.id }}</code></div>
-            <div class="detail-item"><span>Status</span><span class="badge" [ngClass]="statusBadge(selectedSettlement()!.status)">{{ selectedSettlement()!.status }}</span></div>
+            <div class="detail-item"><span>Status</span><app-badge [tone]="statusBadge(selectedSettlement()!.status)">{{ selectedSettlement()!.status }}</app-badge></div>
             <div class="detail-item"><span>Bond</span><strong>{{ selectedSettlement()!.bond }}</strong></div>
             <div class="detail-item"><span>ISIN</span><code>{{ selectedSettlement()!.isin }}</code></div>
             <div class="detail-item"><span>Side</span><span class="side-badge" [ngClass]="selectedSettlement()!.side === 'BUY' ? 'buy' : 'sell'">{{ selectedSettlement()!.side }}</span></div>
@@ -304,5 +300,11 @@ export class SettlementComponent implements OnInit {
     return list;
   }
 
-  statusBadge(s: string) { return { 'badge-warning': s === 'Pending', 'badge-info': s === 'Processing' || s === 'Reconciling', 'badge-success': s === 'Completed', 'badge-danger': s === 'Failed' }; }
+  statusBadge(s: string): 'success'|'warning'|'info'|'danger'|'neutral' {
+    if (s === 'Pending')                            return 'warning';
+    if (s === 'Processing' || s === 'Reconciling')  return 'info';
+    if (s === 'Completed')                          return 'success';
+    if (s === 'Failed')                             return 'danger';
+    return 'neutral';
+  }
 }

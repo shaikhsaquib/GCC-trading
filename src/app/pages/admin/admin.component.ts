@@ -9,6 +9,7 @@ import { exportToCsv } from '../../core/utils/csv-export';
 import { timeAgo } from '../../core/utils/time';
 import { avatarColor } from '../../core/utils/avatar';
 import { ROLE_LABELS } from '../../core/constants';
+import { PageHeaderComponent, StatCardComponent, EmptyStateComponent, BadgeComponent } from '../../shared/ui';
 
 interface UserDisplay {
   id:          string;
@@ -43,7 +44,7 @@ interface KycDisplay {
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [NgClass, FormsModule],
+  imports: [NgClass, FormsModule, PageHeaderComponent, StatCardComponent, EmptyStateComponent, BadgeComponent],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.css',
 })
@@ -288,6 +289,12 @@ export class AdminComponent implements OnInit {
   }
 
   roleBadge(role: string)   { return { 'role-admin': role === 'Admin', 'role-trader': role === 'Trader', 'role-investor': role === 'Investor' }; }
-  kycBadge(kyc: string)     { return { 'badge-success': kyc === 'Approved', 'badge-warning': kyc === 'Pending', 'badge-info': kyc === 'In Review', 'badge-danger': kyc === 'Rejected' }; }
+  kycBadge(kyc: string): 'success'|'warning'|'info'|'danger'|'neutral' {
+    if (kyc === 'Approved')  return 'success';
+    if (kyc === 'Pending')   return 'warning';
+    if (kyc === 'In Review') return 'info';
+    if (kyc === 'Rejected')  return 'danger';
+    return 'neutral';
+  }
   userStatusBadge(s: string){ return { 'status-active': s === 'Active', 'status-pending': s === 'Pending KYC', 'status-suspended': s === 'Suspended' }; }
 }
