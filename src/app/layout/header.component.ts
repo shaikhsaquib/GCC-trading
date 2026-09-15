@@ -7,6 +7,7 @@ import { LayoutService } from './layout.service';
 import { AuthService } from '../core/services/auth.service';
 import { NotificationsService } from '../services/notifications.service';
 import { BondService } from '../services/bond.service';
+import { ROLE_LABELS } from '../core/constants';
 
 interface Ticker { symbol: string; price: string; change: string; up: boolean; }
 
@@ -39,13 +40,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     return u ? `${u.firstName} ${u.lastName}` : '';
   });
 
-  readonly userRole = computed(() => {
-    const labels: Record<string, string> = {
-      ADMIN: 'Admin', L2_ADMIN: 'L2 Admin',
-      COMPLIANCE: 'Compliance', KYC_OFFICER: 'KYC Officer', INVESTOR: 'Investor',
-    };
-    return labels[this.auth.user()?.role ?? ''] ?? '';
-  });
+  readonly userRole = computed(() => ROLE_LABELS[this.auth.user()?.role ?? ''] ?? '');
 
   // ── Notifications ─────────────────────────────────────────────────────────────
 

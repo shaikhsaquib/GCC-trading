@@ -9,6 +9,7 @@ import { BondService } from '../../services/bond.service';
 import { WalletService } from '../../services/wallet.service';
 import { BookRow, TradeRow } from '../../services/price-simulation.service';
 import { ToastService } from '../../core/services/toast.service';
+import { FEES } from '../../core/constants';
 import { Order, Bond, OrderBookEntry } from '../../core/models/api.models';
 
 interface WatchlistBond {
@@ -408,7 +409,7 @@ export class TradingEngineComponent implements OnInit, OnDestroy {
     const px = parseFloat(this.selectedBond().price) || this.limitPrice;
     return this.quantity * (this.orderType() === 'Market' ? px : this.limitPrice);
   }
-  get commission(): number { return this.estimatedValue * 0.001; }
-  get vat():        number { return this.commission * 0.15; }
+  get commission(): number { return this.estimatedValue * FEES.COMMISSION_RATE; }
+  get vat():        number { return this.commission * FEES.VAT_RATE; }
   get orderTotal(): number { return this.estimatedValue + this.commission + this.vat; }
 }
