@@ -1,0 +1,19 @@
+:host { display: inline-flex; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+
+.ui-icon,
+.ui-spin { font-size: 16px; line-height: 1; }
+
+.ui-spin { animation: ui-btn-spin 1s linear infinite; }
+
+@keyframes ui-btn-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-spin { animation: none; }
+}

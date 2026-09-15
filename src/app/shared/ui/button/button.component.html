@@ -1,0 +1,17 @@
+<button
+  class="btn"
+  [class.btn-primary]="variant() === 'primary'"
+  [class.btn-secondary]="variant() === 'secondary'"
+  [class.btn-danger]="variant() === 'danger'"
+  [class.btn-success]="variant() === 'success'"
+  [class.btn-sm]="size() === 'sm'"
+  [class.btn-lg]="size() === 'lg'"
+  [attr.type]="type()"
+  [disabled]="disabled() || loading()">
+  @if (loading()) {
+    <span class="material-icons-round ui-spin" aria-hidden="true">sync</span>
+  } @else if (icon()) {
+    <span class="material-icons-round ui-icon" aria-hidden="true">{{ icon() }}</span>
+  }
+  <ng-content></ng-content>
+</button>

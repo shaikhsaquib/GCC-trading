@@ -1,0 +1,55 @@
+.ui-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.ui-modal {
+  background: var(--bg-card, #fff);
+  color: var(--text-primary, #111);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
+}
+
+.ui-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.ui-modal-head h3 { margin: 0; font-size: 16px; }
+
+.ui-modal-x {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary, #6b7280);
+  display: inline-flex;
+  padding: 2px;
+}
+.ui-modal-x:hover { color: var(--text-primary, #111); }
+
+.ui-modal-body { padding: 18px; }
+
+.ui-modal-foot {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+/* Hide the footer bar when no footer content is projected. */
+.ui-modal-foot:empty { display: none; }
