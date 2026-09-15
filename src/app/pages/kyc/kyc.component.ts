@@ -6,7 +6,7 @@ import { KycService } from '../../services/kyc.service';
 import { ToastService } from '../../core/services/toast.service';
 import { TimeAgoPipe } from '../../core/pipes/time-ago.pipe';
 import { RISK_TIERS } from '../../core/constants';
-import { PageHeaderComponent, StatCardComponent, EmptyStateComponent } from '../../shared/ui';
+import { PageHeaderComponent, StatCardComponent, EmptyStateComponent, BadgeComponent } from '../../shared/ui';
 import {
   KycSubmission, KycDocument, KycQueueItem, RiskLevel, DocumentType,
 } from '../../core/models/api.models';
@@ -36,7 +36,7 @@ const POLL_INTERVAL = 30_000; // 30 s
 @Component({
   selector: 'app-kyc',
   standalone: true,
-  imports: [NgClass, FormsModule, TimeAgoPipe, PageHeaderComponent, StatCardComponent, EmptyStateComponent],
+  imports: [NgClass, FormsModule, TimeAgoPipe, PageHeaderComponent, StatCardComponent, EmptyStateComponent, BadgeComponent],
   templateUrl: './kyc.component.html',
   styleUrl: './kyc.component.css',
 })
@@ -222,13 +222,12 @@ export class KycComponent implements OnInit, OnDestroy {
     return palette[code % palette.length];
   }
 
-  statusBadge(status: string) {
-    return {
-      'badge-warning': status === 'Submitted',
-      'badge-info':    status === 'UnderReview',
-      'badge-success': status === 'Approved',
-      'badge-danger':  status === 'Rejected',
-    };
+  statusBadge(status: string): 'success'|'warning'|'info'|'danger'|'neutral' {
+    if (status === 'Submitted')   return 'warning';
+    if (status === 'UnderReview') return 'info';
+    if (status === 'Approved')    return 'success';
+    if (status === 'Rejected')    return 'danger';
+    return 'neutral';
   }
 
   statusLabel(status: string) {

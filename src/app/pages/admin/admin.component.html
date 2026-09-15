@@ -81,7 +81,7 @@
                       </div>
                     </td>
                     <td><span class="role-badge" [ngClass]="roleBadge(u.role)">{{ u.role }}</span></td>
-                    <td><span class="badge" [ngClass]="kycBadge(u.kyc)">{{ u.kyc }}</span></td>
+                    <td><app-badge [tone]="kycBadge(u.kyc)">{{ u.kyc }}</app-badge></td>
                     <td style="color:var(--text-secondary)">{{ u.accountType }}</td>
                     <td style="font-weight:600">SAR {{ u.portfolio }}</td>
                     <td style="color:var(--text-secondary)">{{ u.joined }}</td>
@@ -129,7 +129,7 @@
                   <strong>{{ app.name }}</strong>
                   <p style="font-size:11px;color:var(--text-secondary)">{{ app.type }} · {{ app.nationality }}</p>
                 </div>
-                <span class="badge" [ngClass]="kycBadge(app.status)">{{ app.status }}</span>
+                <app-badge [tone]="kycBadge(app.status)">{{ app.status }}</app-badge>
               </div>
               <div class="kyc-docs">
                 @for (doc of app.docs; track doc) {

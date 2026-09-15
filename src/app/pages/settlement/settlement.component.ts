@@ -4,12 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { SettlementService, Settlement } from '../../services/settlement.service';
 import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
-import { PageHeaderComponent } from '../../shared/ui';
+import { PageHeaderComponent, BadgeComponent } from '../../shared/ui';
 
 @Component({
   selector: 'app-settlement',
   standalone: true,
-  imports: [NgClass, FormsModule, DecimalPipe, PageHeaderComponent],
+  imports: [NgClass, FormsModule, DecimalPipe, PageHeaderComponent, BadgeComponent],
   template: `
     <div class="settlement-page fade-in">
       <app-page-header title="Settlement"
@@ -92,7 +92,7 @@ import { PageHeaderComponent } from '../../shared/ui';
                 <td style="color:var(--text-secondary)">{{ s.counterparty }}</td>
                 <td style="color:var(--text-secondary)">{{ s.tradeDate }}</td>
                 <td style="color:var(--accent-cyan);font-weight:600">{{ s.settlementDate }}</td>
-                <td><span class="badge" [ngClass]="statusBadge(s.status)">{{ s.status }}</span></td>
+                <td><app-badge [tone]="statusBadge(s.status)">{{ s.status }}</app-badge></td>
               </tr>
             }
           </tbody>
@@ -112,7 +112,7 @@ import { PageHeaderComponent } from '../../shared/ui';
 
           <div class="detail-info-grid">
             <div class="detail-item"><span>Trade ID</span><code style="color:var(--accent-cyan)">{{ selectedSettlement()!.id }}</code></div>
-            <div class="detail-item"><span>Status</span><span class="badge" [ngClass]="statusBadge(selectedSettlement()!.status)">{{ selectedSettlement()!.status }}</span></div>
+            <div class="detail-item"><span>Status</span><app-badge [tone]="statusBadge(selectedSettlement()!.status)">{{ selectedSettlement()!.status }}</app-badge></div>
             <div class="detail-item"><span>Bond</span><strong>{{ selectedSettlement()!.bond }}</strong></div>
             <div class="detail-item"><span>ISIN</span><code>{{ selectedSettlement()!.isin }}</code></div>
             <div class="detail-item"><span>Side</span><span class="side-badge" [ngClass]="selectedSettlement()!.side === 'BUY' ? 'buy' : 'sell'">{{ selectedSettlement()!.side }}</span></div>
@@ -300,5 +300,11 @@ export class SettlementComponent implements OnInit {
     return list;
   }
 
-  statusBadge(s: string) { return { 'badge-warning': s === 'Pending', 'badge-info': s === 'Processing' || s === 'Reconciling', 'badge-success': s === 'Completed', 'badge-danger': s === 'Failed' }; }
+  statusBadge(s: string): 'success'|'warning'|'info'|'danger'|'neutral' {
+    if (s === 'Pending')                            return 'warning';
+    if (s === 'Processing' || s === 'Reconciling')  return 'info';
+    if (s === 'Completed')                          return 'success';
+    if (s === 'Failed')                             return 'danger';
+    return 'neutral';
+  }
 }

@@ -3,7 +3,7 @@ import { NgClass } from '@angular/common';
 import { AdminService, SchedulerJob } from '../../services/admin.service';
 import { ToastService } from '../../core/services/toast.service';
 import { timeAgo } from '../../core/utils/time';
-import { PageHeaderComponent, EmptyStateComponent } from '../../shared/ui';
+import { PageHeaderComponent, EmptyStateComponent, BadgeComponent } from '../../shared/ui';
 
 interface DisplayJob {
   id:          number;
@@ -45,7 +45,7 @@ const JOB_META: Record<string, { icon: string; iconBg: string; iconColor: string
 @Component({
   selector: 'app-scheduler',
   standalone: true,
-  imports: [NgClass, PageHeaderComponent, EmptyStateComponent],
+  imports: [NgClass, PageHeaderComponent, EmptyStateComponent, BadgeComponent],
   templateUrl: './scheduler.component.html',
   styleUrl: './scheduler.component.css',
 })
@@ -167,7 +167,11 @@ export class SchedulerComponent implements OnInit {
 
   private relativeTime = timeAgo;
 
-  jobStatusBadge(s: string) {
-    return { 'badge-info': s === 'Running', 'badge-success': s === 'Success' || s === 'Idle', 'badge-warning': s === 'Disabled', 'badge-danger': s === 'Failed' || s === 'Error' };
+  jobStatusBadge(s: string): 'success'|'warning'|'info'|'danger'|'neutral' {
+    if (s === 'Running')                   return 'info';
+    if (s === 'Success' || s === 'Idle')   return 'success';
+    if (s === 'Disabled')                  return 'warning';
+    if (s === 'Failed' || s === 'Error')   return 'danger';
+    return 'neutral';
   }
 }

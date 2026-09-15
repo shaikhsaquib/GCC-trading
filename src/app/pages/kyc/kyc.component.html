@@ -58,9 +58,9 @@
                   Submitted {{ item.submitted_at | timeAgo }}
                 </span>
               </div>
-              <span class="badge" [ngClass]="statusBadge(item.status)">
+              <app-badge [tone]="statusBadge(item.status)">
                 {{ statusLabel(item.status) }}
-              </span>
+              </app-badge>
             </div>
           }
 
@@ -87,9 +87,9 @@
                   Attempt #{{ item.submission_count }}
                 </p>
               </div>
-              <span class="badge" [ngClass]="statusBadge(item.status)" style="margin-left:auto;align-self:flex-start">
+              <app-badge [tone]="statusBadge(item.status)" style="margin-left:auto;align-self:flex-start">
                 {{ statusLabel(item.status) }}
-              </span>
+              </app-badge>
             </div>
 
             <div class="divider"></div>

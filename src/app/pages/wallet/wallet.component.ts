@@ -6,12 +6,12 @@ import { WalletBalance, WalletTransaction } from '../../core/models/api.models';
 import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
 import { CountUpDirective } from '../../shared/count-up.directive';
-import { PageHeaderComponent, EmptyStateComponent } from '../../shared/ui';
+import { PageHeaderComponent, EmptyStateComponent, BadgeComponent } from '../../shared/ui';
 
 @Component({
   selector: 'app-wallet',
   standalone: true,
-  imports: [NgClass, FormsModule, DecimalPipe, CountUpDirective, PageHeaderComponent, EmptyStateComponent],
+  imports: [NgClass, FormsModule, DecimalPipe, CountUpDirective, PageHeaderComponent, EmptyStateComponent, BadgeComponent],
   templateUrl: './wallet.component.html',
   styleUrl: './wallet.component.css',
 })
@@ -387,7 +387,10 @@ export class WalletComponent implements OnInit {
     return map[s] ?? s;
   }
 
-  txStatusBadge(s: string) {
-    return { 'badge-success': s === 'Completed', 'badge-warning': s === 'Processing', 'badge-danger': s === 'Failed' };
+  txStatusBadge(s: string): 'success'|'warning'|'info'|'danger'|'neutral' {
+    if (s === 'Completed')  return 'success';
+    if (s === 'Processing') return 'warning';
+    if (s === 'Failed')     return 'danger';
+    return 'neutral';
   }
 }

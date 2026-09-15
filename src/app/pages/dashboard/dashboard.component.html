@@ -327,7 +327,7 @@
               @else if (k.status === 'Submitted' || k.status === 'UnderReview') { Your KYC is under review — we'll notify you when done }
               @else if (k.status === 'Rejected') { Your KYC was rejected — please resubmit }
             </strong>
-            <span class="badge" [ngClass]="kycBadgeClass(k.status)" style="margin-left:8px">{{ k.status }}</span>
+            <app-badge [tone]="kycBadgeClass(k.status)" style="margin-left:8px">{{ k.status }}</app-badge>
           </div>
           <a class="btn btn-secondary btn-sm" routerLink="/kyc">
             {{ k.status === 'Draft' ? 'Continue KYC' : k.status === 'Rejected' ? 'Resubmit' : 'View Status' }}

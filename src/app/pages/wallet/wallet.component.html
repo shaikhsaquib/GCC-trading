@@ -265,7 +265,7 @@
                       </div>
                     </td>
                     <td style="color:var(--text-secondary)">{{ tx.date }}</td>
-                    <td><span class="badge" [ngClass]="txStatusBadge(tx.status)">{{ tx.status }}</span></td>
+                    <td><app-badge [tone]="txStatusBadge(tx.status)">{{ tx.status }}</app-badge></td>
                     <td style="text-align:right;font-weight:700"
                         [style.color]="tx.amount > 0 ? 'var(--success)' : 'var(--danger)'">
                       {{ tx.amount > 0 ? '+' : '' }}{{ balanceCurrency() }} {{ Math.abs(tx.amount) | number:'1.2-2' }}
