@@ -5,6 +5,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { KycService } from '../../services/kyc.service';
 import { ToastService } from '../../core/services/toast.service';
 import { TimeAgoPipe } from '../../core/pipes/time-ago.pipe';
+import { RISK_TIERS } from '../../core/constants';
 import {
   KycSubmission, KycDocument, KycQueueItem, RiskLevel, DocumentType,
 } from '../../core/models/api.models';
@@ -25,11 +26,7 @@ const DOC_META: Record<DocumentType, DocMeta> = {
 const REQUIRED_DOCS: DocumentType[] = ['PASSPORT', 'SELFIE'];
 const ALL_DOC_TYPES = Object.keys(DOC_META) as DocumentType[];
 
-const RISK_LIMITS: Record<string, { limit: string; desc: string }> = {
-  LOW:    { limit: '10,000 AED',  desc: 'Standard investor — orders up to 10,000 AED' },
-  MEDIUM: { limit: '50,000 AED',  desc: 'Verified investor — orders up to 50,000 AED' },
-  HIGH:   { limit: '200,000 AED', desc: 'Accredited investor — orders up to 200,000 AED' },
-};
+// Risk tiers now live in the shared constants module (core/constants/risk.ts).
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf', 'video/mp4'];
@@ -96,7 +93,7 @@ export class KycComponent implements OnInit, OnDestroy {
   readonly allDocTypes   = ALL_DOC_TYPES;
   readonly requiredDocs  = REQUIRED_DOCS;
   readonly docMeta       = DOC_META;
-  readonly riskLimits    = RISK_LIMITS;
+  readonly riskLimits    = RISK_TIERS;
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────────
 

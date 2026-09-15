@@ -6,6 +6,7 @@ import { environment } from '../../../environments/environment';
 import {
   User, LoginResponse, Require2FAResponse, TokenPair,
 } from '../models/api.models';
+import { ADMIN_ROLES } from '../constants';
 
 interface Wrapped<T> { success: boolean; data: T; }
 
@@ -28,7 +29,7 @@ export class AuthService {
   readonly isLoggedIn = computed(() => !!this._user());
   readonly isActive   = computed(() => this._user()?.status === 'ACTIVE');
   readonly isAdmin    = computed(() =>
-    ['ADMIN', 'L2_ADMIN', 'COMPLIANCE', 'KYC_OFFICER'].includes(this._user()?.role ?? ''),
+    ADMIN_ROLES.includes(this._user()?.role ?? ''),
   );
 
   // ── Register ────────────────────────────────────────────────────────────────

@@ -7,6 +7,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
 import { timeAgo } from '../../core/utils/time';
 import { avatarGradient } from '../../core/utils/avatar';
+import { ROLE_LABELS } from '../../core/constants';
 
 interface UserDisplay {
   id:        string;
@@ -112,11 +113,7 @@ export class IdentityComponent implements OnInit {
   }
 
   private mapRole(role: string): string {
-    const map: Record<string, string> = {
-      INVESTOR: 'Investor', KYC_OFFICER: 'KYC Officer',
-      L2_ADMIN: 'Admin',   ADMIN: 'Admin', COMPLIANCE: 'Compliance',
-    };
-    return map[role] ?? role;
+    return ROLE_LABELS[role] ?? role;
   }
 
   private mapStatus(status: string): string {
