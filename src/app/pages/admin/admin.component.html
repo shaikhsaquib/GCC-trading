@@ -1,22 +1,14 @@
     <div class="admin-page fade-in">
-      <div class="page-header">
-        <div class="page-title">
-          <h2>Admin Module</h2>
-          <p>Manage users, review KYC, generate reports and control system settings</p>
-        </div>
-        <div class="page-actions">
-          <span class="badge badge-node">Node.js</span>
-          <button class="btn btn-secondary" (click)="exportUsers()"><span class="material-icons-round">file_download</span> Export Users</button>
-        </div>
-      </div>
+      <app-page-header title="Admin Module"
+                       subtitle="Manage users, review KYC, generate reports and control system settings">
+        <span actions class="badge badge-node">Node.js</span>
+        <button actions class="btn btn-secondary" (click)="exportUsers()"><span class="material-icons-round">file_download</span> Export Users</button>
+      </app-page-header>
 
       <!-- Stats -->
       <div class="stats-grid" style="margin-bottom:24px">
         @for (s of adminStats; track s.label) {
-          <div class="stat-card" style="padding:14px">
-            <div class="stat-label">{{ s.label }}</div>
-            <div class="stat-value" style="font-size:20px" [style.color]="s.color">{{ s.value }}</div>
-          </div>
+          <app-stat-card [label]="s.label" [value]="s.value" [accent]="s.color" />
         }
       </div>
 
@@ -111,9 +103,8 @@
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="10" style="text-align:center;padding:36px 16px;color:var(--text-muted);font-size:13px">
-                      <span class="material-icons-round" aria-hidden="true" style="font-size:30px;display:block;margin-bottom:8px;opacity:.6">group_off</span>
-                      No users match your search
+                    <td colspan="10">
+                      <app-empty-state icon="group_off" message="No users match your search" />
                     </td>
                   </tr>
                 }

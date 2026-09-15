@@ -9,6 +9,7 @@ import { exportToCsv } from '../../core/utils/csv-export';
 import { timeAgo } from '../../core/utils/time';
 import { avatarColor } from '../../core/utils/avatar';
 import { ROLE_LABELS } from '../../core/constants';
+import { PageHeaderComponent, StatCardComponent, EmptyStateComponent } from '../../shared/ui';
 
 interface UserDisplay {
   id:          string;
@@ -43,7 +44,7 @@ interface KycDisplay {
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [NgClass, FormsModule],
+  imports: [NgClass, FormsModule, PageHeaderComponent, StatCardComponent, EmptyStateComponent],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.css',
 })
