@@ -1,3 +1,4 @@
+using GccBond.Shared.Constants;
 using GccBond.Shared.Interfaces;
 using GccBond.Shared.Exceptions;
 using GccBond.Shared.Infrastructure;
@@ -19,14 +20,6 @@ public class TradingService : ITradingService
     private readonly RedisHelper      _redis;
     private readonly IEventBus        _eventBus;
     private readonly IMatchingEngine  _matchingEngine;
-
-    // Risk-tiered trade limits (FSD §8.4)
-    private static readonly Dictionary<string, decimal> TradeLimits = new()
-    {
-        ["LOW"]    = 10_000m,
-        ["MEDIUM"] = 50_000m,
-        ["HIGH"]   = 200_000m,
-    };
 
     public TradingService(
         IOrderRepository orders,
@@ -68,7 +61,7 @@ public class TradingService : ITradingService
         // Validate trade value vs risk limit
         var price      = req.Price ?? bond.CurrentPrice;
         var tradeValue = req.Quantity * price;
-        var limit      = TradeLimits.GetValueOrDefault(riskLevel.ToUpper(), 10_000m);
+        var limit      = RiskTiers.LimitFor(riskLevel.ToUpper());
 
         if (tradeValue > limit)
             throw new BusinessRuleException(

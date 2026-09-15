@@ -1,3 +1,4 @@
+using GccBond.Shared.Constants;
 using GccBond.Shared.Interfaces;
 using GccBond.Shared.Infrastructure;
 using GccBond.Shared.Models;
@@ -17,9 +18,9 @@ public class MatchingEngine : IMatchingEngine
     private readonly RedisHelper      _redis;
     private readonly IEventBus        _eventBus;
 
-    private const decimal BuyerFeeRate      = 0.0025m; // 25 bps
-    private const decimal SellerFeeRate     = 0.0025m;
-    private const decimal SettlementFeeRate = 0.0010m; // 10 bps
+    private const decimal BuyerFeeRate      = Fees.BuyerBps;      // 25 bps
+    private const decimal SellerFeeRate     = Fees.SellerBps;     // 25 bps
+    private const decimal SettlementFeeRate = Fees.SettlementBps; // 10 bps
 
     public MatchingEngine(IOrderRepository orders, RedisHelper redis, IEventBus eventBus)
     {
