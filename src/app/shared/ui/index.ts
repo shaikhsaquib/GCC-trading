@@ -9,3 +9,6 @@ export * from './stat-card.component';
 export * from './empty-state.component';
 export * from './page-header.component';
 export * from './badge.component';
+export * from './button/button.component';
+export * from './modal/modal.component';
+export * from './card/card.component';

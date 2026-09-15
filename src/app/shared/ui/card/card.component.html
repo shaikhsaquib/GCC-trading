@@ -1,0 +1,9 @@
+<div class="card">
+  @if (title()) {
+    <div class="ui-card-head">
+      <h4>{{ title() }}</h4>
+      <div class="ui-card-actions"><ng-content select="[actions]"></ng-content></div>
+    </div>
+  }
+  <ng-content></ng-content>
+</div>

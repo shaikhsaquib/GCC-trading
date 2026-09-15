@@ -1,0 +1,12 @@
+.ui-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.ui-card-head h4 { margin: 0; font-size: 15px; }
+
+.ui-card-actions { display: flex; gap: 8px; align-items: center; }
+.ui-card-actions:empty { display: none; }

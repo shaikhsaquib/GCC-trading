@@ -1,0 +1,18 @@
+@if (open()) {
+  <div class="ui-modal-overlay" (click)="close.emit()">
+    <div class="ui-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="ui-modal-head">
+        <h3>{{ title() }}</h3>
+        <button class="ui-modal-x" type="button" aria-label="Close" (click)="close.emit()">
+          <span class="material-icons-round" aria-hidden="true">close</span>
+        </button>
+      </div>
+      <div class="ui-modal-body">
+        <ng-content></ng-content>
+      </div>
+      <div class="ui-modal-foot">
+        <ng-content select="[footer]"></ng-content>
+      </div>
+    </div>
+  </div>
+}
