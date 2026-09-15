@@ -5,6 +5,7 @@ import { PortfolioHolding, PortfolioSummary, CouponEvent } from '../../core/mode
 import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
 import { CountUpDirective } from '../../shared/count-up.directive';
+import { PageHeaderComponent, EmptyStateComponent } from '../../shared/ui';
 
 interface HoldingDisplay {
   name:      string;
@@ -47,7 +48,7 @@ interface PortfolioKpi {
 @Component({
   selector: 'app-portfolio',
   standalone: true,
-  imports: [NgClass, DecimalPipe, CountUpDirective],
+  imports: [NgClass, DecimalPipe, CountUpDirective, PageHeaderComponent, EmptyStateComponent],
   templateUrl: './portfolio.component.html',
   styleUrl: './portfolio.component.css',
 })

@@ -6,6 +6,7 @@ import { NotificationsService } from '../../services/notifications.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Notification } from '../../core/models/api.models';
 import { timeAgo } from '../../core/utils/time';
+import { PageHeaderComponent } from '../../shared/ui';
 
 interface NotifDisplay {
   id:        string;
@@ -37,7 +38,7 @@ const EVENT_META: Record<string, { title: string; icon: string; bg: string; colo
 @Component({
   selector: 'app-notifications',
   standalone: true,
-  imports: [NgClass, FormsModule],
+  imports: [NgClass, FormsModule, PageHeaderComponent],
   templateUrl: './notifications.component.html',
   styleUrl: './notifications.component.css',
 })

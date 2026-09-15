@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { BondService } from '../../services/bond.service';
 import { Bond } from '../../core/models/api.models';
 import { ToastService } from '../../core/services/toast.service';
+import { PageHeaderComponent } from '../../shared/ui';
 
 interface BondDisplay {
   id:           string;
@@ -29,7 +30,7 @@ interface BondDisplay {
 @Component({
   selector: 'app-bond-marketplace',
   standalone: true,
-  imports: [NgClass, FormsModule, RouterLink, DecimalPipe],
+  imports: [NgClass, FormsModule, RouterLink, DecimalPipe, PageHeaderComponent],
   templateUrl: './bond-marketplace.component.html',
   styleUrl: './bond-marketplace.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

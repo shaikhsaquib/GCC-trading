@@ -4,24 +4,20 @@ import { FormsModule } from '@angular/forms';
 import { SettlementService, Settlement } from '../../services/settlement.service';
 import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
+import { PageHeaderComponent } from '../../shared/ui';
 
 @Component({
   selector: 'app-settlement',
   standalone: true,
-  imports: [NgClass, FormsModule, DecimalPipe],
+  imports: [NgClass, FormsModule, DecimalPipe, PageHeaderComponent],
   template: `
     <div class="settlement-page fade-in">
-      <div class="page-header">
-        <div class="page-title">
-          <h2>Settlement</h2>
-          <p>Finalize trades — T+1 settlement queue and history</p>
-        </div>
-        <div class="page-actions">
-          <span class="badge badge-dotnet">.NET Core</span>
-          <button class="btn btn-secondary" (click)="exportSettlements()"><span class="material-icons-round">file_download</span> Export</button>
-          <button class="btn btn-primary" (click)="loadSettlements()"><span class="material-icons-round">sync</span> Refresh</button>
-        </div>
-      </div>
+      <app-page-header title="Settlement"
+                       subtitle="Finalize trades — T+1 settlement queue and history">
+        <span actions class="badge badge-dotnet">.NET Core</span>
+        <button actions class="btn btn-secondary" (click)="exportSettlements()"><span class="material-icons-round">file_download</span> Export</button>
+        <button actions class="btn btn-primary" (click)="loadSettlements()"><span class="material-icons-round">sync</span> Refresh</button>
+      </app-page-header>
 
       <!-- Stats -->
       <div class="stats-grid" style="margin-bottom:24px">

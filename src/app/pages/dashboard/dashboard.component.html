@@ -4,29 +4,24 @@
   <div class="dashboard fade-in">
 
     <!-- Page Header -->
-    <div class="page-header">
-      <div class="page-title">
-        <h2>Platform Overview</h2>
-        <p>GCC Bond Trading System — All modules at a glance</p>
-      </div>
-      <div class="page-actions">
-        <span class="badge" [ngClass]="healthBadge.cls">
-          <span class="status-dot"
-                [class.active]="healthBadge.cls === 'badge-success'"
-                [class.pending]="healthBadge.cls === 'badge-warning'"
-                [class.error]="healthBadge.cls === 'badge-danger'">
-          </span>
-          {{ healthBadge.label }}
+    <app-page-header title="Platform Overview"
+                     subtitle="GCC Bond Trading System — All modules at a glance">
+      <span actions class="badge" [ngClass]="healthBadge.cls">
+        <span class="status-dot"
+              [class.active]="healthBadge.cls === 'badge-success'"
+              [class.pending]="healthBadge.cls === 'badge-warning'"
+              [class.error]="healthBadge.cls === 'badge-danger'">
         </span>
-        <button class="btn btn-secondary btn-sm" (click)="refresh()" [disabled]="adminLoading()">
-          <span class="material-icons-round" [class.spin]="adminLoading()">refresh</span>
-          Refresh
-        </button>
-        <a class="btn btn-primary" routerLink="/trading">
-          <span class="material-icons-round">add</span> New Trade
-        </a>
-      </div>
-    </div>
+        {{ healthBadge.label }}
+      </span>
+      <button actions class="btn btn-secondary btn-sm" (click)="refresh()" [disabled]="adminLoading()">
+        <span class="material-icons-round" [class.spin]="adminLoading()">refresh</span>
+        Refresh
+      </button>
+      <a actions class="btn btn-primary" routerLink="/trading">
+        <span class="material-icons-round">add</span> New Trade
+      </a>
+    </app-page-header>
 
     <!-- Error Banner -->
     @if (adminError()) {
@@ -238,10 +233,7 @@
         </div>
         <div class="activity-list">
           @if (recentActivity.length === 0 && !adminLoading()) {
-            <div class="empty-state">
-              <span class="material-icons-round">history</span>
-              <p>No recent activity</p>
-            </div>
+            <app-empty-state icon="history" message="No recent activity" />
           }
           @for (act of recentActivity; track act.id) {
             <div class="activity-item">
@@ -306,23 +298,18 @@
 
   <div class="dashboard fade-in">
 
-    <div class="page-header">
-      <div class="page-title">
-        <h2>Welcome back, {{ auth.user()?.firstName }}</h2>
-        <p>Your GCC Bond trading summary</p>
-      </div>
-      <div class="page-actions">
-        @if (isActive()) {
-          <a class="btn btn-primary" routerLink="/marketplace">
-            <span class="material-icons-round">public</span> Browse Bonds
-          </a>
-        } @else {
-          <a class="btn btn-primary" routerLink="/kyc">
-            <span class="material-icons-round">verified_user</span> Complete KYC
-          </a>
-        }
-      </div>
-    </div>
+    <app-page-header [title]="'Welcome back, ' + (auth.user()?.firstName ?? '')"
+                     subtitle="Your GCC Bond trading summary">
+      @if (isActive()) {
+        <a actions class="btn btn-primary" routerLink="/marketplace">
+          <span class="material-icons-round">public</span> Browse Bonds
+        </a>
+      } @else {
+        <a actions class="btn btn-primary" routerLink="/kyc">
+          <span class="material-icons-round">verified_user</span> Complete KYC
+        </a>
+      }
+    </app-page-header>
 
     <!-- KYC Status Banner -->
     @if (kyc(); as k) {
@@ -387,10 +374,7 @@
         </div>
         <div class="activity-list">
           @if (recentTxns().length === 0) {
-            <div class="empty-state">
-              <span class="material-icons-round">receipt_long</span>
-              <p>No transactions yet</p>
-            </div>
+            <app-empty-state icon="receipt_long" message="No transactions yet" />
           }
           @for (txn of recentTxns(); track txn.id) {
             <div class="activity-item">

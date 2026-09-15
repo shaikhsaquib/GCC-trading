@@ -1,14 +1,9 @@
     <div class="aml-page fade-in">
-      <div class="page-header">
-        <div class="page-title">
-          <h2>AML & Compliance</h2>
-          <p>Monitor suspicious activity, manage cases and generate regulatory reports</p>
-        </div>
-        <div class="page-actions">
-          <span class="badge badge-dotnet">.NET Core</span>
-          <button class="btn btn-secondary" (click)="exportAlerts()"><span class="material-icons-round">file_download</span> Export</button>
-        </div>
-      </div>
+      <app-page-header title="AML &amp; Compliance"
+                       subtitle="Monitor suspicious activity, manage cases and generate regulatory reports">
+        <span actions class="badge badge-dotnet">.NET Core</span>
+        <button actions class="btn btn-secondary" (click)="exportAlerts()"><span class="material-icons-round">file_download</span> Export</button>
+      </app-page-header>
 
       <!-- Alert Banner -->
       @if (highRiskOpenCount() > 0) {
@@ -21,10 +16,7 @@
       <!-- Stats -->
       <div class="stats-grid" style="margin-bottom:24px">
         @for (s of amlStats; track s.label) {
-          <div class="stat-card" style="padding:14px">
-            <div class="stat-label">{{ s.label }}</div>
-            <div class="stat-value" style="font-size:22px" [style.color]="s.color">{{ s.value }}</div>
-          </div>
+          <app-stat-card [label]="s.label" [value]="s.value" [accent]="s.color" />
         }
       </div>
 

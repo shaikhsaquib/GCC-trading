@@ -1,17 +1,12 @@
     <div class="trading-page fade-in">
-      <div class="page-header" style="margin-bottom:16px">
-        <div class="page-title">
-          <h2>Trading Engine</h2>
-          <p>Place buy/sell orders and match trades in real time</p>
+      <app-page-header title="Trading Engine"
+                       subtitle="Place buy/sell orders and match trades in real time">
+        <span actions class="badge badge-dotnet">.NET Core</span>
+        <div actions class="market-status-pill">
+          <span class="status-dot" [class.active]="marketOpen()" [class.error]="!marketOpen()"></span>
+          {{ marketOpen() ? 'Market Open' : 'Market Closed' }} · {{ marketTime() }} AST
         </div>
-        <div class="page-actions">
-          <span class="badge badge-dotnet">.NET Core</span>
-          <div class="market-status-pill">
-            <span class="status-dot" [class.active]="marketOpen()" [class.error]="!marketOpen()"></span>
-            {{ marketOpen() ? 'Market Open' : 'Market Closed' }} · {{ marketTime() }} AST
-          </div>
-        </div>
-      </div>
+      </app-page-header>
 
       <!-- Bond Selector / Watchlist -->
       <div class="bond-selector-bar">
@@ -185,10 +180,7 @@
               <span class="material-icons-round" style="animation:spin 1s linear infinite">sync</span>
             </div>
           } @else if (asks().length === 0 && bids().length === 0) {
-            <div style="text-align:center;padding:28px 16px;color:var(--text-muted);font-size:12px">
-              <span class="material-icons-round" style="font-size:28px;display:block;margin-bottom:6px">menu_book</span>
-              No open orders for this bond — place the first one
-            </div>
+            <app-empty-state icon="menu_book" message="No open orders for this bond — place the first one" />
           } @else {
             <!-- Asks (sell side — best ask closest to mid) -->
             <div class="asks-list">
@@ -233,10 +225,7 @@
             </div>
             <div class="trades-list">
               @if (recentTrades().length === 0) {
-                <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">
-                  <span class="material-icons-round" style="font-size:28px;display:block;margin-bottom:6px">receipt_long</span>
-                  No trades yet for this bond
-                </div>
+                <app-empty-state icon="receipt_long" message="No trades yet for this bond" />
               }
               @for (trade of recentTrades(); track trade.id) {
                 <div class="trade-row" [class.buy]="trade.side === 'BUY'" [class.sell]="trade.side === 'SELL'">
@@ -267,10 +256,7 @@
                 <span class="material-icons-round" style="animation:spin 1s linear infinite">sync</span>
               </div>
             } @else if (myOrders.length === 0) {
-              <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">
-                <span class="material-icons-round" style="font-size:28px;display:block;margin-bottom:6px">inbox</span>
-                No open orders
-              </div>
+              <app-empty-state icon="inbox" message="No open orders" />
             } @else {
               <div class="my-orders-list">
                 @for (order of myOrders; track order.id) {

@@ -11,6 +11,7 @@ import {
 } from '../../core/models/api.models';
 import { CountUpDirective } from '../../shared/count-up.directive';
 import { timeAgo } from '../../core/utils/time';
+import { PageHeaderComponent, EmptyStateComponent } from '../../shared/ui';
 
 interface Kpi {
   label:     string;
@@ -45,7 +46,7 @@ interface ChartBar {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [RouterLink, NgClass, CountUpDirective],
+  imports: [RouterLink, NgClass, CountUpDirective, PageHeaderComponent, EmptyStateComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
 })

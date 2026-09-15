@@ -11,6 +11,7 @@ import { BookRow, TradeRow } from '../../services/price-simulation.service';
 import { ToastService } from '../../core/services/toast.service';
 import { FEES } from '../../core/constants';
 import { Order, Bond, OrderBookEntry } from '../../core/models/api.models';
+import { PageHeaderComponent, EmptyStateComponent } from '../../shared/ui';
 
 interface WatchlistBond {
   id:        string;
@@ -40,7 +41,7 @@ interface OrderDisplay {
 @Component({
   selector: 'app-trading-engine',
   standalone: true,
-  imports: [NgClass, FormsModule, DecimalPipe],
+  imports: [NgClass, FormsModule, DecimalPipe, PageHeaderComponent, EmptyStateComponent],
   templateUrl: './trading-engine.component.html',
   styleUrl: './trading-engine.component.css',
 })

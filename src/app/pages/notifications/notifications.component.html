@@ -1,21 +1,16 @@
     <div class="notif-page fade-in">
-      <div class="page-header">
-        <div class="page-title">
-          <h2>Notifications</h2>
-          <p>Manage alerts, send push/email/SMS notifications</p>
-        </div>
-        <div class="page-actions">
-          <span class="badge badge-node">Node.js</span>
-          <button class="btn btn-secondary" (click)="markAllRead()">
-            <span class="material-icons-round">done_all</span> Mark All Read
+      <app-page-header title="Notifications"
+                       subtitle="Manage alerts, send push/email/SMS notifications">
+        <span actions class="badge badge-node">Node.js</span>
+        <button actions class="btn btn-secondary" (click)="markAllRead()">
+          <span class="material-icons-round">done_all</span> Mark All Read
+        </button>
+        @if (isAdmin()) {
+          <button actions class="btn btn-primary">
+            <span class="material-icons-round">send</span> Send Notification
           </button>
-          @if (isAdmin()) {
-            <button class="btn btn-primary">
-              <span class="material-icons-round">send</span> Send Notification
-            </button>
-          }
-        </div>
-      </div>
+        }
+      </app-page-header>
 
       <div class="notif-layout">
         <!-- Left: Notification Feed -->

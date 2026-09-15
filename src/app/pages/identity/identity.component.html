@@ -1,14 +1,9 @@
     <div class="identity-page fade-in">
-      <div class="page-header">
-        <div class="page-title">
-          <h2>Identity & Auth</h2>
-          <p>Manage user accounts, sessions, roles and authentication settings</p>
-        </div>
-        <div class="page-actions">
-          <span class="badge badge-node">Node.js</span>
-          <button class="btn btn-secondary" (click)="exportUsers()"><span class="material-icons-round">file_download</span> Export</button>
-        </div>
-      </div>
+      <app-page-header title="Identity &amp; Auth"
+                       subtitle="Manage user accounts, sessions, roles and authentication settings">
+        <span actions class="badge badge-node">Node.js</span>
+        <button actions class="btn btn-secondary" (click)="exportUsers()"><span class="material-icons-round">file_download</span> Export</button>
+      </app-page-header>
 
       <!-- KPIs -->
       <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px">

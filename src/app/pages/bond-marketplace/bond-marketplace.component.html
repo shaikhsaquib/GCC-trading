@@ -1,21 +1,16 @@
     <div class="marketplace-page fade-in">
-      <div class="page-header">
-        <div class="page-title">
-          <h2>Bond Marketplace</h2>
-          <p>Browse, filter and compare GCC and global bonds</p>
-        </div>
-        <div class="page-actions">
-          <span class="badge badge-dotnet">.NET Core</span>
-          <button class="btn btn-secondary" (click)="viewMode.set(viewMode() === 'table' ? 'grid' : 'table')">
-            <span class="material-icons-round">{{ viewMode() === 'table' ? 'grid_view' : 'table_rows' }}</span>
+      <app-page-header title="Bond Marketplace"
+                       subtitle="Browse, filter and compare GCC and global bonds">
+        <span actions class="badge badge-dotnet">.NET Core</span>
+        <button actions class="btn btn-secondary" (click)="viewMode.set(viewMode() === 'table' ? 'grid' : 'table')">
+          <span class="material-icons-round">{{ viewMode() === 'table' ? 'grid_view' : 'table_rows' }}</span>
+        </button>
+        @if (compareList().length > 0) {
+          <button actions class="btn btn-primary">
+            <span class="material-icons-round">compare</span> Compare ({{ compareList().length }})
           </button>
-          @if (compareList().length > 0) {
-            <button class="btn btn-primary">
-              <span class="material-icons-round">compare</span> Compare ({{ compareList().length }})
-            </button>
-          }
-        </div>
-      </div>
+        }
+      </app-page-header>
 
       <!-- Market Stats -->
       <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">

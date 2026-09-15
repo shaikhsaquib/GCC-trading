@@ -6,6 +6,7 @@ import { KycService } from '../../services/kyc.service';
 import { ToastService } from '../../core/services/toast.service';
 import { TimeAgoPipe } from '../../core/pipes/time-ago.pipe';
 import { RISK_TIERS } from '../../core/constants';
+import { PageHeaderComponent, StatCardComponent, EmptyStateComponent } from '../../shared/ui';
 import {
   KycSubmission, KycDocument, KycQueueItem, RiskLevel, DocumentType,
 } from '../../core/models/api.models';
@@ -35,7 +36,7 @@ const POLL_INTERVAL = 30_000; // 30 s
 @Component({
   selector: 'app-kyc',
   standalone: true,
-  imports: [NgClass, FormsModule, TimeAgoPipe],
+  imports: [NgClass, FormsModule, TimeAgoPipe, PageHeaderComponent, StatCardComponent, EmptyStateComponent],
   templateUrl: './kyc.component.html',
   styleUrl: './kyc.component.css',
 })

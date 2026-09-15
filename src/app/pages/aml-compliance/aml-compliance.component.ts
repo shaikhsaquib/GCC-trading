@@ -6,6 +6,7 @@ import { AmlAlert } from '../../core/models/api.models';
 import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
 import { timeAgo } from '../../core/utils/time';
+import { PageHeaderComponent, StatCardComponent } from '../../shared/ui';
 
 interface AlertDisplay {
   id:         string;
@@ -24,7 +25,7 @@ interface AlertDisplay {
 @Component({
   selector: 'app-aml-compliance',
   standalone: true,
-  imports: [NgClass, FormsModule, DecimalPipe],
+  imports: [NgClass, FormsModule, DecimalPipe, PageHeaderComponent, StatCardComponent],
   templateUrl: './aml-compliance.component.html',
   styleUrl: './aml-compliance.component.css',
 })

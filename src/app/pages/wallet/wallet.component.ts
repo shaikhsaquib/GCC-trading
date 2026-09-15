@@ -6,11 +6,12 @@ import { WalletBalance, WalletTransaction } from '../../core/models/api.models';
 import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
 import { CountUpDirective } from '../../shared/count-up.directive';
+import { PageHeaderComponent, EmptyStateComponent } from '../../shared/ui';
 
 @Component({
   selector: 'app-wallet',
   standalone: true,
-  imports: [NgClass, FormsModule, DecimalPipe, CountUpDirective],
+  imports: [NgClass, FormsModule, DecimalPipe, CountUpDirective, PageHeaderComponent, EmptyStateComponent],
   templateUrl: './wallet.component.html',
   styleUrl: './wallet.component.css',
 })

@@ -8,6 +8,7 @@ import { exportToCsv } from '../../core/utils/csv-export';
 import { timeAgo } from '../../core/utils/time';
 import { avatarGradient } from '../../core/utils/avatar';
 import { ROLE_LABELS } from '../../core/constants';
+import { PageHeaderComponent } from '../../shared/ui';
 
 interface UserDisplay {
   id:        string;
@@ -28,7 +29,7 @@ interface UserDisplay {
 @Component({
   selector: 'app-identity',
   standalone: true,
-  imports: [NgClass, FormsModule],
+  imports: [NgClass, FormsModule, PageHeaderComponent],
   templateUrl: './identity.component.html',
   styleUrl: './identity.component.css',
 })

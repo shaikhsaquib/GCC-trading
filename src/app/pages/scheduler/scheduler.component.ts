@@ -3,6 +3,7 @@ import { NgClass } from '@angular/common';
 import { AdminService, SchedulerJob } from '../../services/admin.service';
 import { ToastService } from '../../core/services/toast.service';
 import { timeAgo } from '../../core/utils/time';
+import { PageHeaderComponent, EmptyStateComponent } from '../../shared/ui';
 
 interface DisplayJob {
   id:          number;
@@ -44,7 +45,7 @@ const JOB_META: Record<string, { icon: string; iconBg: string; iconColor: string
 @Component({
   selector: 'app-scheduler',
   standalone: true,
-  imports: [NgClass],
+  imports: [NgClass, PageHeaderComponent, EmptyStateComponent],
   templateUrl: './scheduler.component.html',
   styleUrl: './scheduler.component.css',
 })

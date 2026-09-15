@@ -5,6 +5,7 @@ import { AdminService } from '../../services/admin.service';
 import { AuditEntry } from '../../core/models/api.models';
 import { ToastService } from '../../core/services/toast.service';
 import { exportToCsv } from '../../core/utils/csv-export';
+import { PageHeaderComponent, StatCardComponent, EmptyStateComponent } from '../../shared/ui';
 
 interface LogDisplay {
   id:       string;
@@ -26,7 +27,7 @@ interface LogDisplay {
 @Component({
   selector: 'app-audit-trail',
   standalone: true,
-  imports: [NgClass, FormsModule],
+  imports: [NgClass, FormsModule, PageHeaderComponent, StatCardComponent, EmptyStateComponent],
   templateUrl: './audit-trail.component.html',
   styleUrl: './audit-trail.component.css',
 })
